@@ -22,7 +22,7 @@ class StretchMujocoSimulator:
         self.depth_renderer.enable_depth_rendering()
         self.wheel_diameter = 0.1016
         self.wheel_seperation = 0.3153
-        self.status = {
+        self.status = {'time': None, 
                        'base': {'x_vel': None,'theta_vel': None},
                        'lift': {'pos': None,'vel': None},
                        'arm': {'pos': None,'vel': None},
@@ -80,6 +80,7 @@ class StretchMujocoSimulator:
     def pull_status(self)->None:
         """
         Pull joints status of the robot from the simulator"""
+        self.status['time'] = self.mjdata.time
         self.status['lift']['pos'] = self.mjdata.actuator('lift').length[0]
         self.status['lift']['vel'] = self.mjdata.actuator('lift').velocity[0]
 
@@ -112,6 +113,7 @@ class StretchMujocoSimulator:
         """
         Pull camera data from the simulator"""
         data = {}
+        data['time'] = self.mjdata.time
         self.rgb_renderer.update_scene(self.mjdata,'d405_rgb')
         self.depth_renderer.update_scene(self.mjdata,'d405_rgb')
         data['cam_d405_rgb'] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
