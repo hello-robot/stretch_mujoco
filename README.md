@@ -19,8 +19,7 @@ python3 stretch_mujoco.py
 ```
 python3 stretch_mujoco_gamepad.py
 ```
-<img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" width="300px">
-<img src="./docs/camera_streams.png" title="Camera Streams" width="300px">
+<img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" width="400px"> <img src="./docs/camera_streams.png" title="Camera Streams" width="500px">
 
 ## Try Writing Code
 You can refer to the [StretchMujocoSimulator](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco.py#L11) class implementation which provides a basic interface for starting the Simulation, position control the robot, read joint status and read all the camera streams. You can try the below lines from Ipython terminal. Advanced users are recommended to reffer to [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
