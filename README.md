@@ -72,5 +72,6 @@ Output:
 ```
 
 
-
+## Acknowledgment
+The assets in this repository contains significant contributions and efforts from [Kevin Zakka](https://github.com/kevinzakka) and [Google Deepmind](https://github.com/google-deepmind) along with others in Hello Robot Inc. who helped us in modelling Stretch in Mujoco. Thankyou for your contributions.
 
