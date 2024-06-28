@@ -71,6 +71,8 @@ Output:
 
 ```
 
+### Feature Requests and Bug reporting
+All the enhacements/missing features/Bugfixes are tracked by [Issues](https://github.com/hello-robot/stretch_mujoco/issues) filed. Please free to file an issue if you would like to report bugs or request a feature addition.
 
 ## Acknowledgment
 The assets in this repository contains significant contributions and efforts from [Kevin Zakka](https://github.com/kevinzakka) and [Google Deepmind](https://github.com/google-deepmind) along with others in Hello Robot Inc. who helped us in modelling Stretch in Mujoco. Thankyou for your contributions.
