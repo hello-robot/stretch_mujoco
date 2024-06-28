@@ -370,7 +370,7 @@
                               <geom material="Gray_Lens" mesh="link_d405_lens" pos="0 0 0" euler="0 0 0" mass="3.6E-06" class="visual"/>
                               <geom material="Pantone_Black_6_U" mesh="link_d405_front_plate" pos="0 0 0" euler="0 0 0" mass="3.6E-06" class="visual"/>
                               <geom mesh="link_d405" class="collision"/>
-                              <body name="d405_cam" pos="0 0 0">
+                              <body name="d405_cam" pos="0 0 0" euler="0 0 3.14">
                                 <camera name="d405_rgb" pos="0 0 0" euler="-3.14 0 -3.14" fovy="58"/>
                                 <camera name="d405_depth" pos="0 0 0" euler="-3.14 0 -3.14"/>
                               </body>
