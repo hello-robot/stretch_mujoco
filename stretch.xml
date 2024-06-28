@@ -234,6 +234,10 @@
       <geom mesh="base_link_8" material="Pantone_Cool_Gray_4_U" class="visual"/>
       <geom class="collision" mesh="base_link_collision" mass="15.0"/>
       <geom class="caster"/>
+      <body name="base_imu" pos="-0.12838 0.0031592 0.1474" euler="-3.1416 0 1.5708">
+        <site name="base_imu" pos="0 0 0"/>
+      </body>
+        
       <body name="link_mast" pos="-0.067 0.135 0.0284" quat="1 1 0 0">
         <geom material="Generic_Black" mesh="link_mast" class="visual"/>
         <geom mesh="link_mast" class="collision" mass="1.8285"/>
@@ -521,6 +525,10 @@
     <position name="head_tilt" joint="joint_head_tilt" class="head_tilt"/>
   </actuator>
 
+  <sensor>
+    <gyro name="base_gyro" site="base_imu"/>
+    <accelerometer name="base_accel" site="base_imu"/>
+  </sensor>
 
   <keyframe>
     <key name="home" ctrl="0 0 0.6 0.1 0 0 0 0 0 0"/>
