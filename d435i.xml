@@ -50,6 +50,10 @@
       <geom mesh="d435i_7" material="RGB_Pupil" class="visual"/>
       <geom mesh="d435i_8" mass="0.072" material="Metal_Casing" class="visual"/>
       <geom class="collision" type="capsule" mesh="d435i_8"/>
+      <body name="realsense" pos="0 0 0" quat="0 0 0 1">
+        <camera name="d435i_camera_rgb" pos="-0.033 0 0" quat="0 0 1 0" fovy="58"/>
+        <camera name="d435i_camera_depth" pos="-0.018 0 0" quat="0 0 1 0"/>
+      </body>
     </body>
   </worldbody>
 </mujoco>
