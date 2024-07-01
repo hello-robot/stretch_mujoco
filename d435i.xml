@@ -1,5 +1,5 @@
 <mujoco model="d435i">
-  <compiler meshdir="cam_assets" fitaabb="true"/>
+  <compiler assetdir="assets" fitaabb="true"/>
 
   <visual>
     <global azimuth="90" elevation="-90"/>
