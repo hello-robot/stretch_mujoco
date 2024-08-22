@@ -1,6 +1,8 @@
 import copy
 import importlib.resources as importlib_resources
+from typing import Tuple
 
+import numpy as np
 from pytransform3d.urdf import UrdfTransformManager
 
 pkg_path = str(importlib_resources.files("stretch_urdf"))
@@ -42,6 +44,25 @@ def get_stretch_3_urdf():
     return load_urdf(urdf_file_path, mesh_files_directory_path)
 
 
+def decompose_homogeneous_matrix(homogeneous_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Decomposes a 4x4 homogeneous transformation matrix into its rotation matrix and translation vector components.
+
+    Args:
+        homogeneous_matrix (numpy.ndarray): A 4x4 matrix representing a homogeneous transformation.
+
+    Returns:
+        tuple: A tuple containing:
+            - rotation_matrix : A 3x3 matrix representing the rotation component.
+            - translation_vector : A 1D array of length 3 representing the translation component.
+    """
+    if homogeneous_matrix.shape != (4, 4):
+        raise ValueError("Input matrix must be 4x4")
+    rotation_matrix = homogeneous_matrix[:3, :3]
+    translation_vector = homogeneous_matrix[:3, 3]
+    return rotation_matrix, translation_vector
+
+
 class RobotModel:
     def __init__(self) -> None:
         self.urdf = get_stretch_3_urdf()
@@ -74,9 +95,16 @@ class RobotModel:
             self.urdf.set_joint("joint_gripper_finger_left", cfg["gripper"])
             self.urdf.set_joint("joint_gripper_finger_right", cfg["gripper"])
 
-    def get_transform(self, link1: str, link2: str, cfg: dict):
+    def get_transform(self, link1: str, link2: str, cfg: dict) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Get the transformation matrix between two links given a configuration.
+        Args:
+            link1 (str): The name of the first link.
+            link2 (str): The name of the second link.
+            cfg (dict): The configuration of the robot."""
+
         self.set_config(cfg)
-        return self.urdf.get_transform(link1, link2)
+        return decompose_homogeneous_matrix(self.urdf.get_transform(link1, link2))
 
 
 if __name__ == "__main__":
@@ -90,5 +118,6 @@ if __name__ == "__main__":
         "head_pan": 0.0,
         "head_tilt": 0.0,
     }
-    T = robot.get_transform("base_link", "link_grasp_center", cfg)
+    R, T = robot.get_transform("link_grasp_center", "base_link", cfg)
+    print(R)
     print(T)
