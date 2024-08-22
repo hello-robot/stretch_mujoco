@@ -2,8 +2,7 @@
 Python sample script for interfacing with the Stretch Mujoco simulator
 """
 
-import signal
-import sys
+import os
 import threading
 import time
 from typing import Any, Dict
@@ -49,7 +48,6 @@ class StretchMujocoSimulator:
         }
         self._running = False
         self.viewer = mujoco.viewer
-        signal.signal(signal.SIGINT, self.__signal_handler)
 
     def home(self) -> None:
         """
@@ -223,11 +221,6 @@ class StretchMujocoSimulator:
         mujoco.set_mjcb_control(self.__ctrl_callback)
         self.viewer.launch(self.mjmodel)
 
-    def __signal_handler(self, signal, frame) -> None:
-        click.secho("Exiting Stretch Mujoco Simulator...", fg="red")
-        self._running = False
-        sys.exit(0)
-
     def is_running(self) -> bool:
         """
         Check if the simulator is running
@@ -249,7 +242,9 @@ class StretchMujocoSimulator:
         """
         Stop the simulator
         """
+        click.secho("Exiting Stretch Mujoco Simulator...", fg="red")
         self._running = False
+        os.kill(os.getpid(), 9)
 
 
 @click.command()
@@ -267,11 +262,11 @@ def main(scene_xml_path: str) -> None:
             cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
             cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
             if cv2.waitKey(1) & 0xFF == ord("q"):
+                cv2.destroyAllWindows()
                 break
     except KeyboardInterrupt:
         robot_sim.stop()
         cv2.destroyAllWindows()
-        exit(0)
 
 
 if __name__ == "__main__":
