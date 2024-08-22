@@ -9,23 +9,26 @@ Currently only Stretch 3 version is fully supported with position control interf
 
 ## Getting Started
 
-1. Install Mujoco (v3.0>), older versions might work but not tested.
+Install Mujoco (v3.0>), older versions might work but not tested.
 
 ```
-pip3 install mujoco
-```
-
-2. Run Stretch in simulation via Mujoco Viewer and see the camera frames
-
-```
-git clone https://github.com/hello-robot/stretch_mujoco
+git clont https://github.com/hello-robot/stretch_mujoco
 cd stretch_mujoco
-python3 stretch_mujoco.py
+pip install -e .
 ```
 
-3. Control Stretch in simulation using any xbox type gamepad (needs Stretch Body installed)
+Note: For conda environments `conda install mujoco` is recommended.
+
+Run Stretch in simulation via Mujoco Viewer and see the camera frames
 
 ```
+python3 -m stretch_mujoco
+```
+
+Control Stretch in simulation using any xbox type gamepad (uses xinput)
+
+```
+cd examples/
 python3 stretch_mujoco_gamepad.py
 ```
 
@@ -81,6 +84,8 @@ Output:
  'cam_nav_rgb': array([[...]]),}
 """
 
+# Kills simulation process
+robot_sim.stop()
 ```
 
 ### Feature Requests and Bug reporting
