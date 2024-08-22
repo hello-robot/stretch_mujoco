@@ -2,8 +2,8 @@ import threading
 import time
 
 import cv2
-
 from gamepad_controller import GamePadController
+
 from stretch_mujoco import StretchMujocoSimulator
 
 robot_sim = StretchMujocoSimulator()
