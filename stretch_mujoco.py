@@ -15,6 +15,8 @@ import numpy as np
 import pkg_resources
 from mujoco import MjData, MjModel
 
+import utils
+
 models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
 default_scene_xml_path = models_path + "/scene.xml"
 
@@ -29,6 +31,7 @@ class StretchMujocoSimulator:
             scene_xml_path = default_scene_xml_path
         self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
         self.mjdata = mujoco.MjData(self.mjmodel)
+        self.urdf_model = utils.URDFmodel()
 
         self.rgb_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
@@ -101,13 +104,23 @@ class StretchMujocoSimulator:
         return self.get_link_pose("link_grasp_center")
 
     def get_link_pose(self, link_name: str) -> np.ndarray:
-        """Get end effector pose as a 4x4 matrix"""
-        xyz = self.mjdata.body(link_name).xpos
-        rotation = self.mjdata.body(link_name).xmat.reshape(3, 3)
-        pose = np.eye(4)
-        pose[:3, :3] = rotation
-        pose[:3, 3] = xyz
-        return pose
+        """Pose of link in world frame"""
+        cfg = {
+            "wrist_yaw": self.status["wrist_yaw"]["pos"],
+            "wrist_pitch": self.status["wrist_pitch"]["pos"],
+            "wrist_roll": self.status["wrist_roll"]["pos"],
+            "lift": self.status["lift"]["pos"],
+            "arm": self.status["arm"]["pos"],
+            "head_pan": self.status["head_pan"]["pos"],
+            "head_tilt": self.status["head_tilt"]["pos"],
+        }
+        T = self.urdf_model.get_transform(cfg, link_name)
+        base_xyt = self.get_base_pose()
+        base_4x4 = np.eye(4)
+        base_4x4[:3, :3] = utils.Rz(base_xyt[2])
+        base_4x4[:2, 3] = base_xyt[:2]
+        world_coord = np.matmul(T, base_4x4)
+        return world_coord
 
     def pull_status(self) -> Dict[str, Any]:
         """
