@@ -119,7 +119,7 @@ class StretchMujocoSimulator:
         base_4x4 = np.eye(4)
         base_4x4[:3, :3] = utils.Rz(base_xyt[2])
         base_4x4[:2, 3] = base_xyt[:2]
-        world_coord = np.matmul(T, base_4x4)
+        world_coord = np.matmul(base_4x4, T)
         return world_coord
 
     def pull_status(self) -> Dict[str, Any]:
