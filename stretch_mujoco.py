@@ -8,7 +8,11 @@ import time
 import cv2
 import mujoco
 import mujoco.viewer
+import pkg_resources
 from mujoco import MjData, MjModel
+
+models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
+scene_xml_path = models_path + "/scene.xml"
 
 
 class StretchMujocoSimulator:
@@ -16,7 +20,7 @@ class StretchMujocoSimulator:
     StretchMujocoSimulator sample class for simulating Stretch robot in Mujoco
     """
 
-    def __init__(self, scene_xml_path: str = "./scene.xml"):
+    def __init__(self, scene_xml_path: str = scene_xml_path):
         self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
         self.mjdata = mujoco.MjData(self.mjmodel)
 

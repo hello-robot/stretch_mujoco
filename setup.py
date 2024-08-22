@@ -3,10 +3,10 @@ from setuptools import find_packages, setup
 setup(
     name="stretch_mujoco",
     version=None,
-    packages=find_packages(where="src"),
+    packages=find_packages(),
     install_requires=["mujoco", "numpy<2", "opencv-python"],
     package_data={
-        "": ["assets/*"],
+        "": ["models/*"],
     },
     author="Hello Robot Inc.",
     author_email="support@hello-robot.com",

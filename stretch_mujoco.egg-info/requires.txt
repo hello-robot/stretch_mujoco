@@ -1,0 +1,10 @@
+mujoco
+numpy<2
+opencv-python
+
+[dev]
+pre-commit
+pytest
+flake8
+black
+mypy
