@@ -2,21 +2,30 @@
 Python sample script for interfacing with the Stretch Mujoco simulator
 """
 
+import os
 import threading
 import time
+from typing import Any, Dict
 
+import click
 import cv2
 import mujoco
 import mujoco.viewer
+import numpy as np
+import pkg_resources
 from mujoco import MjData, MjModel
 
+models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
+scene_xml_path = models_path + "/scene.xml"
 
+
+@click.option("--scene-xml-path", default=scene_xml_path, help="Path to the scene xml file")
 class StretchMujocoSimulator:
     """
     StretchMujocoSimulator sample class for simulating Stretch robot in Mujoco
     """
 
-    def __init__(self, scene_xml_path: str = "./scene.xml"):
+    def __init__(self, scene_xml_path: str = scene_xml_path):
         self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
         self.mjdata = mujoco.MjData(self.mjmodel)
 
@@ -24,7 +33,7 @@ class StretchMujocoSimulator:
         self.depth_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer.enable_depth_rendering()
         self.wheel_diameter = 0.1016
-        self.wheel_seperation = 0.3153
+        self.wheel_separation = 0.3153
         self.status = {
             "time": None,
             "base": {"x_vel": None, "theta_vel": None},
@@ -37,6 +46,8 @@ class StretchMujocoSimulator:
             "wrist_roll": {"pos": None, "vel": None},
             "gripper": {"pos": None, "vel": None},
         }
+        self._running = False
+        self.viewer = mujoco.viewer
 
     def home(self) -> None:
         """
@@ -75,10 +86,29 @@ class StretchMujocoSimulator:
         Set the velocity of the actuator
         """
         # TODO: Implement this method by ether moving to an integrated velocity acuators or have
-        # seperate robot xml configured by replacing position with velocity ctrl actuators
+        # separate robot xml configured by replacing position with velocity ctrl actuators
         raise NotImplementedError
 
-    def pull_status(self) -> None:
+    def get_base_pose(self) -> np.ndarray:
+        """Get the se(2) base pose: x, y, and theta"""
+        xyz = self.mjdata.body("base_link").xpos
+        rotation = self.mjdata.body("base_link").xmat.reshape(3, 3)
+        theta = np.arctan2(rotation[1, 0], rotation[0, 0])
+        return np.array([xyz[0], xyz[1], theta])
+
+    def get_ee_pose(self) -> np.ndarray:
+        return self.get_link_pose("link_grasp_center")
+
+    def get_link_pose(self, link_name: str) -> np.ndarray:
+        """Get end effector pose as a 4x4 matrix"""
+        xyz = self.mjdata.body(link_name).xpos
+        rotation = self.mjdata.body(link_name).xmat.reshape(3, 3)
+        pose = np.eye(4)
+        pose[:3, :3] = rotation
+        pose[:3, 3] = xyz
+        return pose
+
+    def pull_status(self) -> Dict[str, Any]:
         """
         Pull joints status of the robot from the simulator
         """
@@ -113,6 +143,8 @@ class StretchMujocoSimulator:
             self.status["base"]["x_vel"],
             self.status["base"]["theta_vel"],
         ) = self.diff_drive_fwd_kinematics(left_wheel_vel, right_wheel_vel)
+
+        return self.status
 
     def pull_camera_data(self) -> dict:
         """
@@ -153,7 +185,7 @@ class StretchMujocoSimulator:
         differential drive robot.
         """
         R = self.wheel_diameter / 2
-        L = self.wheel_seperation
+        L = self.wheel_separation
         if R <= 0:
             raise ValueError("Radius must be greater than zero.")
         if L <= 0:
@@ -170,7 +202,7 @@ class StretchMujocoSimulator:
         Calculate the linear and angular velocity of a differential drive robot.
         """
         R = self.wheel_diameter / 2
-        L = self.wheel_seperation
+        L = self.wheel_separation
         if R <= 0:
             raise ValueError("Radius must be greater than zero.")
         if L <= 0:
@@ -187,7 +219,13 @@ class StretchMujocoSimulator:
 
     def __run(self) -> None:
         mujoco.set_mjcb_control(self.__ctrl_callback)
-        mujoco.viewer.launch(self.mjmodel)
+        self.viewer.launch(self.mjmodel)
+
+    def is_running(self) -> bool:
+        """
+        Check if the simulator is running
+        """
+        return self._running
 
     def start(self) -> None:
         """
@@ -196,20 +234,41 @@ class StretchMujocoSimulator:
         For more info visit: https://mujoco.readthedocs.io/en/stable/python.html#managed-viewer
         """
         threading.Thread(target=self.__run).start()
+        click.secho("Starting Stretch Mujoco Simulator...", fg="green")
         time.sleep(0.5)
+        self._running = True
         self.home()
 
+    def stop(self) -> None:
+        """
+        Stop the simulator
+        """
+        click.secho(f"Exiting Stretch Mujoco Simulator... runtime={self.status['time']}s", fg="red")
+        self._running = False
+        os.kill(os.getpid(), 9)
 
-if __name__ == "__main__":
+
+@click.command()
+@click.option("--scene-xml-path", default=scene_xml_path, help="Path to the scene xml file")
+def main(scene_xml_path: str) -> None:
     robot_sim = StretchMujocoSimulator()
     robot_sim.start()
     # display camera feeds
-    while True:
-        camera_data = robot_sim.pull_camera_data()
-        cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
-        cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-        cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
-        cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
-        cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+    try:
+        while robot_sim.is_running():
+            camera_data = robot_sim.pull_camera_data()
+            cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
+            cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
+            cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
+            cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
+            cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                cv2.destroyAllWindows()
+                break
+    except KeyboardInterrupt:
+        robot_sim.stop()
+        cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
