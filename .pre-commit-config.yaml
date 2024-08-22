@@ -3,7 +3,7 @@ repos:
     rev: v4.6.0
     hooks:
       - id: check-added-large-files
-      
+
 
   - repo: https://github.com/psf/black
     rev: 22.3.0
@@ -22,6 +22,7 @@ repos:
       - id: flake8
         args: ["--config=.flake8"]
 
+
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v0.981
     hooks:
@@ -37,10 +38,7 @@ repos:
           - --no-strict-optional
           - --disable-error-code=override
           - --disable-error-code=attr-defined
-  - repo: https://github.com/kynan/nbstripout
-    rev: 0.6.1
-    hooks:
-      - id: nbstripout
+
 
   # Beautysh formats Bash scripts 
   - repo: https://github.com/lovesegfault/beautysh 
@@ -53,15 +51,3 @@ repos:
     rev: 0.7.16 
     hooks: 
       - id: mdformat 
-
-  # Codespell checks the code for common misspellings 
-  - repo: https://github.com/codespell-project/codespell 
-    rev: v2.2.4 
-    hooks: 
-      - id: codespell 
-        exclude: > 
-          (?x)^( 
-            | .*\.svg 
-            | .*\.tsv
-            | ^src/test/audio/test_text_to_speech.py
-          )$ 

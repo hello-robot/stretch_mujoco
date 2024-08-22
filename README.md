@@ -1,4 +1,9 @@
 # Stretch Mujoco
+
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-31012/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 This repo provides assets and sample scripts for simulating Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
 Currently only Stretch 3 version is fully supported with position control interface for robot joints and velocity control for base.
 
