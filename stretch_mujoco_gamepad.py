@@ -1,8 +1,10 @@
-from stretch_mujoco import StretchMujocoSimulator
-from gamepad_controller import GamePadController
-import time
 import threading
+import time
+
 import cv2
+
+from gamepad_controller import GamePadController
+from stretch_mujoco import StretchMujocoSimulator
 
 robot_sim = StretchMujocoSimulator()
 gamepad = GamePadController()
@@ -67,7 +69,7 @@ def gamepad_loop():
                         print(f"Moving {actuator_name} to {gripper_val}")
                         robot_sim.move_to(actuator_name, gripper_val)
 
-                except:
+                except Exception:
                     pass
         if gamepad_state["left_button_pressed"]:
             dex_switch = not dex_switch

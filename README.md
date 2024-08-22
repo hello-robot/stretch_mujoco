@@ -1,14 +1,22 @@
 # Stretch Mujoco
+
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-31012/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 This repo provides assets and sample scripts for simulating Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
 Currently only Stretch 3 version is fully supported with position control interface for robot joints and velocity control for base.
 
 ## Getting Started
+
 1. Install Mujoco (v3.0>), older versions might work but not tested.
+
 ```
 pip3 install mujoco
 ```
 
 2. Run Stretch in simulation via Mujoco Viewer and see the camera frames
+
 ```
 git clone https://github.com/hello-robot/stretch_mujoco
 cd stretch_mujoco
@@ -16,13 +24,17 @@ python3 stretch_mujoco.py
 ```
 
 3. Control Stretch in simulation using any xbox type gamepad (needs Stretch Body installed)
+
 ```
 python3 stretch_mujoco_gamepad.py
 ```
+
 <img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" width="400px"> <img src="./docs/camera_streams.png" title="Camera Streams" width="500px">
 
 ## Try Writing Code
+
 You can refer to the [StretchMujocoSimulator](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco.py#L11) class implementation which provides a basic interface for starting the Simulation, position control the robot, read joint status and read all the camera streams. You can try the below lines from Ipython terminal. Advanced users are recommended to reffer to [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
+
 ```python
 from stretch_mujoco import StretchMujocoSimulator
 
@@ -72,8 +84,9 @@ Output:
 ```
 
 ### Feature Requests and Bug reporting
+
 All the enhancements/missing features/Bugfixes are tracked by [Issues](https://github.com/hello-robot/stretch_mujoco/issues) filed. Please feel free to file an issue if you would like to report bugs or request a feature addition.
 
 ## Acknowledgment
-The assets in this repository contain significant contributions and efforts from [Kevin Zakka](https://github.com/kevinzakka) and [Google Deepmind](https://github.com/google-deepmind), along with others in Hello Robot Inc. who helped us in modeling Stretch in Mujoco. Thank you for your contributions.
 
+The assets in this repository contain significant contributions and efforts from [Kevin Zakka](https://github.com/kevinzakka) and [Google Deepmind](https://github.com/google-deepmind), along with others in Hello Robot Inc. who helped us in modeling Stretch in Mujoco. Thank you for your contributions.
