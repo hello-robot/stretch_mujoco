@@ -234,6 +234,7 @@ class StretchMujocoSimulator:
         For more info visit: https://mujoco.readthedocs.io/en/stable/python.html#managed-viewer
         """
         threading.Thread(target=self.__run).start()
+        click.secho("Starting Stretch Mujoco Simulator...", fg="green")
         time.sleep(0.5)
         self._running = True
         self.home()
@@ -242,7 +243,7 @@ class StretchMujocoSimulator:
         """
         Stop the simulator
         """
-        click.secho("Exiting Stretch Mujoco Simulator...", fg="red")
+        click.secho(f"Exiting Stretch Mujoco Simulator... runtime={self.status['time']}s", fg="red")
         self._running = False
         os.kill(os.getpid(), 9)
 
