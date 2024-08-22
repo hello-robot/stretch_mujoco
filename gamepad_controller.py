@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-from inputs import DeviceManager, UnpluggedError, GamepadLED, SystemLED
+
 import threading
 import time
+
 import click
+from inputs import DeviceManager, GamepadLED, UnpluggedError
 
 """
 This script is copy of the GamePadController class from the Stretch Body package.
 https://github.com/hello-robot/stretch_body/blob/master/body/stretch_body/gamepad_controller.py
 
-The GamePadController is a threading class that polls for the gamepad inputs (gamepad_state) by 
+The GamePadController is a threading class that polls for the gamepad inputs (gamepad_state) by
 listening to the gamepad's USB dongle plugged into the robot.
 """
 
@@ -91,14 +93,19 @@ class GamePadDevice(DeviceManager):
 
 class GamePadController(threading.Thread):
     """Successfully tested with the following controllers:
-         + Xbox One Controller connected using a USB cable (change xbox_one parameter to True for full 10 bit trigger information)
-         + EasySMX wireless controller set to appropriate mode (Xbox 360 mode with upper half of ring LED illuminated - top two LED quarter circle arcs)
-         + JAMSWALL Xbox 360 Wireless Controller (Sometimes issues would occur after inactivity that would seem to require unplugging and replugging the USB dongle.)
+         + Xbox One Controller connected using a USB cable (change xbox_one parameter to True for full 10 bit
+         trigger information)
+         + EasySMX wireless controller set to appropriate mode (Xbox 360 mode with upper half of ring LED illuminated -
+         top two LED quarter circle arcs)
+         + JAMSWALL Xbox 360 Wireless Controller (Sometimes issues would occur after inactivity that would seem to
+         require unplugging and replugging the USB dongle.)
 
     Unsuccessful tests:
          - Xbox One Controller connected via Bluetooth
          - Xbox 360 Controller connected with an Insten Wireless Controller USB Charging Cable
-         +/- VOYEE Wired Xbox 360 Controller mostly worked, but it had various issues including false middle LED button presses, phantom shoulder button presses, and low joystick sensitivity that made small motions more difficult to execute.
+         +/- VOYEE Wired Xbox 360 Controller mostly worked, but it had various issues including false
+        middle LED button presses, phantom shoulder button presses, and low joystick sensitivity that made
+        small motions more difficult to execute.
     """
 
     def __init__(self, print_events=False, print_dongle_status=True):
@@ -157,7 +164,7 @@ class GamePadController(threading.Thread):
         try:
             gamepad = self.devices.gamepads[0]
             return gamepad.read()
-        except Exception as e:
+        except Exception:
             raise UnpluggedError("No gamepad found.")
 
     # def start(self):
@@ -183,7 +190,7 @@ class GamePadController(threading.Thread):
                 click.secho("Gamepad Dongle FOUND!", fg="green", bold=True)
                 with self.lock:
                     self.is_gamepad_dongle = True
-        except Exception as e:
+        except Exception:
             pass
 
     def update(self):
@@ -194,7 +201,7 @@ class GamePadController(threading.Thread):
                 try:
                     events = self.get_gamepad()
                     self.update_button_encodings(events)
-                except (OSError, UnpluggedError, Exception) as e:
+                except (OSError, UnpluggedError, Exception):
                     click.secho("Gamepad Dongle DISCONNECTED........", fg="red", bold=True)
                     self.poll_till_gamepad_dongle_present()
             else:

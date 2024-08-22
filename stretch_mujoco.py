@@ -2,13 +2,13 @@
 Python sample script for interfacing with the Stretch Mujoco simulator
 """
 
-import time
 import threading
+import time
+
+import cv2
 import mujoco
 import mujoco.viewer
-from mujoco import MjModel, MjData
-import cv2
-import numpy as np
+from mujoco import MjData, MjModel
 
 
 class StretchMujocoSimulator:
@@ -109,9 +109,10 @@ class StretchMujocoSimulator:
 
         left_wheel_vel = self.mjdata.actuator("left_wheel_vel").velocity[0]
         right_wheel_vel = self.mjdata.actuator("right_wheel_vel").velocity[0]
-        self.status["base"]["x_vel"], self.status["base"]["theta_vel"] = (
-            self.diff_drive_fwd_kinematics(left_wheel_vel, right_wheel_vel)
-        )
+        (
+            self.status["base"]["x_vel"],
+            self.status["base"]["theta_vel"],
+        ) = self.diff_drive_fwd_kinematics(left_wheel_vel, right_wheel_vel)
 
     def pull_camera_data(self) -> dict:
         """
