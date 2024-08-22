@@ -12,6 +12,9 @@ mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
 
 
 def Rz(theta):
+    """
+    Rotation matrix about z-axis
+    """
     return np.matrix(
         [[math.cos(theta), -math.sin(theta), 0], [math.sin(theta), math.cos(theta), 0], [0, 0, 1]]
     )
@@ -19,6 +22,9 @@ def Rz(theta):
 
 class URDFmodel:
     def __init__(self) -> None:
+        """
+        Load URDF model
+        """
         self.urdf = urdf_loader.URDF.load(urdf_file_path, lazy_load_meshes=True)
         self.joints_names = [
             "joint_wrist_yaw",
@@ -34,7 +40,10 @@ class URDFmodel:
             "joint_gripper_finger_left",
         ]
 
-    def get_transform(self, cfg: dict, link_name) -> np.ndarray:
+    def get_transform(self, cfg: dict, link_name: str) -> np.ndarray:
+        """
+        Get transformation matrix of the link w.r.t. the base_link
+        """
         lk_cfg = {
             "joint_wrist_yaw": cfg["wrist_yaw"],
             "joint_wrist_pitch": cfg["wrist_pitch"],
