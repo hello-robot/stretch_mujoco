@@ -5,3 +5,9 @@ __pycache__/
 *.pyc
 *.egg-info/
 build/
+
+# Vim files
+*.swp
+*.swo
+*.swn
+

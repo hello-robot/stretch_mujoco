@@ -15,7 +15,7 @@ import numpy as np
 import pkg_resources
 from mujoco import MjData, MjModel
 
-import utils
+import stretch_mujoco.utils as utils
 
 models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
 default_scene_xml_path = models_path + "/scene.xml"
