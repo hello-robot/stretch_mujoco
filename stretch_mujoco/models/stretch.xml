@@ -448,9 +448,9 @@
           <geom mesh="link_head_tilt_1" material="3D_Print_Black" class="visual" mass="0.1311085"/>
           <geom mesh="link_head_tilt_0" class="collision"/>
           <geom mesh="link_head_tilt_1" class="collision"/>
-          <body name="realsense" pos="0.0406 0.0053 0.0307">
-            <camera name="d435i_camera_rgb" pos="0 0.015 0" quat=".5 -.5 -.5 .5" fovy="58"/>
-            <camera name="d435i_camera_depth" quat=".5 -.5 -.5 .5"/>
+          <body name="realsense" pos="0.0406 0.0053 0.0307" euler="0 0 0">
+            <camera name="d435i_camera_rgb" pos="0 0.015 0" euler="1.57 -1.57 0" fovy="58"/>
+            <camera name="d435i_camera_depth" euler="1.57 -1.57 0"/>
           </body>
           <body name="link_SE3_head_nav_cam" pos="0.04 -0.0412 -0.0246" euler="0 1.5707963 0">
             <joint name="joint_head_nav_cam" class="head_tilt" stiffness="10"/>
