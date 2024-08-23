@@ -38,8 +38,8 @@ class StretchMujocoSimulator:
         self.rgb_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer.enable_depth_rendering()
-        self.wheel_diameter = 0.1016
-        self.wheel_separation = 0.3153
+        self.wheel_diameter = config.robot_settings["wheel_diameter"]
+        self.wheel_separation = config.robot_settings["wheel_separation"]
         self.status = {
             "time": None,
             "base": {"x_vel": None, "theta_vel": None},
@@ -180,6 +180,7 @@ class StretchMujocoSimulator:
 
         self.rgb_renderer.update_scene(self.mjdata, "d405_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d405_rgb")
+
         data["cam_d405_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
         data["cam_d405_depth"] = self.depth_renderer.render()
         data["cam_d405_K"] = self.get_camera_params("d405_rgb")
