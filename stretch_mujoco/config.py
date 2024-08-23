@@ -6,3 +6,5 @@ camera_settings = {
 }
 
 robot_settings = {"wheel_diameter": 0.1016, "wheel_separation": 0.3153}
+
+depth_limits = {"d405": 1, "d435i": 10}

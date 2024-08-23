@@ -28,6 +28,13 @@ def Rz(theta):
     )
 
 
+def limit_depth_distance(depth_image_meters: np.ndarray, max_depth: float) -> np.ndarray:
+    """
+    Limit depth distance
+    """
+    return np.where(depth_image_meters > max_depth, 0, depth_image_meters)
+
+
 class URDFmodel:
     def __init__(self) -> None:
         """

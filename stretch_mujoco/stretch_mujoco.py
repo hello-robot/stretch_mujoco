@@ -182,14 +182,18 @@ class StretchMujocoSimulator:
         self.depth_renderer.update_scene(self.mjdata, "d405_rgb")
 
         data["cam_d405_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
-        data["cam_d405_depth"] = self.depth_renderer.render()
+        data["cam_d405_depth"] = utils.limit_depth_distance(
+            self.depth_renderer.render(), config.depth_limits["d405"]
+        )
         data["cam_d405_K"] = self.get_camera_params("d405_rgb")
 
         self.rgb_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
 
         data["cam_d435i_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
-        data["cam_d435i_depth"] = self.depth_renderer.render()
+        data["cam_d435i_depth"] = utils.limit_depth_distance(
+            self.depth_renderer.render(), config.depth_limits["d435i"]
+        )
         data["cam_d435i_K"] = self.get_camera_params("d435i_camera_rgb")
 
         self.rgb_renderer.update_scene(self.mjdata, "nav_camera_rgb")
