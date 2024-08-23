@@ -54,6 +54,7 @@ class StretchMujocoSimulator:
         }
         self._running = False
         self.viewer = mujoco.viewer
+        self._base_in_pos_motion = False
 
     def _set_camera_properties(self):
         """
@@ -80,18 +81,47 @@ class StretchMujocoSimulator:
         """
         Move the actuator to a specific position
         """
-        self.mjdata.actuator(actuator_name).ctrl = pos
+        if actuator_name in config.allowed_position_actuators:
+            if actuator_name not in ["base_translate", "base_rotate"]:
+                self.mjdata.actuator(actuator_name).ctrl = pos
+            else:
+                click.secho(f"{actuator_name} not allowed for move_to", fg="red")
+        else:
+            click.secho(
+                f"Actuator {actuator_name} not reccognized."
+                f"\n Available position actuators: {config.allowed_position_actuators}",
+                fg="red",
+            )
 
     def move_by(self, actuator_name: str, pos: float) -> None:
         """
         Move the actuator by a specific amount
         """
-        self.mjdata.actuator(actuator_name).ctrl = self.status[actuator_name]["pos"] + pos
+        if actuator_name in config.allowed_position_actuators:
+            if actuator_name in ["base_translate", "base_rotate"]:
+                if self._base_in_pos_motion:
+                    self._stop_base_pos_tracking()
+                    time.sleep(1 / 20)
+                if actuator_name == "base_translate":
+                    threading.Thread(target=self._base_translate_by, args=(pos,)).start()
+                else:
+                    threading.Thread(target=self._base_rotate_by, args=(pos,)).start()
+            else:
+                self.mjdata.actuator(actuator_name).ctrl = self.status[actuator_name]["pos"] + pos
+        else:
+            click.secho(
+                f"Actuator {actuator_name} not reccognized."
+                f"\n Available position actuators: {config.allowed_position_actuators}",
+                fg="red",
+            )
 
-    def set_base_velocity(self, v_linear: float, omega: float) -> None:
+    def set_base_velocity(self, v_linear: float, omega: float, _override=False) -> None:
         """
         Set the base velocity of the robot
         """
+        if not _override and self._base_in_pos_motion:
+            self._stop_base_pos_tracking()
+            time.sleep(1 / 20)
         w_left, w_right = self.diff_drive_inv_kinematics(v_linear, omega)
         self.mjdata.actuator("left_wheel_vel").ctrl = w_left
         self.mjdata.actuator("right_wheel_vel").ctrl = w_right
@@ -271,6 +301,58 @@ class StretchMujocoSimulator:
     def __run(self) -> None:
         mujoco.set_mjcb_control(self.__ctrl_callback)
         self.viewer.launch(self.mjmodel)
+
+    def _stop_base_pos_tracking(self) -> None:
+        """
+        Stop the base position tracking
+        """
+        self._base_in_pos_motion = False
+
+    def _base_translate_by(self, x_inc: float) -> None:
+        """
+        Translate the base by a certain w.r.t base global pose
+        """
+        start_pose = self.get_base_pose()[:2]
+        self._base_in_pos_motion = True
+        sign = 1 if x_inc > 0 else -1
+        start_ts = time.perf_counter()
+        while np.linalg.norm(self.get_base_pose()[:2] - start_pose) <= abs(x_inc):
+            if self._base_in_pos_motion:
+                self.set_base_velocity(
+                    config.base_motion["default_x_vel"] * sign, 0, _override=True
+                )
+                if time.perf_counter() - start_ts > config.base_motion["timeout"]:
+                    click.secho("Base translation timeout", fg="red")
+                    break
+            else:
+                break
+            time.sleep(1 / 30)
+        self.set_base_velocity(0, 0)
+        self._base_in_pos_motion = False
+
+    def _base_rotate_by(self, theta_inc: float) -> None:
+        """
+        Rotate the base by a certain w.r.t base global pose
+        """
+        start_pose = self.get_base_pose()[-1]
+        self._base_in_pos_motion = True
+        sign = 1 if theta_inc > 0 else -1
+        start_ts = time.perf_counter()
+        while abs(start_pose - self.get_base_pose()[-1]) <= abs(theta_inc):
+            print("Tracking...")
+            if self._base_in_pos_motion:
+                self.set_base_velocity(
+                    0, config.base_motion["default_r_vel"] * sign, _override=True
+                )
+                time.sleep(1 / 30)
+                if time.perf_counter() - start_ts > config.base_motion["timeout"]:
+                    click.secho("Base rotation timeout", fg="red")
+                    break
+            else:
+                break
+
+        self.set_base_velocity(0, 0)
+        self._base_in_pos_motion = False
 
     def is_running(self) -> bool:
         """
