@@ -36,3 +36,5 @@ allowed_position_actuators = [
 ]
 
 base_motion = {"timeout": 15, "default_x_vel": 0.2, "default_r_vel": 1.0}
+
+# TODO: Add params to tune joints response motion profiles
