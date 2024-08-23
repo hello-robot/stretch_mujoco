@@ -11,6 +11,14 @@ urdf_file_path = pkg_path + f"/{model_name}/stretch_description_{model_name}_{to
 mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
 
 
+def compute_K(fovy: float, width: int, height: int) -> np.ndarray:
+    """
+    Compute camera intrinsic matrix
+    """
+    f = 0.5 * height / math.tan(fovy * math.pi / 360)
+    return np.array(((f, 0, width / 2), (0, f, height / 2), (0, 0, 1)))
+
+
 def Rz(theta):
     """
     Rotation matrix about z-axis

@@ -2,7 +2,6 @@
 Python sample script for interfacing with the Stretch Mujoco simulator
 """
 
-import math
 import os
 import threading
 import time
@@ -16,6 +15,7 @@ import numpy as np
 import pkg_resources
 from mujoco import MjData, MjModel
 
+import stretch_mujoco.config as config
 import stretch_mujoco.utils as utils
 
 models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
@@ -59,13 +59,10 @@ class StretchMujocoSimulator:
         """
         Set the camera properties
         """
-        self.set_camera_params("d405_rgb", 50, (640, 480))
-        self.set_camera_params("d405_depth", 50, (640, 480))
-
-        self.set_camera_params("d435i_camera_rgb", 62, (640, 480))
-        self.set_camera_params("d435i_camera_depth", 62, (640, 480))
-
-        self.set_camera_params("nav_camera_rgb", 69, (640, 480))
+        for camera_name, settings in config.camera_settings.items():
+            self.set_camera_params(
+                camera_name, settings["fovy"], (settings["width"], settings["height"])
+            )
 
     def home(self) -> None:
         """
@@ -217,12 +214,8 @@ class StretchMujocoSimulator:
             "p": self.mjmodel.cam_intrinsic[cam.id][2:],
             "res": self.mjmodel.cam_resolution[cam.id],
         }
-        K = self.compute_K(d["fovy"][0], d["res"][0], d["res"][1])
+        K = utils.compute_K(d["fovy"][0], d["res"][0], d["res"][1])
         return K
-
-    def compute_K(self, fovy: float, width: int, height: int) -> np.ndarray:
-        f = 0.5 * height / math.tan(fovy * math.pi / 360)
-        return np.array(((f, 0, width / 2), (0, f, height / 2), (0, 0, 1)))
 
     def __ctrl_callback(self, model: MjModel, data: MjData) -> None:
         """
