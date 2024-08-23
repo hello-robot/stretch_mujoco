@@ -339,7 +339,6 @@ class StretchMujocoSimulator:
         sign = 1 if theta_inc > 0 else -1
         start_ts = time.perf_counter()
         while abs(start_pose - self.get_base_pose()[-1]) <= abs(theta_inc):
-            print("Tracking...")
             if self._base_in_pos_motion:
                 self.set_base_velocity(
                     0, config.base_motion["default_r_vel"] * sign, _override=True
