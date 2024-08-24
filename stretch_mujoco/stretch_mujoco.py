@@ -15,6 +15,7 @@ import numpy as np
 import pkg_resources
 from mujoco import MjData, MjModel
 
+import stretch_mujoco.config as config
 import stretch_mujoco.utils as utils
 
 models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
@@ -31,13 +32,14 @@ class StretchMujocoSimulator:
             scene_xml_path = default_scene_xml_path
         self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
         self.mjdata = mujoco.MjData(self.mjmodel)
+        self._set_camera_properties()
         self.urdf_model = utils.URDFmodel()
 
         self.rgb_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer.enable_depth_rendering()
-        self.wheel_diameter = 0.1016
-        self.wheel_separation = 0.3153
+        self.wheel_diameter = config.robot_settings["wheel_diameter"]
+        self.wheel_separation = config.robot_settings["wheel_separation"]
         self.status = {
             "time": None,
             "base": {"x_vel": None, "theta_vel": None},
@@ -52,6 +54,15 @@ class StretchMujocoSimulator:
         }
         self._running = False
         self.viewer = mujoco.viewer
+
+    def _set_camera_properties(self):
+        """
+        Set the camera properties
+        """
+        for camera_name, settings in config.camera_settings.items():
+            self.set_camera_params(
+                camera_name, settings["fovy"], (settings["width"], settings["height"])
+            )
 
     def home(self) -> None:
         """
@@ -166,25 +177,50 @@ class StretchMujocoSimulator:
         """
         data = {}
         data["time"] = self.mjdata.time
+
         self.rgb_renderer.update_scene(self.mjdata, "d405_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d405_rgb")
+
         data["cam_d405_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
-        data["cam_d405_depth"] = self.depth_renderer.render()
+        data["cam_d405_depth"] = utils.limit_depth_distance(
+            self.depth_renderer.render(), config.depth_limits["d405"]
+        )
+        data["cam_d405_K"] = self.get_camera_params("d405_rgb")
 
         self.rgb_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
-        data["cam_d435i_rgb"] = cv2.rotate(
-            cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR),
-            cv2.ROTATE_180,
-        )
-        data["cam_d435i_depth"] = cv2.rotate(self.depth_renderer.render(), cv2.ROTATE_180)
 
-        # data["cam_d435i_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
-        # data["cam_d435i_depth"] = self.depth_renderer.render()
+        data["cam_d435i_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
+        data["cam_d435i_depth"] = utils.limit_depth_distance(
+            self.depth_renderer.render(), config.depth_limits["d435i"]
+        )
+        data["cam_d435i_K"] = self.get_camera_params("d435i_camera_rgb")
 
         self.rgb_renderer.update_scene(self.mjdata, "nav_camera_rgb")
         data["cam_nav_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
         return data
+
+    def set_camera_params(self, camera_name: str, fovy: float, res: tuple) -> None:
+        """
+        Set camera parameters
+        """
+        cam = self.mjmodel.camera(camera_name)
+        self.mjmodel.cam_fovy[cam.id] = fovy
+        self.mjmodel.cam_resolution[cam.id] = res
+
+    def get_camera_params(self, camera_name: str) -> np.ndarray:
+        """
+        Get camera parameters
+        """
+        cam = self.mjmodel.camera(camera_name)
+        d = {
+            "fovy": cam.fovy,
+            "f": self.mjmodel.cam_intrinsic[cam.id][:2],
+            "p": self.mjmodel.cam_intrinsic[cam.id][2:],
+            "res": self.mjmodel.cam_resolution[cam.id],
+        }
+        K = utils.compute_K(d["fovy"][0], d["res"][0], d["res"][1])
+        return K
 
     def __ctrl_callback(self, model: MjModel, data: MjData) -> None:
         """
