@@ -82,7 +82,6 @@ def model_generation_wizard(
     If layout and style are not provided, it will take you through a wizard to choose them in the terminal.
     If robot_spawn_pose is not provided, it will spawn the robot to the default pose from robocasa fixtures.
     You can also write the generated xml model with absolutepaths to a file.
-
     Args:
         task (str): task name
         layout (int): layout id
