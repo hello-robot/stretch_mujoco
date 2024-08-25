@@ -80,7 +80,15 @@ class URDFmodel:
 
 def replace_xml_tag_value(xml_str: str, tag: str, attribute: str, pattern: str, value: str) -> str:
     """
-    Replace value of a specific tag in an XML file
+    Replace value of a specific tag in an XML string
+    Args:
+        xml_str: XML string
+        tag: Tag name
+        attribute: Attribute name
+        pattern: Pattern to match
+        value: Value to replace with
+    Returns:
+        str: Modified XML string
     """
     root = ET.fromstring(xml_str)
     tree = ET.ElementTree(root)
@@ -88,4 +96,38 @@ def replace_xml_tag_value(xml_str: str, tag: str, attribute: str, pattern: str, 
         if attribute in elem.attrib.keys():
             if pattern == elem.attrib[attribute]:
                 elem.attrib[attribute] = value
+    return ET.tostring(root, encoding="unicode")
+
+
+def xml_remove_subelement(xml_str: str, subelement: str) -> str:
+    """
+    Remove actuator subelement from MuJoCo XML string
+    Args:
+        xml_str: MuJoCo XML string
+    Returns:
+        str: Modified MuJoCo XML string
+    """
+    root = ET.fromstring(xml_str)
+    tree = ET.ElementTree(root)
+    for elem in tree.iter(subelement):
+        root.remove(elem)
+    return ET.tostring(root, encoding="unicode")
+
+
+def xml_remove_body_by_name(xml_string, tag, name):
+    # Parse the XML string into an ElementTree
+    root = ET.fromstring(xml_string)
+
+    # Find the parent element of the subelement to be removed
+    parent_map = {c: p for p in root.iter() for c in p}
+
+    # Iterate through the subelements to find the one with the specified tag and name attribute
+    for elem in root.iter(tag):
+        if elem.get("name") == name:
+            # Remove the matching subelement
+            parent = parent_map[elem]
+            parent.remove(elem)
+            break
+
+    # Convert the ElementTree back to a string
     return ET.tostring(root, encoding="unicode")

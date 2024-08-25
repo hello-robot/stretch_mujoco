@@ -10,7 +10,11 @@ from robocasa.models.arenas.layout_builder import STYLES
 from robosuite import load_controller_config
 from termcolor import colored
 
-from stretch_mujoco.utils import replace_xml_tag_value
+from stretch_mujoco.utils import (
+    replace_xml_tag_value,
+    xml_remove_body_by_name,
+    xml_remove_subelement,
+)
 
 """
 Modified version of robocasa's kitchen scene generation script
@@ -168,7 +172,16 @@ def custom_cleanups(model, xml):
     xml = replace_xml_tag_value(xml, "geom", "rgba", "0.5 0 0 0.5", "0.5 0 0 0")
     xml = replace_xml_tag_value(xml, "geom", "rgba", "0.5 0 0 1", "0.5 0 0 0")
     xml = replace_xml_tag_value(xml, "site", "rgba", "0.5 0 0 1", "0.5 0 0 0")
-    xml = replace_xml_tag_value(xml, "site", "rgba", "0.3 0.4 1 0.5", "0.3 0.4 1 0")
+    xml = replace_xml_tag_value(xml, "site", "actuator", "0.3 0.4 1 0.5", "0.3 0.4 1 0")
+    # remove subelements
+    xml = xml_remove_subelement(xml, "actuator")
+    xml = xml_remove_subelement(xml, "sensor")
+
+    # remove robot
+    xml = xml_remove_body_by_name(xml, "body", "robot0_base")
+
+    print(xml)
+
     model = mujoco.MjModel.from_xml_string(xml)
     return model, xml
 
