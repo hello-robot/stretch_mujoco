@@ -1,5 +1,6 @@
 import importlib.resources as importlib_resources
 import math
+import xml.etree.ElementTree as ET
 
 import numpy as np
 import urchin as urdf_loader
@@ -75,3 +76,16 @@ class URDFmodel:
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
         return self.urdf.link_fk(lk_cfg, link=link_name)
+
+
+def replace_xml_tag_value(xml_str: str, tag: str, attribute: str, pattern: str, value: str) -> str:
+    """
+    Replace value of a specific tag in an XML file
+    """
+    root = ET.fromstring(xml_str)
+    tree = ET.ElementTree(root)
+    for elem in tree.iter(tag):
+        if attribute in elem.attrib.keys():
+            if pattern == elem.attrib[attribute]:
+                elem.attrib[attribute] = value
+    return ET.tostring(root, encoding="unicode")

@@ -10,6 +10,8 @@ from robocasa.models.arenas.layout_builder import STYLES
 from robosuite import load_controller_config
 from termcolor import colored
 
+from stretch_mujoco.utils import replace_xml_tag_value
+
 
 def choose_option(options, option_name, show_keys=False, default=None, default_message=None):
     """
@@ -57,8 +59,18 @@ def choose_option(options, option_name, show_keys=False, default=None, default_m
 
 
 def model_generation_wizard(
-    task: str, layout: int = None, style: int = None
+    task: str, layout: int = None, style: int = None, wrtie_to_file: str = None
 ) -> Tuple[mujoco.MjModel, str]:
+    """
+    Wizard to generate a kitchen model for a given task, layout, and style.
+
+    Args:
+        task (str): task name
+        layout (int): layout id
+        style (int): style id
+    Returns:
+        Tuple[mujoco.MjModel, str]: model and xml string
+    """
     layouts = OrderedDict(
         [
             (0, "One wall"),
@@ -79,6 +91,7 @@ def model_generation_wizard(
         styles[k] = STYLES[k].capitalize()
 
     # Create argument configuration
+    # TODO: Figure how to get an env without robot arg
     config = {
         "env_name": task,
         "robots": "PandaMobile",
@@ -130,6 +143,25 @@ def model_generation_wizard(
     )
     model = env.sim.model._model
     xml = env.sim.model.get_xml()
+    model, xml = custom_cleanups(model, xml)
+
+    if wrtie_to_file is not None:
+        with open("kitchen.xml", "w") as f:
+            f.write(xml)
+        print(colored(f"Model saved to {wrtie_to_file}", "green"))
+
+    return model, xml
+
+
+def custom_cleanups(model, xml):
+    """
+    Custom cleanups to models from robocasa envs to support
+    use with stretch_mujoco package.
+    """
+
+    # Removing transparent red box around geom of interests found
+    xml = replace_xml_tag_value(xml, "geom", "rgba", "0.5 0 0 0.5", "0.5 0 0 0")
+    model = mujoco.MjModel.from_xml_string(xml)
     return model, xml
 
 
@@ -140,8 +172,5 @@ if __name__ == "__main__":
     parser.add_argument("--layout", type=int, help="kitchen layout (choose number 0-9)")
     parser.add_argument("--style", type=int, help="kitchen style (choose number 0-11)")
     args = parser.parse_args()
-    model, xml = model_generation_wizard(args.task, args.layout, args.style)
-    # wrtie to file
-    # with open("kitchen.xml", "w") as f:
-    #     f.write(xml)
+    model, xml = model_generation_wizard(args.task, args.layout, args.style, wrtie_to_file=None)
     mujoco.viewer.launch(model)
