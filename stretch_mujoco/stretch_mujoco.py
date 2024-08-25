@@ -23,10 +23,16 @@ class StretchMujocoSimulator:
     StretchMujocoSimulator sample class for simulating Stretch robot in Mujoco
     """
 
-    def __init__(self, scene_xml_path: Optional[str] = None) -> None:
+    def __init__(
+        self, scene_xml_path: Optional[str] = None, model: Optional[MjModel] = None
+    ) -> None:
         if scene_xml_path is None:
             scene_xml_path = utils.default_scene_xml_path
-        self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
+            self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
+        elif model is None:
+            self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
+        if model is not None:
+            self.mjmodel = model
         self.mjdata = mujoco.MjData(self.mjmodel)
         self._set_camera_properties()
         self.urdf_model = utils.URDFmodel()
@@ -380,8 +386,10 @@ class StretchMujocoSimulator:
 @click.option(
     "--scene-xml-path", default=utils.default_scene_xml_path, help="Path to the scene xml file"
 )
-def main(scene_xml_path: str) -> None:
-    robot_sim = StretchMujocoSimulator()
+def main(
+    scene_xml_path: str,
+) -> None:
+    robot_sim = StretchMujocoSimulator(scene_xml_path)
     robot_sim.start()
     # display camera feeds
     try:

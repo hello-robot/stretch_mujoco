@@ -1,7 +1,7 @@
-import argparse
 from collections import OrderedDict
 from typing import Tuple
 
+import click
 import mujoco
 import mujoco.viewer
 import numpy as np
@@ -10,6 +10,7 @@ from robocasa.models.arenas.layout_builder import STYLES
 from robosuite import load_controller_config
 from termcolor import colored
 
+from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.utils import (
     get_absolute_path_stretch_xml,
     insert_line_after_mujoco_tag,
@@ -70,7 +71,11 @@ def choose_option(options, option_name, show_keys=False, default=None, default_m
 
 
 def model_generation_wizard(
-    task: str, layout: int = None, style: int = None, wrtie_to_file: str = None
+    task: str = "PnPCounterToCab",
+    layout: int = None,
+    style: int = None,
+    wrtie_to_file: str = None,
+    robot_spawn_pose: dict = None,
 ) -> Tuple[mujoco.MjModel, str]:
     """
     Wizard to generate a kitchen model for a given task, layout, and style.
@@ -100,27 +105,6 @@ def model_generation_wizard(
     styles = OrderedDict()
     for k in sorted(STYLES.keys()):
         styles[k] = STYLES[k].capitalize()
-
-    # Create argument configuration
-    # TODO: Figure how to get an env without robot arg
-    config = {
-        "env_name": task,
-        "robots": "PandaMobile",
-        "controller_configs": load_controller_config(default_controller="OSC_POSE"),
-        "translucent_robot": False,
-    }
-
-    print(colored("Initializing environment...", "yellow"))
-
-    env = robosuite.make(
-        **config,
-        has_offscreen_renderer=False,
-        render_camera=None,
-        ignore_done=True,
-        use_camera_obs=False,
-        control_freq=20,
-    )
-
     if layout is None:
         layout = choose_option(
             layouts, "kitchen layout", default=-1, default_message="random layouts"
@@ -139,7 +123,27 @@ def model_generation_wizard(
     if style == -1:
         style = np.random.choice(range(11))
         print(colored(f"Randomly choosing style... id: {style}", "yellow"))
-    env.layout_and_style_ids = [[layout, style]]
+
+    # Create argument configuration
+    # TODO: Figure how to get an env without robot arg
+    config = {
+        "env_name": task,
+        "robots": "PandaMobile",
+        "controller_configs": load_controller_config(default_controller="OSC_POSE"),
+        "translucent_robot": False,
+        "layout_and_style_ids": [[layout, style]],
+    }
+
+    print(colored("Initializing environment...", "yellow"))
+
+    env = robosuite.make(
+        **config,
+        has_offscreen_renderer=False,
+        render_camera=None,
+        ignore_done=True,
+        use_camera_obs=False,
+        control_freq=20,
+    )
     print(
         colored(
             f"Showing configuration:\n    Layout: {layouts[layout]}\n    Style: {styles[style]}",
@@ -156,6 +160,9 @@ def model_generation_wizard(
     model = env.sim.model._model
     xml = env.sim.model.get_xml()
     xml, robot_base_fixture_pose = custom_cleanups(xml)
+
+    if robot_spawn_pose is not None:
+        robot_base_fixture_pose = robot_spawn_pose
 
     if wrtie_to_file is not None:
         with open(wrtie_to_file, "w") as f:
@@ -207,17 +214,36 @@ def add_stretch_to_kitchen(xml: str, robot_pose_attrib: dict) -> str:
     return xml
 
 
-if __name__ == "__main__":
-    # Arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="PnPCounterToCab", help="task")
-    parser.add_argument("--layout", type=int, help="kitchen layout (choose number 0-9)")
-    parser.add_argument("--style", type=int, help="kitchen style (choose number 0-11)")
-    args = parser.parse_args()
-    # model, xml = model_generation_wizard(
-    #     args.task, args.layout, args.style, wrtie_to_file=None
-    # )
+@click.command()
+@click.option("--task", type=str, default="PnPCounterToCab", help="task")
+@click.option("--layout", type=int, default=None, help="kitchen layout (choose number 0-9)")
+@click.option("--style", type=int, default=None, help="kitchen style (choose number 0-11)")
+@click.option("--write-to-file", type=str, default=None, help="write to file")
+def main(task: str, layout: int, style: int, write_to_file: str):
     model, xml = model_generation_wizard(
-        args.task, 2, 5, wrtie_to_file="/home/fazildgr8/repos/tests/kitchen.xml"
+        task=task,
+        layout=layout,
+        style=style,
+        wrtie_to_file=write_to_file,
     )
-    mujoco.viewer.launch(model)
+    robot_sim = StretchMujocoSimulator(model=model)
+    robot_sim.start()
+    # display camera feeds
+    # try:
+    #     while robot_sim.is_running():
+    #         camera_data = robot_sim.pull_camera_data()
+    #         cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
+    #         cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
+    #         cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
+    #         cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
+    #         cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
+    #         if cv2.waitKey(1) & 0xFF == ord("q"):
+    #             cv2.destroyAllWindows()
+    #             break
+    # except KeyboardInterrupt:
+    #     robot_sim.stop()
+    #     cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
