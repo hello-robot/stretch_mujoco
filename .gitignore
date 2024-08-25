@@ -11,4 +11,7 @@ build/
 *.swo
 *.swn
 
+MUJOCO_LOG.TXT
+
+# Temp runtime XML 
 stretch_temp_abs.xml

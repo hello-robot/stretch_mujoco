@@ -154,7 +154,7 @@ def model_generation_wizard(
     )
     model = env.sim.model._model
     xml = env.sim.model.get_xml()
-    xml = custom_cleanups(xml)
+    xml, robot_base_fixture_pose = custom_cleanups(xml)
 
     if wrtie_to_file is not None:
         with open(wrtie_to_file, "w") as f:
@@ -162,12 +162,12 @@ def model_generation_wizard(
         print(colored(f"Model saved to {wrtie_to_file}", "green"))
 
     # add stretch to kitchen
-    xml = add_stretch_to_kitchen(xml)
+    xml = add_stretch_to_kitchen(xml, robot_base_fixture_pose)
     model = mujoco.MjModel.from_xml_string(xml)
     return model, xml
 
 
-def custom_cleanups(xml: str) -> str:
+def custom_cleanups(xml: str) -> Tuple[str, dict]:
     """
     Custom cleanups to models from robocasa envs to support
     use with stretch_mujoco package.
@@ -184,15 +184,16 @@ def custom_cleanups(xml: str) -> str:
 
     # remove robot
     xml, remove_robot_attrib = xml_remove_tag_by_name(xml, "body", "robot0_base")
-    print(f"Removed robot body: {remove_robot_attrib}")
-    return xml
+
+    return xml, remove_robot_attrib
 
 
-def add_stretch_to_kitchen(xml: str) -> str:
+def add_stretch_to_kitchen(xml: str, robot_pose_attrib: dict) -> str:
     """
     Add stretch robot to kitchen xml
     """
-    stretch_xml_absolute = get_absolute_path_stretch_xml()
+    print("Adding stretch to kitchen at pose: {}".format(robot_pose_attrib))
+    stretch_xml_absolute = get_absolute_path_stretch_xml(robot_pose_attrib)
     # add Stretch xml
     xml = insert_line_after_mujoco_tag(
         xml,

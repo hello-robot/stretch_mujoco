@@ -155,7 +155,7 @@ def insert_line_after_mujoco_tag(xml_string, line_to_insert):
     return modified_xml
 
 
-def get_absolute_path_stretch_xml():
+def get_absolute_path_stretch_xml(robot_pose_attrib=None):
     print("DEFAULT XML: {}".format(default_robot_xml_path))
 
     with open(default_robot_xml_path, "r") as f:
@@ -174,12 +174,16 @@ def get_absolute_path_stretch_xml():
             file_path, models_path + "/assets/" + file_path
         )
 
+    if robot_pose_attrib is not None:
+        pos = f'pos="{robot_pose_attrib["pos"]}" quat="{robot_pose_attrib["quat"]}"'
+        default_robot_xml = re.sub(
+            '<body name="base_link" childclass="stretch">',
+            f'<body name="base_link" childclass="stretch" {pos}>',
+            default_robot_xml,
+        )
+
     # Absosolute path converted streth xml
     with open(models_path + "/stretch_temp_abs.xml", "w") as f:
         f.write(default_robot_xml)
-    print(
-        "Converted stretch xml with absolute path. Saved to: {}".format(
-            models_path + "/stretch_temp_abs.xml"
-        )
-    )
+    print("Saving temp abs path xml: {}".format(models_path + "/stretch_temp_abs.xml"))
     return models_path + "/stretch_temp_abs.xml"
