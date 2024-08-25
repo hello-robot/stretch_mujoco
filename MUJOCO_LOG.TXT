@@ -1,0 +1,9 @@
+Sat Aug 24 23:27:20 2024
+WARNING: mju_openResource: unknown file 'stretch.xml'
+
+Sat Aug 24 23:29:27 2024
+WARNING: mju_openResource: unknown file 'stretch.xml'
+
+Sat Aug 24 23:30:30 2024
+WARNING: mju_openResource: unknown file 'stretch.xml'
+

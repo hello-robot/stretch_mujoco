@@ -195,7 +195,7 @@
     <mesh file="link_DW3_wrist_yaw_bottom.stl"/>
     <mesh file="link_SE3_head_nav_cam.stl"/>
     <mesh file="link_SG3_aruco_d405.obj"/>
-    <mesh file="link_SG3_gripper_body.obj"/>
+    <mesh file="link_SG3_gripper_body.stl"/>
 
     <mesh file="link_d405.stl"/>
     <mesh file="link_d405_lens.stl"/>

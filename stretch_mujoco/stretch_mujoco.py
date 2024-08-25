@@ -12,14 +12,10 @@ import cv2
 import mujoco
 import mujoco.viewer
 import numpy as np
-import pkg_resources
 from mujoco import MjData, MjModel
 
 import stretch_mujoco.config as config
 import stretch_mujoco.utils as utils
-
-models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
-default_scene_xml_path = models_path + "/scene.xml"
 
 
 class StretchMujocoSimulator:
@@ -29,7 +25,7 @@ class StretchMujocoSimulator:
 
     def __init__(self, scene_xml_path: Optional[str] = None) -> None:
         if scene_xml_path is None:
-            scene_xml_path = default_scene_xml_path
+            scene_xml_path = utils.default_scene_xml_path
         self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
         self.mjdata = mujoco.MjData(self.mjmodel)
         self._set_camera_properties()
@@ -381,7 +377,9 @@ class StretchMujocoSimulator:
 
 
 @click.command()
-@click.option("--scene-xml-path", default=default_scene_xml_path, help="Path to the scene xml file")
+@click.option(
+    "--scene-xml-path", default=utils.default_scene_xml_path, help="Path to the scene xml file"
+)
 def main(scene_xml_path: str) -> None:
     robot_sim = StretchMujocoSimulator()
     robot_sim.start()

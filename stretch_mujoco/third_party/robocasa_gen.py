@@ -11,9 +11,11 @@ from robosuite import load_controller_config
 from termcolor import colored
 
 from stretch_mujoco.utils import (
+    get_absolute_path_stretch_xml,
+    insert_line_after_mujoco_tag,
     replace_xml_tag_value,
-    xml_remove_body_by_name,
     xml_remove_subelement,
+    xml_remove_tag_by_name,
 )
 
 """
@@ -119,12 +121,12 @@ def model_generation_wizard(
         control_freq=20,
     )
 
-    if args.layout is None:
+    if layout is None:
         layout = choose_option(
             layouts, "kitchen layout", default=-1, default_message="random layouts"
         )
     else:
-        layout = args.layout
+        layout = layout
 
     if style is None:
         style = choose_option(styles, "kitchen style", default=-1, default_message="random styles")
@@ -152,17 +154,20 @@ def model_generation_wizard(
     )
     model = env.sim.model._model
     xml = env.sim.model.get_xml()
-    model, xml = custom_cleanups(model, xml)
+    xml = custom_cleanups(xml)
 
     if wrtie_to_file is not None:
         with open(wrtie_to_file, "w") as f:
             f.write(xml)
         print(colored(f"Model saved to {wrtie_to_file}", "green"))
 
+    # add stretch to kitchen
+    xml = add_stretch_to_kitchen(xml)
+    model = mujoco.MjModel.from_xml_string(xml)
     return model, xml
 
 
-def custom_cleanups(model, xml):
+def custom_cleanups(xml: str) -> str:
     """
     Custom cleanups to models from robocasa envs to support
     use with stretch_mujoco package.
@@ -178,12 +183,22 @@ def custom_cleanups(model, xml):
     xml = xml_remove_subelement(xml, "sensor")
 
     # remove robot
-    xml = xml_remove_body_by_name(xml, "body", "robot0_base")
+    xml, remove_robot_attrib = xml_remove_tag_by_name(xml, "body", "robot0_base")
+    print(f"Removed robot body: {remove_robot_attrib}")
+    return xml
 
-    print(xml)
 
-    model = mujoco.MjModel.from_xml_string(xml)
-    return model, xml
+def add_stretch_to_kitchen(xml: str) -> str:
+    """
+    Add stretch robot to kitchen xml
+    """
+    stretch_xml_absolute = get_absolute_path_stretch_xml()
+    # add Stretch xml
+    xml = insert_line_after_mujoco_tag(
+        xml,
+        f' <include file="{stretch_xml_absolute}"/>',
+    )
+    return xml
 
 
 if __name__ == "__main__":
@@ -193,7 +208,10 @@ if __name__ == "__main__":
     parser.add_argument("--layout", type=int, help="kitchen layout (choose number 0-9)")
     parser.add_argument("--style", type=int, help="kitchen style (choose number 0-11)")
     args = parser.parse_args()
+    # model, xml = model_generation_wizard(
+    #     args.task, args.layout, args.style, wrtie_to_file=None
+    # )
     model, xml = model_generation_wizard(
-        args.task, args.layout, args.style, wrtie_to_file="/home/fazildgr8/repos/tests/kitchen.xml"
+        args.task, 2, 5, wrtie_to_file="/home/fazildgr8/repos/tests/kitchen.xml"
     )
     mujoco.viewer.launch(model)
