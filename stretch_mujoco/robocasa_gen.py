@@ -78,12 +78,17 @@ def model_generation_wizard(
     robot_spawn_pose: dict = None,
 ) -> Tuple[mujoco.MjModel, str]:
     """
-    Wizard to generate a kitchen model for a given task, layout, and style.
+    Wizard/API to generate a kitchen model for a given task, layout, and style.
+    If layout and style are not provided, it will take you through a wizard to choose them in the terminal.
+    If robot_spawn_pose is not provided, it will spawn the robot to the default pose from robocasa fixtures.
+    You can also write the generated xml model with absolutepaths to a file.
 
     Args:
         task (str): task name
         layout (int): layout id
         style (int): style id
+        wrtie_to_file (str): write to file
+        robot_spawn_pose (dict): robot spawn pose {pose: [x, y, z], quat: [x, y, z, w]}
     Returns:
         Tuple[mujoco.MjModel, str]: model and xml string
     """
