@@ -12,6 +12,11 @@ from termcolor import colored
 
 from stretch_mujoco.utils import replace_xml_tag_value
 
+"""
+Modified version of robocasa's kitchen scene generation script
+https://github.com/robocasa/robocasa/blob/main/robocasa/demos/demo_kitchen_scenes.py
+"""
+
 
 def choose_option(options, option_name, show_keys=False, default=None, default_message=None):
     """
@@ -146,7 +151,7 @@ def model_generation_wizard(
     model, xml = custom_cleanups(model, xml)
 
     if wrtie_to_file is not None:
-        with open("kitchen.xml", "w") as f:
+        with open(wrtie_to_file, "w") as f:
             f.write(xml)
         print(colored(f"Model saved to {wrtie_to_file}", "green"))
 
@@ -159,8 +164,11 @@ def custom_cleanups(model, xml):
     use with stretch_mujoco package.
     """
 
-    # Removing transparent red box around geom of interests found
+    # make invisible the red/blue boxes around geom/sites of interests found
     xml = replace_xml_tag_value(xml, "geom", "rgba", "0.5 0 0 0.5", "0.5 0 0 0")
+    xml = replace_xml_tag_value(xml, "geom", "rgba", "0.5 0 0 1", "0.5 0 0 0")
+    xml = replace_xml_tag_value(xml, "site", "rgba", "0.5 0 0 1", "0.5 0 0 0")
+    xml = replace_xml_tag_value(xml, "site", "rgba", "0.3 0.4 1 0.5", "0.3 0.4 1 0")
     model = mujoco.MjModel.from_xml_string(xml)
     return model, xml
 
@@ -172,5 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--layout", type=int, help="kitchen layout (choose number 0-9)")
     parser.add_argument("--style", type=int, help="kitchen style (choose number 0-11)")
     args = parser.parse_args()
-    model, xml = model_generation_wizard(args.task, args.layout, args.style, wrtie_to_file=None)
+    model, xml = model_generation_wizard(
+        args.task, args.layout, args.style, wrtie_to_file="/home/fazildgr8/repos/tests/kitchen.xml"
+    )
     mujoco.viewer.launch(model)
