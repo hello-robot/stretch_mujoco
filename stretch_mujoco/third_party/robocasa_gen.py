@@ -135,9 +135,10 @@ def model_generation_wizard(
 
     if layout == -1:
         layout = np.random.choice(range(10))
+        print(colored(f"Randomly choosing layout... id: {layout}", "yellow"))
     if style == -1:
         style = np.random.choice(range(11))
-
+        print(colored(f"Randomly choosing style... id: {style}", "yellow"))
     env.layout_and_style_ids = [[layout, style]]
     print(
         colored(
@@ -181,6 +182,10 @@ def custom_cleanups(xml: str) -> Tuple[str, dict]:
     # remove subelements
     xml = xml_remove_subelement(xml, "actuator")
     xml = xml_remove_subelement(xml, "sensor")
+
+    # remove option tag element
+    # xml = xml_remove_subelement(xml, "option")
+    # xml = xml_remove_subelement(xml, "size")
 
     # remove robot
     xml, remove_robot_attrib = xml_remove_tag_by_name(xml, "body", "robot0_base")

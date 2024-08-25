@@ -275,13 +275,13 @@
         <joint name="joint_right_wheel" class="wheel"/>
         <geom mesh="link_right_wheel_0" material="Wheel_Rubber_Gray" class="visual" mass="0.15"/>
         <geom mesh="link_right_wheel_1" material="Generic_Black" class="visual"/>
-        <geom class="collision" type="cylinder" size=".05 .0125" pos="0 0 0.0125"/>
+        <geom class="collision" type="cylinder" size=".05 .0125" pos="0 0 0.0125" condim="6"/>
       </body>
       <body name="link_left_wheel" pos="0 0.17035 0.0508" quat="1 -1 0 0">
         <joint name="joint_left_wheel" class="wheel"/>
         <geom mesh="link_left_wheel_0" material="Wheel_Rubber_Gray" class="visual" mass="0.15"/>
         <geom mesh="link_left_wheel_1" material="Generic_Black" class="visual"/>
-        <geom class="collision" type="cylinder" size=".05 .0125" pos="0 0 -0.0125"/>
+        <geom class="collision" type="cylinder" size=".05 .0125" pos="0 0 -0.0125" condim="6"/>
       </body>
       <body name="link_lift" gravcomp="1" pos="-0.104385 0.134999 0.2" quat="1 0 0 1">
         <joint name="joint_lift" class="lift"/>

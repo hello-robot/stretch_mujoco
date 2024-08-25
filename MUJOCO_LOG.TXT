@@ -7,3 +7,18 @@ WARNING: mju_openResource: unknown file 'stretch.xml'
 Sat Aug 24 23:30:30 2024
 WARNING: mju_openResource: unknown file 'stretch.xml'
 
+Sun Aug 25 03:28:16 2024
+WARNING: Insufficient arena memory for the number of constraints generated. Increase arena memory allocation above 18M bytes. Time = 0.0000.
+
+Sun Aug 25 03:29:59 2024
+WARNING: Insufficient arena memory for the number of constraints generated. Increase arena memory allocation above 18M bytes. Time = 0.0000.
+
+Sun Aug 25 03:33:53 2024
+WARNING: Insufficient arena memory for the number of constraints generated. Increase arena memory allocation above 20M bytes. Time = 0.0000.
+
+Sun Aug 25 03:37:20 2024
+WARNING: Insufficient arena memory for the number of constraints generated. Increase arena memory allocation above 18M bytes. Time = 0.0000.
+
+Sun Aug 25 03:39:20 2024
+WARNING: Insufficient arena memory for the number of constraints generated. Increase arena memory allocation above 18M bytes. Time = 0.0000.
+
