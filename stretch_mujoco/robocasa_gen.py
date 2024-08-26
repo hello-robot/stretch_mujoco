@@ -74,7 +74,7 @@ def model_generation_wizard(
     task: str = "PnPCounterToCab",
     layout: int = None,
     style: int = None,
-    wrtie_to_file: str = None,
+    write_to_file: str = None,
     robot_spawn_pose: dict = None,
 ) -> Tuple[mujoco.MjModel, str]:
     """
@@ -86,7 +86,7 @@ def model_generation_wizard(
         task (str): task name
         layout (int): layout id
         style (int): style id
-        wrtie_to_file (str): write to file
+        write_to_file (str): write to file
         robot_spawn_pose (dict): robot spawn pose {pose: [x, y, z], quat: [x, y, z, w]}
     Returns:
         Tuple[mujoco.MjModel, str]: model and xml string
@@ -168,10 +168,10 @@ def model_generation_wizard(
     if robot_spawn_pose is not None:
         robot_base_fixture_pose = robot_spawn_pose
 
-    if wrtie_to_file is not None:
-        with open(wrtie_to_file, "w") as f:
+    if write_to_file is not None:
+        with open(write_to_file, "w") as f:
             f.write(xml)
-        print(colored(f"Model saved to {wrtie_to_file}", "green"))
+        print(colored(f"Model saved to {write_to_file}", "green"))
 
     # add stretch to kitchen
     xml = add_stretch_to_kitchen(xml, robot_base_fixture_pose)
@@ -228,7 +228,7 @@ def main(task: str, layout: int, style: int, write_to_file: str):
         task=task,
         layout=layout,
         style=style,
-        wrtie_to_file=write_to_file,
+        write_to_file=write_to_file,
     )
     robot_sim = StretchMujocoSimulator(model=model)
     robot_sim.start()
