@@ -168,14 +168,15 @@ def model_generation_wizard(
     if robot_spawn_pose is not None:
         robot_base_fixture_pose = robot_spawn_pose
 
+    # add stretch to kitchen
+    xml = add_stretch_to_kitchen(xml, robot_base_fixture_pose)
+    model = mujoco.MjModel.from_xml_string(xml)
+
     if write_to_file is not None:
         with open(write_to_file, "w") as f:
             f.write(xml)
         print(colored(f"Model saved to {write_to_file}", "green"))
 
-    # add stretch to kitchen
-    xml = add_stretch_to_kitchen(xml, robot_base_fixture_pose)
-    model = mujoco.MjModel.from_xml_string(xml)
     return model, xml
 
 
