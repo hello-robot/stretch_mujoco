@@ -369,7 +369,7 @@ class StretchMujocoSimulator:
         """
         threading.Thread(target=self.__run).start()
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
-        time.sleep(0.5)
+        time.sleep(5)
         self._running = True
         self.home()
 
