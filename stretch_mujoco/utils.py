@@ -145,7 +145,10 @@ def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, d
     return ET.tostring(root, encoding="unicode"), removed_body_attrib
 
 
-def insert_line_after_mujoco_tag(xml_string, line_to_insert):
+def insert_line_after_mujoco_tag(xml_string: str, line_to_insert: str) -> str:
+    """
+    Insert a new line after the mujoco tag in the XML string
+    """
     # Define the pattern to match the mujoco tag
     pattern = r'(<mujoco\s+model="base"\s*>)'
 
@@ -155,7 +158,14 @@ def insert_line_after_mujoco_tag(xml_string, line_to_insert):
     return modified_xml
 
 
-def get_absolute_path_stretch_xml(robot_pose_attrib=None):
+def get_absolute_path_stretch_xml(robot_pose_attrib: dict = None) -> str:
+    """
+    Generates Robot XML with absolute path to mesh files
+    Args:
+        robot_pose_attrib: Robot pose attributes in form {"pos": "x y z", "quat": "x y z w"}
+    Returns:
+        str: Path to the generated XML file
+    """
     print("DEFAULT XML: {}".format(default_robot_xml_path))
 
     with open(default_robot_xml_path, "r") as f:
