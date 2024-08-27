@@ -196,7 +196,7 @@ def custom_cleanups(xml: str) -> Tuple[str, dict]:
     xml = xml_remove_subelement(xml, "sensor")
 
     # remove option tag element
-    # xml = xml_remove_subelement(xml, "option")
+    xml = xml_remove_subelement(xml, "option")
     # xml = xml_remove_subelement(xml, "size")
 
     # remove robot
