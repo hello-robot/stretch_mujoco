@@ -1,8 +1,16 @@
 import importlib.resources as importlib_resources
 import math
+import re
+import xml.etree.ElementTree as ET
+from typing import Tuple
 
 import numpy as np
+import pkg_resources
 import urchin as urdf_loader
+
+models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
+default_scene_xml_path = models_path + "/scene.xml"
+default_robot_xml_path = models_path + "/stretch.xml"
 
 pkg_path = str(importlib_resources.files("stretch_urdf"))
 model_name = "SE3"  # RE1V0, RE2V0, SE3
@@ -75,3 +83,117 @@ class URDFmodel:
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
         return self.urdf.link_fk(lk_cfg, link=link_name)
+
+
+def replace_xml_tag_value(xml_str: str, tag: str, attribute: str, pattern: str, value: str) -> str:
+    """
+    Replace value of a specific tag in an XML string
+    Args:
+        xml_str: XML string
+        tag: Tag name
+        attribute: Attribute name
+        pattern: Pattern to match
+        value: Value to replace with
+    Returns:
+        str: Modified XML string
+    """
+    root = ET.fromstring(xml_str)
+    tree = ET.ElementTree(root)
+    for elem in tree.iter(tag):
+        if attribute in elem.attrib.keys():
+            if pattern == elem.attrib[attribute]:
+                elem.attrib[attribute] = value
+    return ET.tostring(root, encoding="unicode")
+
+
+def xml_remove_subelement(xml_str: str, subelement: str) -> str:
+    """
+    Remove actuator subelement from MuJoCo XML string
+    Args:
+        xml_str: MuJoCo XML string
+    Returns:
+        str: Modified MuJoCo XML string
+    """
+    root = ET.fromstring(xml_str)
+    tree = ET.ElementTree(root)
+    for elem in tree.iter(subelement):
+        root.remove(elem)
+    return ET.tostring(root, encoding="unicode")
+
+
+def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, dict]:
+    """
+    Remove a subelement from an XML string with a specified tag and name attribute
+    """
+    # Parse the XML string into an ElementTree
+    root = ET.fromstring(xml_string)
+
+    # Find the parent element of the subelement to be removed
+    parent_map = {c: p for p in root.iter() for c in p}
+
+    removed_body_attrib = None
+    # Iterate through the subelements to find the one with the specified tag and name attribute
+    for elem in root.iter(tag):
+        if elem.get("name") == name:
+            # Remove the matching subelement
+            removed_body_attrib = elem.attrib
+            parent = parent_map[elem]
+            parent.remove(elem)
+            break
+
+    # Convert the ElementTree back to a string
+    return ET.tostring(root, encoding="unicode"), removed_body_attrib
+
+
+def insert_line_after_mujoco_tag(xml_string: str, line_to_insert: str) -> str:
+    """
+    Insert a new line after the mujoco tag in the XML string
+    """
+    # Define the pattern to match the mujoco tag
+    pattern = r'(<mujoco\s+model="base"\s*>)'
+
+    # Use re.sub to insert the new line after the matched tag
+    modified_xml = re.sub(pattern, f"\\1\n    {line_to_insert}", xml_string, count=1)
+
+    return modified_xml
+
+
+def get_absolute_path_stretch_xml(robot_pose_attrib: dict = None) -> str:
+    """
+    Generates Robot XML with absolute path to mesh files
+    Args:
+        robot_pose_attrib: Robot pose attributes in form {"pos": "x y z", "quat": "x y z w"}
+    Returns:
+        str: Path to the generated XML file
+    """
+    print("DEFAULT XML: {}".format(default_robot_xml_path))
+
+    with open(default_robot_xml_path, "r") as f:
+        default_robot_xml = f.read()
+
+    default_robot_xml = re.sub(
+        'assetdir="assets"', f'assetdir="{models_path + "/assets"}"', default_robot_xml
+    )
+
+    # find all the line which has the pattrn {file="something.type"}
+    # and replace the file path with the absolute path
+    pattern = r'file="(.+?)"'
+    for match in re.finditer(pattern, default_robot_xml):
+        file_path = match.group(1)
+        default_robot_xml = default_robot_xml.replace(
+            file_path, models_path + "/assets/" + file_path
+        )
+
+    if robot_pose_attrib is not None:
+        pos = f'pos="{robot_pose_attrib["pos"]}" quat="{robot_pose_attrib["quat"]}"'
+        default_robot_xml = re.sub(
+            '<body name="base_link" childclass="stretch">',
+            f'<body name="base_link" childclass="stretch" {pos}>',
+            default_robot_xml,
+        )
+
+    # Absosolute path converted streth xml
+    with open(models_path + "/stretch_temp_abs.xml", "w") as f:
+        f.write(default_robot_xml)
+    print("Saving temp abs path xml: {}".format(models_path + "/stretch_temp_abs.xml"))
+    return models_path + "/stretch_temp_abs.xml"

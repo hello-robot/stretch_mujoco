@@ -4,7 +4,14 @@ setup(
     name="stretch_mujoco",
     version=None,
     packages=find_packages(),
-    install_requires=["mujoco", "numpy<2", "opencv-python"],
+    install_requires=[
+        "mujoco",
+        "numpy<2",
+        "opencv-python",
+        "urchin",
+        "click",
+        "hello-robot-stretch-urdf",
+    ],
     package_data={
         "": ["models/*"],
     },

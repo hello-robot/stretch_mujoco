@@ -1,17 +1,21 @@
 <mujoco model="stretch">
-  <compiler angle="radian" assetdir="assets" autolimits="true"/>
+  <compiler angle="radian" assetdir="assets"/>
 
-  <option integrator="implicitfast" impratio="10" cone="elliptic" noslip_iterations="3">
+  <!-- <option integrator="implicitfast" impratio="10" cone="elliptic" noslip_iterations="3">
+    <flag multiccd="enable"/>
+  </option> -->
+  <option integrator="implicitfast" impratio="20">
     <flag multiccd="enable"/>
   </option>
+  <size njmax="5000" nconmax="5000" />
 
   <default>
     <default class="stretch">
       <geom mass="0" solref="0.005 1"/>
       <general biastype="affine"/>
       <default class="wheel">
-        <joint axis="0 0 1" damping="30" frictionloss="1" armature="0.1" stiffness="0.02"/>
-        <velocity gear="3" kv="50" ctrlrange="-6 6" forcerange="-100 100"/>
+        <joint axis="0 0 1" damping="0.1" frictionloss="35" armature="0.1" stiffness="0.01"/>
+        <velocity gear="3" kv="20" ctrlrange="-6 6"/>
       </default>
       <default class="lift">
         <joint type="slide" axis="0 0 1" damping="35" stiffness="0.03" armature="0.01" range="0.0 1.1" frictionloss="1.5"/>
@@ -195,7 +199,7 @@
     <mesh file="link_DW3_wrist_yaw_bottom.stl"/>
     <mesh file="link_SE3_head_nav_cam.stl"/>
     <mesh file="link_SG3_aruco_d405.obj"/>
-    <mesh file="link_SG3_gripper_body.obj"/>
+    <mesh file="link_SG3_gripper_body.stl"/>
 
     <mesh file="link_d405.stl"/>
     <mesh file="link_d405_lens.stl"/>
@@ -224,15 +228,15 @@
   <worldbody>
     <body name="base_link" childclass="stretch">
       <freejoint/>
-      <geom mesh="base_link_0" material="Caster_Rollers_Red" class="visual"/>
-      <geom mesh="base_link_2" material="Lightbar_Green" class="visual" shellinertia="true"/>
-      <geom mesh="base_link_3" material="Power_Button_Green" class="visual"/>
-      <geom mesh="base_link_4" material="USB_Blue" class="visual"/>
-      <geom mesh="base_link_5" material="Generic_Black" class="visual"/>
-      <geom mesh="base_link_6" material="Hand_Crush_Sticker" class="visual" shellinertia="true"/>
-      <geom mesh="base_link_7" material="Pantone_705_U" class="visual"/>
-      <geom mesh="base_link_8" material="Pantone_Cool_Gray_4_U" class="visual"/>
-      <geom class="collision" mesh="base_link_collision" mass="15.0"/>
+      <geom mesh="base_link_0" material="Caster_Rollers_Red" density="100" class="visual"/>
+      <geom mesh="base_link_2" material="Lightbar_Green" density="100" class="visual" shellinertia="true"/>
+      <geom mesh="base_link_3" material="Power_Button_Green" density="100" class="visual"/>
+      <geom mesh="base_link_4" material="USB_Blue" density="100" class="visual"/>
+      <geom mesh="base_link_5" material="Generic_Black" density="100" class="visual"/>
+      <geom mesh="base_link_6" material="Hand_Crush_Sticker" density="100" class="visual" shellinertia="true"/>
+      <geom mesh="base_link_7" material="Pantone_705_U" density="100" class="visual"/>
+      <geom mesh="base_link_8" material="Pantone_Cool_Gray_4_U" density="100" class="visual"/>
+      <geom class="collision" mesh="base_link_collision" mass="25.0"/>
       <geom class="caster"/>
       <body name="base_imu" pos="-0.12838 0.0031592 0.1474" euler="-3.1416 0 1.5708">
         <site name="base_imu" pos="0 0 0"/>
@@ -275,13 +279,13 @@
         <joint name="joint_right_wheel" class="wheel"/>
         <geom mesh="link_right_wheel_0" material="Wheel_Rubber_Gray" class="visual" mass="0.15"/>
         <geom mesh="link_right_wheel_1" material="Generic_Black" class="visual"/>
-        <geom class="collision" type="cylinder" size=".05 .0125" pos="0 0 0.0125"/>
+        <geom class="collision" type="cylinder" size=".05 .0125" pos="0 0 0.0125" condim="6"/>
       </body>
       <body name="link_left_wheel" pos="0 0.17035 0.0508" quat="1 -1 0 0">
         <joint name="joint_left_wheel" class="wheel"/>
         <geom mesh="link_left_wheel_0" material="Wheel_Rubber_Gray" class="visual" mass="0.15"/>
         <geom mesh="link_left_wheel_1" material="Generic_Black" class="visual"/>
-        <geom class="collision" type="cylinder" size=".05 .0125" pos="0 0 -0.0125"/>
+        <geom class="collision" type="cylinder" size=".05 .0125" pos="0 0 -0.0125" condim="6"/>
       </body>
       <body name="link_lift" gravcomp="1" pos="-0.104385 0.134999 0.2" quat="1 0 0 1">
         <joint name="joint_lift" class="lift"/>
