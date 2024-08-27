@@ -36,22 +36,22 @@ def keyboard_control(robot_sim):
     while True:
         print_keyboard_options()
         key = getch().lower()
-        if key == "w":
-            robot_sim.move_by("base_translate", 0.15)
-        elif key == "s":
-            robot_sim.move_by("base_translate", -0.15)
-        elif key == "a":
+        if key == "w" and not robot_sim._base_in_pos_motion:
+            robot_sim.move_by("base_translate", 0.07)
+        elif key == "s" and not robot_sim._base_in_pos_motion:
+            robot_sim.move_by("base_translate", -0.07)
+        elif key == "a" and not robot_sim._base_in_pos_motion:
             robot_sim.move_by("base_rotate", 0.15)
-        elif key == "d":
+        elif key == "d" and not robot_sim._base_in_pos_motion:
             robot_sim.move_by("base_rotate", -0.15)
         elif key == "u":
             robot_sim.move_by("lift", 0.05)
         elif key == "j":
             robot_sim.move_by("lift", -0.05)
         elif key == "h":
-            robot_sim.move_by("arm", 0.05)
-        elif key == "k":
             robot_sim.move_by("arm", -0.05)
+        elif key == "k":
+            robot_sim.move_by("arm", 0.05)
         elif key == "n":
             robot_sim.move_by("gripper", 0.007)
         elif key == "m":
@@ -63,7 +63,7 @@ def keyboard_control(robot_sim):
 
 @click.command()
 @click.option("--scene-xml-path", type=str, default=None, help="Path to the scene xml file")
-@click.option("--robocasa-env", type=bool, default=False, help=";Launch a Robocasa environment")
+@click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
 def main(scene_xml_path: str, robocasa_env: bool):
     model = None
     if robocasa_env:

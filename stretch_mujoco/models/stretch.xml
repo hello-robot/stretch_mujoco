@@ -10,8 +10,8 @@
       <geom mass="0" solref="0.005 1"/>
       <general biastype="affine"/>
       <default class="wheel">
-        <joint axis="0 0 1" damping="30" frictionloss="1" armature="0.1" stiffness="0.02"/>
-        <velocity gear="3" kv="50" ctrlrange="-6 6" forcerange="-100 100"/>
+        <joint axis="0 0 1" damping="0.1" frictionloss="35" armature="0.1" stiffness="0.01"/>
+        <velocity gear="3" kv="20" ctrlrange="-6 6" forcerange="-100 100"/>
       </default>
       <default class="lift">
         <joint type="slide" axis="0 0 1" damping="35" stiffness="0.03" armature="0.01" range="0.0 1.1" frictionloss="1.5"/>
@@ -224,14 +224,14 @@
   <worldbody>
     <body name="base_link" childclass="stretch">
       <freejoint/>
-      <geom mesh="base_link_0" material="Caster_Rollers_Red" class="visual"/>
-      <geom mesh="base_link_2" material="Lightbar_Green" class="visual" shellinertia="true"/>
-      <geom mesh="base_link_3" material="Power_Button_Green" class="visual"/>
-      <geom mesh="base_link_4" material="USB_Blue" class="visual"/>
-      <geom mesh="base_link_5" material="Generic_Black" class="visual"/>
-      <geom mesh="base_link_6" material="Hand_Crush_Sticker" class="visual" shellinertia="true"/>
-      <geom mesh="base_link_7" material="Pantone_705_U" class="visual"/>
-      <geom mesh="base_link_8" material="Pantone_Cool_Gray_4_U" class="visual"/>
+      <geom mesh="base_link_0" material="Caster_Rollers_Red" density="100" class="visual"/>
+      <geom mesh="base_link_2" material="Lightbar_Green" density="100" class="visual" shellinertia="true"/>
+      <geom mesh="base_link_3" material="Power_Button_Green" density="100" class="visual"/>
+      <geom mesh="base_link_4" material="USB_Blue" density="100" class="visual"/>
+      <geom mesh="base_link_5" material="Generic_Black" density="100" class="visual"/>
+      <geom mesh="base_link_6" material="Hand_Crush_Sticker" density="100" class="visual" shellinertia="true"/>
+      <geom mesh="base_link_7" material="Pantone_705_U" density="100" class="visual"/>
+      <geom mesh="base_link_8" material="Pantone_Cool_Gray_4_U" density="100" class="visual"/>
       <geom class="collision" mesh="base_link_collision" mass="25.0"/>
       <geom class="caster"/>
       <body name="base_imu" pos="-0.12838 0.0031592 0.1474" euler="-3.1416 0 1.5708">
