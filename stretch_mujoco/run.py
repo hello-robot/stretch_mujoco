@@ -1,7 +1,60 @@
+import sys
+import termios
+import time
+import tty
+
 import click
-import cv2
 
 from stretch_mujoco import StretchMujocoSimulator, default_scene_xml_path
+
+
+def getch():
+    """
+    Get a single character from the terminal
+    """
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+
+def keyboard_control(robot_sim):
+    click.secho("\n       Keyboard Controls:", fg="yellow")
+    click.secho("=====================================", fg="yellow")
+    print("W / A /S / D : Move BASE")
+    print("U / J / H / K : Move LIFT & ARM")
+    print("N / M : Open & Close GRIPPER")
+    print("Q : Stop")
+    click.secho("=====================================", fg="yellow")
+    while True:
+        key = getch().lower()
+        if key == "w":
+            robot_sim.move_by("base_translate", 0.05)
+        elif key == "s":
+            robot_sim.move_by("base_translate", -0.05)
+        elif key == "a":
+            robot_sim.move_by("base_rotate", 0.1)
+        elif key == "d":
+            robot_sim.move_by("base_rotate", -0.1)
+        elif key == "u":
+            robot_sim.move_by("lift", 0.01)
+        elif key == "j":
+            robot_sim.move_by("lift", -0.01)
+        elif key == "h":
+            robot_sim.move_by("arm", 0.01)
+        elif key == "k":
+            robot_sim.move_by("arm", -0.01)
+        elif key == "n":
+            robot_sim.move_by("gripper", 0.01)
+        elif key == "m":
+            robot_sim.move_by("gripper", -0.01)
+        elif key == "q":
+            robot_sim.stop()
+        time.sleep(0.1)
 
 
 @click.command()
@@ -9,22 +62,7 @@ from stretch_mujoco import StretchMujocoSimulator, default_scene_xml_path
 def main(scene_xml_path: str):
     robot_sim = StretchMujocoSimulator()
     robot_sim.start()
-    # display camera feeds
-    try:
-        while robot_sim.is_running():
-            camera_data = robot_sim.pull_camera_data()
-            cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
-            cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-            cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
-            cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
-            cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
-            # look for keyboard input
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                cv2.destroyAllWindows()
-                break
-    except KeyboardInterrupt:
-        robot_sim.stop()
-        cv2.destroyAllWindows()
+    keyboard_control(robot_sim)
 
 
 if __name__ == "__main__":

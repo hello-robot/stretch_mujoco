@@ -4,7 +4,7 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-This repo provides assets and sample scripts for simulating Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
+This repo provides the simulation stack for Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
 Currently only Stretch 3 version is fully supported with position control interface for robot joints and velocity control for base.
 
 ## Getting Started
@@ -22,7 +22,13 @@ Note: For conda environments `conda install mujoco` is recommended.
 Run Stretch in simulation via Mujoco Viewer and see the camera frames
 
 ```
-python3 -m stretch_mujoco
+python3 -m stretch_mujoco.stretch_mujoco
+```
+
+Keyboard teleop
+
+```
+python3 -m stretch_mujoco.run
 ```
 
 Control Stretch in simulation using any xbox type gamepad (uses xinput)
@@ -36,7 +42,7 @@ python3 stretch_mujoco_gamepad.py
 
 ## Try Writing Code
 
-You can refer to the [StretchMujocoSimulator](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco.py#L11) class implementation which provides a basic interface for starting the Simulation, position control the robot, read joint status and read all the camera streams. You can try the below lines from Ipython terminal. Advanced users are recommended to reffer to [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
+Use the [StretchMujocoSimulator](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco.py) class implementation which provides the control interface for starting the Simulation, position control the robot, read joint status and read all the camera streams. You can try the below lines from Ipython terminal. The class also has `mjModel` and `mjData` elements which Advanced users take advantage with [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
 
 ```python
 from stretch_mujoco import StretchMujocoSimulator
