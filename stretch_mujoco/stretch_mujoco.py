@@ -67,6 +67,26 @@ class StretchMujocoSimulator:
                 camera_name, settings["fovy"], (settings["width"], settings["height"])
             )
 
+    def _to_real_gripper_range(self, pos: float) -> float:
+        """
+        Map the gripper position to real gripper range
+        """
+        return utils.map_between_ranges(
+            pos,
+            config.robot_settings["sim_gripper_min_max"],
+            config.robot_settings["gripper_min_max"],
+        )
+
+    def _to_sim_gripper_range(self, pos: float) -> float:
+        """
+        Map the gripper position to sim gripper range
+        """
+        return utils.map_between_ranges(
+            pos,
+            config.robot_settings["gripper_min_max"],
+            config.robot_settings["sim_gripper_min_max"],
+        )
+
     def home(self) -> None:
         """
         Move the robot to home position
@@ -85,7 +105,10 @@ class StretchMujocoSimulator:
         """
         if actuator_name in config.allowed_position_actuators:
             if actuator_name not in ["base_translate", "base_rotate"]:
-                self.mjdata.actuator(actuator_name).ctrl = pos
+                if actuator_name == "gripper":
+                    self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
+                else:
+                    self.mjdata.actuator(actuator_name).ctrl = pos
             else:
                 click.secho(f"{actuator_name} not allowed for move_to", fg="red")
         else:
@@ -109,7 +132,14 @@ class StretchMujocoSimulator:
                 else:
                     threading.Thread(target=self._base_rotate_by, args=(pos,)).start()
             else:
-                self.mjdata.actuator(actuator_name).ctrl = self.status[actuator_name]["pos"] + pos
+                if actuator_name == "gripper":
+                    self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
+                        self.status[actuator_name]["pos"] + pos
+                    )
+                else:
+                    self.mjdata.actuator(actuator_name).ctrl = (
+                        self.status[actuator_name]["pos"] + pos
+                    )
         else:
             click.secho(
                 f"Actuator {actuator_name} not reccognized."
@@ -191,8 +221,11 @@ class StretchMujocoSimulator:
         self.status["wrist_roll"]["pos"] = self.mjdata.actuator("wrist_roll").length[0]
         self.status["wrist_roll"]["vel"] = self.mjdata.actuator("wrist_roll").velocity[0]
 
-        self.status["gripper"]["pos"] = self.mjdata.actuator("gripper").length[0]
-        self.status["gripper"]["vel"] = self.mjdata.actuator("gripper").velocity[0]
+        real_gripper_pos = self._to_real_gripper_range(self.mjdata.actuator("gripper").length[0])
+        self.status["gripper"]["pos"] = real_gripper_pos
+        self.status["gripper"]["vel"] = self.mjdata.actuator("gripper").velocity[
+            0
+        ]  # This is still in sim gripper range
 
         left_wheel_vel = self.mjdata.actuator("left_wheel_vel").velocity[0]
         right_wheel_vel = self.mjdata.actuator("right_wheel_vel").velocity[0]

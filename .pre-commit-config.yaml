@@ -30,7 +30,7 @@ repos:
         entry: mypy
         types: [python]
         language: system
-        exclude: ^utils.py
+        exclude: ^stretch_mujoco/utils.py|
         args:
           - --ignore-missing-imports
           - --install-types
