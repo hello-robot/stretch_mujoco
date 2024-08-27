@@ -45,9 +45,9 @@ def keyboard_control(robot_sim):
         elif key == "d" and not robot_sim._base_in_pos_motion:
             robot_sim.move_by("base_rotate", -0.15)
         elif key == "u":
-            robot_sim.move_by("lift", 0.05)
+            robot_sim.move_by("lift", 0.1)
         elif key == "j":
-            robot_sim.move_by("lift", -0.05)
+            robot_sim.move_by("lift", -0.1)
         elif key == "h":
             robot_sim.move_by("arm", -0.05)
         elif key == "k":
