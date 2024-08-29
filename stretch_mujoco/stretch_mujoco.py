@@ -392,6 +392,7 @@ class StretchMujocoSimulator:
         """
         Reset the simulator to initial state (experimental)
         """
+        click.secho("StretchMujocoSimulator.reset_state() method is experimental", fg="yellow")
         mujoco.mj_resetDataKeyframe(self.mjmodel, self.mjdata, 0)
         print("Resetting the simulator to initial state...")
         while not self.mjdata.time:
