@@ -4,9 +4,9 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-<img src="./docs/robocasa_scene.png" title="Stretch In Kitchen" width="400px">
+<img src="./docs/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
 
-Stretch in Kitchen scene from [Robocasa](https://github.com/robocasa/robocasa)
+Stretch in Kitchen scenes from [Robocasa](https://github.com/robocasa/robocasa)
 
 This library provides the simulation stack for Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
 Currently only Stretch 3 version is fully supported with position control interface for all robot joints and velocity control for base. Camera data with depth perception and camera parameters are provided. The library supports simuation with GUI and also headless mode. Stretch can be spawned in any Robocasa provided kitchen environments.
