@@ -196,6 +196,12 @@ class StretchMujocoSimulator:
 
         left_wheel_vel = self.mjdata.actuator("left_wheel_vel").velocity[0]
         right_wheel_vel = self.mjdata.actuator("right_wheel_vel").velocity[0]
+
+        (
+            self.status["base"]["x"],
+            self.status["base"]["y"],
+            self.status["base"]["theta"],
+        ) = self.get_base_pose()
         (
             self.status["base"]["x_vel"],
             self.status["base"]["theta_vel"],
