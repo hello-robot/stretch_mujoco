@@ -32,7 +32,8 @@ python3 -m stretch_mujoco.stretch_mujoco
 <p>
     <img src="./docs/camera_streams.png" title="Camera Streams" height="250px">
     <img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
-</p>> 
+</p>
+
 #### Install [Robocasa](https://github.com/robocasa/robocasa)
 
 ```
