@@ -306,7 +306,7 @@ class StretchMujocoSimulator:
 
         return (V, omega)
 
-    def __run(self, show_viewer_ui) -> None:
+    def __run(self, show_viewer_ui: bool) -> None:
         mujoco.set_mjcb_control(self.__ctrl_callback)
         self.viewer.launch(
             self.mjmodel,
@@ -384,7 +384,6 @@ class StretchMujocoSimulator:
         ).start()
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
         while not self.mjdata.time:
-            print(f"Waiting for simulator to start... {self.mjdata.time}")
             time.sleep(0.2)
         self._running = True
         self.home()
