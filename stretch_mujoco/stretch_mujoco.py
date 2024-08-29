@@ -300,9 +300,13 @@ class StretchMujocoSimulator:
 
         return (V, omega)
 
-    def __run(self) -> None:
+    def __run(self, show_viewer_ui) -> None:
         mujoco.set_mjcb_control(self.__ctrl_callback)
-        self.viewer.launch(self.mjmodel)
+        self.viewer.launch(
+            self.mjmodel,
+            show_left_ui=show_viewer_ui,
+            show_right_ui=show_viewer_ui,
+        )
 
     def _stop_base_pos_tracking(self) -> None:
         """
@@ -361,15 +365,21 @@ class StretchMujocoSimulator:
         """
         return self._running
 
-    def start(self) -> None:
+    def start(self, show_viewer_ui: bool = False) -> None:
         """
         Start the simulator in a using blocking Managed-vieiwer for precise timing. And user code
         is looped through callback. Some projects might need non-blocking Passive-vieiwer.
         For more info visit: https://mujoco.readthedocs.io/en/stable/python.html#managed-viewer
+        Args:
+            show_viewer_ui: bool, whether to show the Mujoco viewer UI
         """
-        threading.Thread(target=self.__run).start()
+        threading.Thread(
+            target=self.__run, name="mujoco_viewer_thread", args=(show_viewer_ui,)
+        ).start()
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
-        time.sleep(5)
+        while not self.mjdata.time:
+            print(f"Waiting for simulator to start... {self.mjdata.time}")
+            time.sleep(0.2)
         self._running = True
         self.home()
 
