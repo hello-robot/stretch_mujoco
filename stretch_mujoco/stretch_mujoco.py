@@ -20,12 +20,18 @@ import stretch_mujoco.utils as utils
 
 class StretchMujocoSimulator:
     """
-    StretchMujocoSimulator sample class for simulating Stretch robot in Mujoco
+    Stretch Mujoco Simulator class for interfacing with the Mujoco simulator
     """
 
     def __init__(
         self, scene_xml_path: Optional[str] = None, model: Optional[MjModel] = None
     ) -> None:
+        """
+        Initialize the Simulator handle with a scene
+        Args:
+            scene_xml_path: str, path to the scene xml file
+            model: MjModel, Mujoco model object
+        """
         if scene_xml_path is None:
             scene_xml_path = utils.default_scene_xml_path
             self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
@@ -99,6 +105,9 @@ class StretchMujocoSimulator:
     def move_by(self, actuator_name: str, pos: float) -> None:
         """
         Move the actuator by a specific amount
+        Args:
+            actuator_name: str, name of the actuator
+            pos: float, position to increment by
         """
         if actuator_name in config.allowed_position_actuators:
             if actuator_name in ["base_translate", "base_rotate"]:
@@ -121,6 +130,9 @@ class StretchMujocoSimulator:
     def set_base_velocity(self, v_linear: float, omega: float, _override=False) -> None:
         """
         Set the base velocity of the robot
+        Args:
+            v_linear: float, linear velocity
+            omega: float, angular velocity
         """
         if not _override and self._base_in_pos_motion:
             self._stop_base_pos_tracking()
@@ -166,7 +178,7 @@ class StretchMujocoSimulator:
         world_coord = np.matmul(base_4x4, T)
         return world_coord
 
-    def pull_status(self) -> Dict[str, Any]:
+    def _pull_status(self) -> Dict[str, Any]:
         """
         Pull joints status of the robot from the simulator
         """
@@ -212,7 +224,7 @@ class StretchMujocoSimulator:
 
     def pull_camera_data(self) -> dict:
         """
-        Pull camera data from the simulator
+        Pull camera data from the simulator and return as a dictionary
         """
         data = {}
         data["time"] = self.mjdata.time
@@ -242,6 +254,10 @@ class StretchMujocoSimulator:
     def set_camera_params(self, camera_name: str, fovy: float, res: tuple) -> None:
         """
         Set camera parameters
+        Args:
+            camera_name: str, name of the camera
+            fovy: float, vertical field of view in degrees
+            res: tuple, size of the camera Image
         """
         cam = self.mjmodel.camera(camera_name)
         self.mjmodel.cam_fovy[cam.id] = fovy
@@ -267,7 +283,7 @@ class StretchMujocoSimulator:
         """
         self.mjdata = data
         self.mjmodel = model
-        self.pull_status()
+        self._pull_status()
 
     def diff_drive_inv_kinematics(self, V: float, omega: float) -> tuple:
         """
