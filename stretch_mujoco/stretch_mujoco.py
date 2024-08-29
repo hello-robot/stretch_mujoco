@@ -57,6 +57,7 @@ class StretchMujocoSimulator:
         self._running = False
         self.viewer = mujoco.viewer
         self._base_in_pos_motion = False
+        self._headless_running = False
 
     def _set_camera_properties(self):
         """
@@ -307,12 +308,29 @@ class StretchMujocoSimulator:
         return (V, omega)
 
     def __run(self, show_viewer_ui: bool) -> None:
+        """
+        Run the simulation with the viewer
+        """
         mujoco.set_mjcb_control(self.__ctrl_callback)
         self.viewer.launch(
             self.mjmodel,
             show_left_ui=show_viewer_ui,
             show_right_ui=show_viewer_ui,
         )
+
+    def __run_headless_simulation(self) -> None:
+        """
+        Run the simulation without the viewer headless
+        """
+        print("Running headless simulation...")
+        self._headless_running = True
+        while self._headless_running:
+            start_ts = time.perf_counter()
+            mujoco.mj_step(self.mjmodel, self.mjdata)
+            self.__ctrl_callback(self.mjmodel, self.mjdata)
+            elapsed = time.perf_counter() - start_ts
+            if elapsed < self.mjmodel.opt.timestep:
+                time.sleep(self.mjmodel.opt.timestep - elapsed)
 
     def _stop_base_pos_tracking(self) -> None:
         """
@@ -371,17 +389,23 @@ class StretchMujocoSimulator:
         """
         return self._running
 
-    def start(self, show_viewer_ui: bool = False) -> None:
+    def start(self, show_viewer_ui: bool = False, headless: bool = False) -> None:
         """
         Start the simulator in a using blocking Managed-vieiwer for precise timing. And user code
         is looped through callback. Some projects might need non-blocking Passive-vieiwer.
         For more info visit: https://mujoco.readthedocs.io/en/stable/python.html#managed-viewer
         Args:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
+            headless: bool, whether to run the simulation in headless mode
         """
-        threading.Thread(
-            target=self.__run, name="mujoco_viewer_thread", args=(show_viewer_ui,)
-        ).start()
+        if not headless:
+            threading.Thread(
+                target=self.__run, name="mujoco_viewer_thread", args=(show_viewer_ui,)
+            ).start()
+        else:
+            threading.Thread(
+                target=self.__run_headless_simulation, name="mujoco_headless_thread"
+            ).start()
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
         while not self.mjdata.time:
             time.sleep(0.2)
@@ -392,9 +416,21 @@ class StretchMujocoSimulator:
         """
         Reset the simulator to initial state (experimental)
         """
-        click.secho("StretchMujocoSimulator.reset_state() method is experimental", fg="yellow")
+        _headless_reset = self._headless_running
+        if self._headless_running:
+            self._headless_running = False
+            time.sleep(0.3)
+        else:
+            click.secho(
+                "StretchMujocoSimulator.reset_state() method is experimental with Viewer running",
+                fg="yellow",
+            )
         mujoco.mj_resetData(self.mjmodel, self.mjdata)
         print("Resetting the simulator to initial state...")
+        if _headless_reset:
+            threading.Thread(
+                target=self.__run_headless_simulation, name="mujoco_headless_thread"
+            ).start()
         while not self.mjdata.time:
             time.sleep(0.2)
         self.home()
@@ -403,20 +439,33 @@ class StretchMujocoSimulator:
         """
         Stop the simulator
         """
-        click.secho(f"Exiting Stretch Mujoco Simulator... runtime={self.status['time']}s", fg="red")
         self._running = False
-        os.kill(os.getpid(), 9)
+        if not self._headless_running:
+            click.secho(
+                f"Exiting Stretch Mujoco Simulator with viewer... runtime={self.status['time']}s",
+                fg="red",
+            )
+            os.kill(os.getpid(), 9)
+        else:
+            click.secho(
+                f"Stopping headless simulation... runtime={self.status['time']}s", fg="yellow"
+            )
+            self._headless_running = False
+            time.sleep(0.5)
+            mujoco.mj_resetData(self.mjmodel, self.mjdata)
 
 
 @click.command()
 @click.option(
     "--scene-xml-path", default=utils.default_scene_xml_path, help="Path to the scene xml file"
 )
+@click.option("--headless", is_flag=True, help="Run the simulation headless")
 def main(
     scene_xml_path: str,
+    headless: bool,
 ) -> None:
     robot_sim = StretchMujocoSimulator(scene_xml_path)
-    robot_sim.start()
+    robot_sim.start(headless=headless)
     # display camera feeds
     try:
         while robot_sim.is_running():
