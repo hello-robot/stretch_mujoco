@@ -388,6 +388,16 @@ class StretchMujocoSimulator:
         self._running = True
         self.home()
 
+    def reset_state(self) -> None:
+        """
+        Reset the simulator to initial state (experimental)
+        """
+        mujoco.mj_resetDataKeyframe(self.mjmodel, self.mjdata, 0)
+        print("Resetting the simulator to initial state...")
+        while not self.mjdata.time:
+            time.sleep(0.2)
+        self.home()
+
     def stop(self) -> None:
         """
         Stop the simulator
