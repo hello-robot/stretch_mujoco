@@ -197,3 +197,14 @@ def get_absolute_path_stretch_xml(robot_pose_attrib: dict = None) -> str:
         f.write(default_robot_xml)
     print("Saving temp abs path xml: {}".format(models_path + "/stretch_temp_abs.xml"))
     return models_path + "/stretch_temp_abs.xml"
+
+
+def map_between_ranges(
+    value: float, from_min_max: Tuple[float, float], to_min_max: Tuple[float, float]
+) -> float:
+    """
+    Map a value from one range to another
+    """
+    return (value - from_min_max[0]) * (to_min_max[1] - to_min_max[0]) / (
+        from_min_max[1] - from_min_max[0]
+    ) + to_min_max[0]
