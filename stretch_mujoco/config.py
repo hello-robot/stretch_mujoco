@@ -8,7 +8,7 @@ camera_settings = {
 robot_settings = {
     "wheel_diameter": 0.1016,
     "wheel_separation": 0.3153,
-    "gripper_min_max": (-0.376, 0.20268437786715443),
+    "gripper_min_max": (-0.376, 0.56),
     "sim_gripper_min_max": (-0.02, 0.04),
 }
 
