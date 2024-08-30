@@ -395,7 +395,6 @@ class StretchMujocoSimulator:
                     break
             else:
                 break
-
         self.set_base_velocity(0, 0)
         self._base_in_pos_motion = False
 
@@ -403,7 +402,7 @@ class StretchMujocoSimulator:
         """
         Check if the simulator is running
         """
-        return self._running
+        return self._running or self._headless_running
 
     def start(self, show_viewer_ui: bool = False, headless: bool = False) -> None:
         """
