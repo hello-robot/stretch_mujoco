@@ -20,12 +20,18 @@ import stretch_mujoco.utils as utils
 
 class StretchMujocoSimulator:
     """
-    StretchMujocoSimulator sample class for simulating Stretch robot in Mujoco
+    Stretch Mujoco Simulator class for interfacing with the Mujoco simulator
     """
 
     def __init__(
         self, scene_xml_path: Optional[str] = None, model: Optional[MjModel] = None
     ) -> None:
+        """
+        Initialize the Simulator handle with a scene
+        Args:
+            scene_xml_path: str, path to the scene xml file
+            model: MjModel, Mujoco model object
+        """
         if scene_xml_path is None:
             scene_xml_path = utils.default_scene_xml_path
             self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
@@ -57,6 +63,7 @@ class StretchMujocoSimulator:
         self._running = False
         self.viewer = mujoco.viewer
         self._base_in_pos_motion = False
+        self._headless_running = False
 
     def _set_camera_properties(self):
         """
@@ -98,6 +105,9 @@ class StretchMujocoSimulator:
     def move_by(self, actuator_name: str, pos: float) -> None:
         """
         Move the actuator by a specific amount
+        Args:
+            actuator_name: str, name of the actuator
+            pos: float, position to increment by
         """
         if actuator_name in config.allowed_position_actuators:
             if actuator_name in ["base_translate", "base_rotate"]:
@@ -120,6 +130,9 @@ class StretchMujocoSimulator:
     def set_base_velocity(self, v_linear: float, omega: float, _override=False) -> None:
         """
         Set the base velocity of the robot
+        Args:
+            v_linear: float, linear velocity
+            omega: float, angular velocity
         """
         if not _override and self._base_in_pos_motion:
             self._stop_base_pos_tracking()
@@ -165,7 +178,7 @@ class StretchMujocoSimulator:
         world_coord = np.matmul(base_4x4, T)
         return world_coord
 
-    def pull_status(self) -> Dict[str, Any]:
+    def _pull_status(self) -> Dict[str, Any]:
         """
         Pull joints status of the robot from the simulator
         """
@@ -196,6 +209,12 @@ class StretchMujocoSimulator:
 
         left_wheel_vel = self.mjdata.actuator("left_wheel_vel").velocity[0]
         right_wheel_vel = self.mjdata.actuator("right_wheel_vel").velocity[0]
+
+        (
+            self.status["base"]["x"],
+            self.status["base"]["y"],
+            self.status["base"]["theta"],
+        ) = self.get_base_pose()
         (
             self.status["base"]["x_vel"],
             self.status["base"]["theta_vel"],
@@ -205,7 +224,7 @@ class StretchMujocoSimulator:
 
     def pull_camera_data(self) -> dict:
         """
-        Pull camera data from the simulator
+        Pull camera data from the simulator and return as a dictionary
         """
         data = {}
         data["time"] = self.mjdata.time
@@ -235,6 +254,10 @@ class StretchMujocoSimulator:
     def set_camera_params(self, camera_name: str, fovy: float, res: tuple) -> None:
         """
         Set camera parameters
+        Args:
+            camera_name: str, name of the camera
+            fovy: float, vertical field of view in degrees
+            res: tuple, size of the camera Image
         """
         cam = self.mjmodel.camera(camera_name)
         self.mjmodel.cam_fovy[cam.id] = fovy
@@ -260,7 +283,7 @@ class StretchMujocoSimulator:
         """
         self.mjdata = data
         self.mjmodel = model
-        self.pull_status()
+        self._pull_status()
 
     def diff_drive_inv_kinematics(self, V: float, omega: float) -> tuple:
         """
@@ -300,9 +323,30 @@ class StretchMujocoSimulator:
 
         return (V, omega)
 
-    def __run(self) -> None:
+    def __run(self, show_viewer_ui: bool) -> None:
+        """
+        Run the simulation with the viewer
+        """
         mujoco.set_mjcb_control(self.__ctrl_callback)
-        self.viewer.launch(self.mjmodel)
+        self.viewer.launch(
+            self.mjmodel,
+            show_left_ui=show_viewer_ui,
+            show_right_ui=show_viewer_ui,
+        )
+
+    def __run_headless_simulation(self) -> None:
+        """
+        Run the simulation without the viewer headless
+        """
+        print("Running headless simulation...")
+        self._headless_running = True
+        while self._headless_running:
+            start_ts = time.perf_counter()
+            mujoco.mj_step(self.mjmodel, self.mjdata)
+            self.__ctrl_callback(self.mjmodel, self.mjdata)
+            elapsed = time.perf_counter() - start_ts
+            if elapsed < self.mjmodel.opt.timestep:
+                time.sleep(self.mjmodel.opt.timestep - elapsed)
 
     def _stop_base_pos_tracking(self) -> None:
         """
@@ -351,7 +395,6 @@ class StretchMujocoSimulator:
                     break
             else:
                 break
-
         self.set_base_velocity(0, 0)
         self._base_in_pos_motion = False
 
@@ -359,38 +402,85 @@ class StretchMujocoSimulator:
         """
         Check if the simulator is running
         """
-        return self._running
+        return self._running or self._headless_running
 
-    def start(self) -> None:
+    def start(self, show_viewer_ui: bool = False, headless: bool = False) -> None:
         """
         Start the simulator in a using blocking Managed-vieiwer for precise timing. And user code
         is looped through callback. Some projects might need non-blocking Passive-vieiwer.
         For more info visit: https://mujoco.readthedocs.io/en/stable/python.html#managed-viewer
+        Args:
+            show_viewer_ui: bool, whether to show the Mujoco viewer UI
+            headless: bool, whether to run the simulation in headless mode
         """
-        threading.Thread(target=self.__run).start()
+        if not headless:
+            threading.Thread(
+                target=self.__run, name="mujoco_viewer_thread", args=(show_viewer_ui,)
+            ).start()
+        else:
+            threading.Thread(
+                target=self.__run_headless_simulation, name="mujoco_headless_thread"
+            ).start()
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
-        time.sleep(5)
+        while not self.mjdata.time:
+            time.sleep(0.2)
         self._running = True
+        self.home()
+
+    def reset_state(self) -> None:
+        """
+        Reset the simulator to initial state (experimental)
+        """
+        _headless_reset = self._headless_running
+        if self._headless_running:
+            self._headless_running = False
+            time.sleep(0.3)
+        else:
+            click.secho(
+                "StretchMujocoSimulator.reset_state() method is experimental with Viewer running",
+                fg="yellow",
+            )
+        mujoco.mj_resetData(self.mjmodel, self.mjdata)
+        print("Resetting the simulator to initial state...")
+        if _headless_reset:
+            threading.Thread(
+                target=self.__run_headless_simulation, name="mujoco_headless_thread"
+            ).start()
+        while not self.mjdata.time:
+            time.sleep(0.2)
         self.home()
 
     def stop(self) -> None:
         """
         Stop the simulator
         """
-        click.secho(f"Exiting Stretch Mujoco Simulator... runtime={self.status['time']}s", fg="red")
         self._running = False
-        os.kill(os.getpid(), 9)
+        if not self._headless_running:
+            click.secho(
+                f"Exiting Stretch Mujoco Simulator with viewer... runtime={self.status['time']}s",
+                fg="red",
+            )
+            os.kill(os.getpid(), 9)
+        else:
+            click.secho(
+                f"Stopping headless simulation... runtime={self.status['time']}s", fg="yellow"
+            )
+            self._headless_running = False
+            time.sleep(0.5)
+            mujoco.mj_resetData(self.mjmodel, self.mjdata)
 
 
 @click.command()
 @click.option(
     "--scene-xml-path", default=utils.default_scene_xml_path, help="Path to the scene xml file"
 )
+@click.option("--headless", is_flag=True, help="Run the simulation headless")
 def main(
     scene_xml_path: str,
+    headless: bool,
 ) -> None:
     robot_sim = StretchMujocoSimulator(scene_xml_path)
-    robot_sim.start()
+    robot_sim.start(headless=headless)
     # display camera feeds
     try:
         while robot_sim.is_running():
