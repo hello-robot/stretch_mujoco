@@ -3,6 +3,7 @@ import time
 
 import click
 import cv2
+import numpy as np
 from gamepad_controller import GamePadController
 
 from stretch_mujoco import StretchMujocoSimulator
@@ -11,15 +12,30 @@ robot_sim = None
 gamepad = None
 
 
+def get_depth8bit(depth_image, clor_map=cv2.COLORMAP_JET):
+    depth_min = np.min(depth_image)
+    depth_max = np.max(depth_image)
+
+    normalized_depth = (depth_image - depth_min) / (depth_max - depth_min)
+    depth_8bit = ((1 - normalized_depth) * 255).astype(np.uint8)
+    depth_8bit = cv2.applyColorMap(depth_8bit, clor_map)
+    return depth_8bit
+
+
 def display_camera_feeds():
     global robot_sim
     # display camera feeds
     while True:
         camera_data = robot_sim.pull_camera_data()
         cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
-        cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-        cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
-        cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
+        cv2.imshow("cam_d405_depth", get_depth8bit(camera_data["cam_d405_depth"]))
+        cv2.imshow(
+            "cam_d435i_rgb", cv2.rotate(camera_data["cam_d435i_rgb"], cv2.ROTATE_90_CLOCKWISE)
+        )
+        cv2.imshow(
+            "cam_d435i_depth",
+            cv2.rotate(get_depth8bit(camera_data["cam_d435i_depth"]), cv2.ROTATE_90_CLOCKWISE),
+        )
         cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
@@ -113,7 +129,8 @@ def gamepad_loop():
 @click.command()
 @click.option("--scene-xml-path", type=str, default=None, help="Path to the scene xml file")
 @click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
-def main(scene_xml_path: str, robocasa_env: bool):
+@click.option("--headless", is_flag=True, help="Run in headless mode")
+def main(scene_xml_path: str, robocasa_env: bool, headless: bool):
     global robot_sim, gamepad
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
@@ -125,7 +142,7 @@ def main(scene_xml_path: str, robocasa_env: bool):
     else:
         robot_sim = StretchMujocoSimulator()
     gamepad = GamePadController()
-    robot_sim.start()
+    robot_sim.start(headless=headless)
     gamepad.start()
     threading.Thread(target=gamepad_loop).start()
     display_camera_feeds()
