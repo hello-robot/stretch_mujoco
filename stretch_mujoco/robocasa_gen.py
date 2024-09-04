@@ -8,6 +8,7 @@ import numpy as np
 import robosuite
 from robocasa.models.arenas.layout_builder import STYLES
 from robosuite import load_controller_config
+from robosuite.environments.base import MujocoEnv
 from termcolor import colored
 
 from stretch_mujoco import StretchMujocoSimulator
@@ -15,6 +16,7 @@ from stretch_mujoco.utils import (
     get_absolute_path_stretch_xml,
     insert_line_after_mujoco_tag,
     replace_xml_tag_value,
+    xml_modify_body_pos,
     xml_remove_subelement,
     xml_remove_tag_by_name,
 )
@@ -76,7 +78,7 @@ def model_generation_wizard(
     style: int = None,
     write_to_file: str = None,
     robot_spawn_pose: dict = None,
-) -> Tuple[mujoco.MjModel, str]:
+) -> Tuple[mujoco.MjModel, str, MujocoEnv]:
     """
     Wizard/API to generate a kitchen model for a given task, layout, and style.
     If layout and style are not provided, it will take you through a wizard to choose them in the terminal.
@@ -162,7 +164,25 @@ def model_generation_wizard(
         )
     )
     model = env.sim.model._model
+    object_placements = env.object_placements
     xml = env.sim.model.get_xml()
+
+    if task == "PnPCounterToCab":
+        obj_xml_map = {
+            "obj": "obj_main",
+            "distr_counter": "distr_counter_main",
+            "distr_cab": "distr_cab_main",
+        }
+
+        for obj_name in object_placements:
+            xml = xml_modify_body_pos(
+                xml,
+                "body",
+                obj_xml_map[obj_name],
+                pos=object_placements[obj_name][0],
+                quat=object_placements[obj_name][1],
+            )
+
     xml, robot_base_fixture_pose = custom_cleanups(xml)
 
     if robot_spawn_pose is not None:
@@ -177,7 +197,7 @@ def model_generation_wizard(
             f.write(xml)
         print(colored(f"Model saved to {write_to_file}", "green"))
 
-    return model, xml
+    return model, xml, env
 
 
 def custom_cleanups(xml: str) -> Tuple[str, dict]:
