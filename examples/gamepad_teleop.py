@@ -1,23 +1,33 @@
 import threading
 import time
 
+import click
 import cv2
 from gamepad_controller import GamePadController
 
 from stretch_mujoco import StretchMujocoSimulator
+from stretch_mujoco.utils import get_depth_color_map
 
-robot_sim = StretchMujocoSimulator()
-gamepad = GamePadController()
+robot_sim = None
+gamepad = None
 
 
 def display_camera_feeds():
+    global robot_sim
     # display camera feeds
     while True:
         camera_data = robot_sim.pull_camera_data()
         cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
-        cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-        cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
-        cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
+        cv2.imshow("cam_d405_depth", get_depth_color_map(camera_data["cam_d405_depth"]))
+        cv2.imshow(
+            "cam_d435i_rgb", cv2.rotate(camera_data["cam_d435i_rgb"], cv2.ROTATE_90_CLOCKWISE)
+        )
+        cv2.imshow(
+            "cam_d435i_depth",
+            cv2.rotate(
+                get_depth_color_map(camera_data["cam_d435i_depth"]), cv2.ROTATE_90_CLOCKWISE
+            ),
+        )
         cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
@@ -32,13 +42,13 @@ button_mapping = {
     "left_shoulder_button_pressed": ["wrist_yaw", 1, 0.2],
     "top_button_pressed": ["stow", 0],
     "left_button_pressed": ["dex_switch", 0],
-    "right_button_pressed": ["gripper", 1, 0.003],
-    "bottom_button_pressed": ["gripper", -1, 0.003],
+    "right_button_pressed": ["gripper", 1, 0.1],
+    "bottom_button_pressed": ["gripper", -1, 0.1],
 }
 
 stick_mapping = {
-    "right_stick_x": ("arm", "inc", 0.05),
-    "right_stick_y": ("lift", "inc", 0.15),
+    "right_stick_x": ("arm", "inc", 0.1),
+    "right_stick_y": ("lift", "inc", 0.3),
     "left_stick_x": ("turn", "scale", 1),
     "left_stick_y": ("forward", "scale", 1),
 }
@@ -49,6 +59,7 @@ def map_value(value, in_min, in_max, out_min, out_max):
 
 
 def gamepad_loop():
+    global robot_sim, gamepad
     dex_switch = False
     gripper_val = robot_sim.status["gripper"]["pos"]
     while True:
@@ -65,7 +76,7 @@ def gamepad_loop():
                         robot_sim.move_to(actuator_name, pos)
                     elif actuator_name == "gripper":
                         gripper_val = gripper_val + dir * k
-                        gripper_val = max(min(gripper_val, 0.04), -0.02)
+                        gripper_val = max(min(gripper_val, 0.56), -0.376)
                         print(f"Moving {actuator_name} to {gripper_val}")
                         robot_sim.move_to(actuator_name, gripper_val)
 
@@ -79,12 +90,15 @@ def gamepad_loop():
                 button_mapping["top_pad_pressed"][0] = "head_tilt"
                 button_mapping["left_pad_pressed"][0] = "head_pan"
                 button_mapping["right_pad_pressed"][0] = "head_pan"
+                button_mapping["left_pad_pressed"][1] = -1 * button_mapping["left_pad_pressed"][1]
+                button_mapping["right_pad_pressed"][1] = -1 * button_mapping["right_pad_pressed"][1]
             else:
                 button_mapping["top_pad_pressed"][0] = "wrist_pitch"
                 button_mapping["bottom_pad_pressed"][0] = "wrist_pitch"
                 button_mapping["left_pad_pressed"][0] = "wrist_roll"
                 button_mapping["right_pad_pressed"][0] = "wrist_roll"
-
+                button_mapping["left_pad_pressed"][1] = -1 * button_mapping["left_pad_pressed"][1]
+                button_mapping["right_pad_pressed"][1] = -1 * button_mapping["right_pad_pressed"][1]
         for stick in stick_mapping.keys():
             if abs(gamepad_state[stick]) > 0.001:
                 actuator_name, prop, val = stick_mapping[stick]
@@ -107,8 +121,27 @@ def gamepad_loop():
             robot_sim.stow()
 
 
-if __name__ == "__main__":
-    robot_sim.start()
+@click.command()
+@click.option("--scene-xml-path", type=str, default=None, help="Path to the scene xml file")
+@click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
+@click.option("--headless", is_flag=True, help="Run in headless mode")
+def main(scene_xml_path: str, robocasa_env: bool, headless: bool):
+    global robot_sim, gamepad
+    if robocasa_env:
+        from stretch_mujoco.robocasa_gen import model_generation_wizard
+
+        model, xml = model_generation_wizard()
+        robot_sim = StretchMujocoSimulator(model=model)
+    elif scene_xml_path:
+        robot_sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path)
+    else:
+        robot_sim = StretchMujocoSimulator()
+    gamepad = GamePadController()
+    robot_sim.start(headless=headless)
     gamepad.start()
     threading.Thread(target=gamepad_loop).start()
     display_camera_feeds()
+
+
+if __name__ == "__main__":
+    main()
