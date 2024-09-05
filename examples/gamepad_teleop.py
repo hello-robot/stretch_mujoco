@@ -135,7 +135,8 @@ def main(scene_xml_path: str, robocasa_env: bool, headless: bool):
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
-        model, xml = model_generation_wizard()
+        model, xml, objects_info = model_generation_wizard()
+        # breakpoint()
         robot_sim = StretchMujocoSimulator(model=model)
     elif scene_xml_path:
         robot_sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path)

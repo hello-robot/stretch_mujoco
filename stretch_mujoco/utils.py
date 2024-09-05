@@ -158,9 +158,6 @@ def xml_modify_body_pos(
         if elem.get("name") == name:
             elem.set("pos", " ".join(map(str, pos)))
             elem.set("quat", " ".join(map(str, quat)))
-            print(
-                f"Found element with name: {name} pos:{','.join(map(str, pos))} quat:{','.join(map(str, quat))}"
-            )
     return ET.tostring(root, encoding="unicode")
 
 
