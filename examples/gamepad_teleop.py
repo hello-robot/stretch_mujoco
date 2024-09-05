@@ -3,23 +3,13 @@ import time
 
 import click
 import cv2
-import numpy as np
 from gamepad_controller import GamePadController
 
 from stretch_mujoco import StretchMujocoSimulator
+from stretch_mujoco.utils import get_depth_color_map
 
 robot_sim = None
 gamepad = None
-
-
-def get_depth8bit(depth_image, clor_map=cv2.COLORMAP_JET):
-    depth_min = np.min(depth_image)
-    depth_max = np.max(depth_image)
-
-    normalized_depth = (depth_image - depth_min) / (depth_max - depth_min)
-    depth_8bit = ((1 - normalized_depth) * 255).astype(np.uint8)
-    depth_8bit = cv2.applyColorMap(depth_8bit, clor_map)
-    return depth_8bit
 
 
 def display_camera_feeds():
@@ -28,13 +18,15 @@ def display_camera_feeds():
     while True:
         camera_data = robot_sim.pull_camera_data()
         cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
-        cv2.imshow("cam_d405_depth", get_depth8bit(camera_data["cam_d405_depth"]))
+        cv2.imshow("cam_d405_depth", get_depth_color_map(camera_data["cam_d405_depth"]))
         cv2.imshow(
             "cam_d435i_rgb", cv2.rotate(camera_data["cam_d435i_rgb"], cv2.ROTATE_90_CLOCKWISE)
         )
         cv2.imshow(
             "cam_d435i_depth",
-            cv2.rotate(get_depth8bit(camera_data["cam_d435i_depth"]), cv2.ROTATE_90_CLOCKWISE),
+            cv2.rotate(
+                get_depth_color_map(camera_data["cam_d435i_depth"]), cv2.ROTATE_90_CLOCKWISE
+            ),
         )
         cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
         if cv2.waitKey(1) & 0xFF == ord("q"):
