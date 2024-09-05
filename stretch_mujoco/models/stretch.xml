@@ -272,8 +272,15 @@
         <geom mesh="link_aruco_left_base" class="collision"/>
       </body>
       <body name="laser" pos="0.004 0 0.1664" quat="0 0 0 1">
-        <geom material="Laser_Black" mesh="laser" class="visual" mass="0.24"/>
-        <geom mesh="laser" class="collision"/>
+        <!-- <geom material="Laser_Black" mesh="laser" class="visual" mass="0.24"/> -->
+        <!-- <geom mesh="laser" class="collision"/> -->
+        <body name="lrf" euler="0 -1.57 0">
+          <replicate count="360" offset="0 0 0" euler="0.0174533 0 0">
+            <site name="lidar" euler="0 0 0"/>
+            <!-- <geom material="Laser_Black" mesh="laser" class="visual" mass="0.24"/>
+            <geom mesh="laser" class="collision"/> -->
+          </replicate>
+        </body>
       </body>
       <body name="link_right_wheel" pos="0 -0.17035 0.0508" quat="1 -1 0 0">
         <joint name="joint_right_wheel" class="wheel"/>
@@ -532,6 +539,7 @@
   <sensor>
     <gyro name="base_gyro" site="base_imu"/>
     <accelerometer name="base_accel" site="base_imu"/>
+    <rangefinder name="lidar" site="lidar" cutoff="12"/>
   </sensor>
 
   <keyframe>
