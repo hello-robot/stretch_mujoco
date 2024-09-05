@@ -265,7 +265,7 @@ class StretchMujocoSimulator:
         self.rgb_renderer.update_scene(self.mjdata, "d405_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d405_rgb")
 
-        data["cam_d405_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
+        data["cam_d405_rgb"] = self.rgb_renderer.render()
         data["cam_d405_depth"] = utils.limit_depth_distance(
             self.depth_renderer.render(), config.depth_limits["d405"]
         )
@@ -274,14 +274,14 @@ class StretchMujocoSimulator:
         self.rgb_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
 
-        data["cam_d435i_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
+        data["cam_d435i_rgb"] = self.rgb_renderer.render()
         data["cam_d435i_depth"] = utils.limit_depth_distance(
             self.depth_renderer.render(), config.depth_limits["d435i"]
         )
         data["cam_d435i_K"] = self.get_camera_params("d435i_camera_rgb")
 
         self.rgb_renderer.update_scene(self.mjdata, "nav_camera_rgb")
-        data["cam_nav_rgb"] = cv2.cvtColor(self.rgb_renderer.render(), cv2.COLOR_RGB2BGR)
+        data["cam_nav_rgb"] = self.rgb_renderer.render()
         return data
 
     def set_camera_params(self, camera_name: str, fovy: float, res: tuple) -> None:
@@ -518,11 +518,13 @@ def main(
     try:
         while robot_sim.is_running():
             camera_data = robot_sim.pull_camera_data()
-            cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
+            cv2.imshow("cam_d405_rgb", cv2.cvtColor(camera_data["cam_d405_rgb"], cv2.COLOR_RGB2BGR))
             cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-            cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
+            cv2.imshow(
+                "cam_d435i_rgb", cv2.cvtColor(camera_data["cam_d435i_rgb"], cv2.COLOR_RGB2BGR)
+            )
             cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
-            cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
+            cv2.imshow("cam_nav_rgb", cv2.cvtColor(camera_data["cam_nav_rgb"], cv2.COLOR_RGB2BGR))
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 cv2.destroyAllWindows()
                 break
