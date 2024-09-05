@@ -4,6 +4,7 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Tuple
 
+import cv2
 import numpy as np
 import pkg_resources
 import urchin as urdf_loader
@@ -224,3 +225,16 @@ def map_between_ranges(
     return (value - from_min_max[0]) * (to_min_max[1] - to_min_max[0]) / (
         from_min_max[1] - from_min_max[0]
     ) + to_min_max[0]
+
+
+def get_depth_color_map(depth_image, clor_map=cv2.COLORMAP_JET):
+    """
+    Get depth color map
+    """
+    depth_min = np.min(depth_image)
+    depth_max = np.max(depth_image)
+
+    normalized_depth = (depth_image - depth_min) / (depth_max - depth_min)
+    depth_8bit = ((1 - normalized_depth) * 255).astype(np.uint8)
+    depth_8bit = cv2.applyColorMap(depth_8bit, clor_map)
+    return depth_8bit
