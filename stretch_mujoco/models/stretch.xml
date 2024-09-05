@@ -4,7 +4,7 @@
   <!-- <option integrator="implicitfast" impratio="10" cone="elliptic" noslip_iterations="3">
     <flag multiccd="enable"/>
   </option> -->
-  <option integrator="implicitfast" impratio="20">
+  <option integrator="implicitfast" impratio="20" cone="elliptic">
     <flag multiccd="enable"/>
   </option>
   <size njmax="5000" nconmax="5000" />

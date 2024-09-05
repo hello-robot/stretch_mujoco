@@ -77,6 +77,7 @@ def model_generation_wizard(
     style: int = None,
     write_to_file: str = None,
     robot_spawn_pose: dict = None,
+    object_config: dict = None,
 ) -> Tuple[mujoco.MjModel, str, dict]:
     """
     Wizard/API to generate a kitchen model for a given task, layout, and style.
