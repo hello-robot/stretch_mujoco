@@ -90,12 +90,15 @@ def gamepad_loop():
                 button_mapping["top_pad_pressed"][0] = "head_tilt"
                 button_mapping["left_pad_pressed"][0] = "head_pan"
                 button_mapping["right_pad_pressed"][0] = "head_pan"
+                button_mapping["left_pad_pressed"][1] = -1 * button_mapping["left_pad_pressed"][1]
+                button_mapping["right_pad_pressed"][1] = -1 * button_mapping["right_pad_pressed"][1]
             else:
                 button_mapping["top_pad_pressed"][0] = "wrist_pitch"
                 button_mapping["bottom_pad_pressed"][0] = "wrist_pitch"
                 button_mapping["left_pad_pressed"][0] = "wrist_roll"
                 button_mapping["right_pad_pressed"][0] = "wrist_roll"
-
+                button_mapping["left_pad_pressed"][1] = -1 * button_mapping["left_pad_pressed"][1]
+                button_mapping["right_pad_pressed"][1] = -1 * button_mapping["right_pad_pressed"][1]
         for stick in stick_mapping.keys():
             if abs(gamepad_state[stick]) > 0.001:
                 actuator_name, prop, val = stick_mapping[stick]
