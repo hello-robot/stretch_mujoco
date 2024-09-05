@@ -17,18 +17,23 @@ def display_camera_feeds():
     # display camera feeds
     while True:
         camera_data = robot_sim.pull_camera_data()
-        cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
+        cv2.imshow("cam_d405_rgb", cv2.cvtColor(camera_data["cam_d405_rgb"], cv2.COLOR_RGB2BGR))
         cv2.imshow("cam_d405_depth", get_depth_color_map(camera_data["cam_d405_depth"]))
         cv2.imshow(
-            "cam_d435i_rgb", cv2.rotate(camera_data["cam_d435i_rgb"], cv2.ROTATE_90_CLOCKWISE)
+            "cam_d435i_rgb",
+            cv2.rotate(
+                cv2.cvtColor(camera_data["cam_d435i_rgb"], cv2.COLOR_RGB2BGR),
+                cv2.ROTATE_90_CLOCKWISE,
+            ),
         )
+
         cv2.imshow(
             "cam_d435i_depth",
             cv2.rotate(
                 get_depth_color_map(camera_data["cam_d435i_depth"]), cv2.ROTATE_90_CLOCKWISE
             ),
         )
-        cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
+        cv2.imshow("cam_nav_rgb", cv2.cvtColor(camera_data["cam_nav_rgb"], cv2.COLOR_RGB2BGR))
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
