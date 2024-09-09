@@ -11,7 +11,7 @@ from stretch_mujoco.robocasa_gen import model_generation_wizard
 @click.option("--style", type=int, default=None, help="kitchen style (choose number 0-11)")
 @click.option("--write-to-file", type=str, default=None, help="write to file")
 def main(task: str, layout: int, style: int, write_to_file):
-    model, xml = model_generation_wizard(
+    model, xml, objects_info = model_generation_wizard(
         task=task,
         layout=layout,
         style=style,
