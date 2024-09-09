@@ -15,6 +15,7 @@ from stretch_mujoco.utils import (
     get_absolute_path_stretch_xml,
     insert_line_after_mujoco_tag,
     replace_xml_tag_value,
+    xml_modify_body_pos,
     xml_remove_subelement,
     xml_remove_tag_by_name,
 )
@@ -76,12 +77,14 @@ def model_generation_wizard(
     style: int = None,
     write_to_file: str = None,
     robot_spawn_pose: dict = None,
-) -> Tuple[mujoco.MjModel, str]:
+) -> Tuple[mujoco.MjModel, str, dict]:
     """
     Wizard/API to generate a kitchen model for a given task, layout, and style.
     If layout and style are not provided, it will take you through a wizard to choose them in the terminal.
     If robot_spawn_pose is not provided, it will spawn the robot to the default pose from robocasa fixtures.
     You can also write the generated xml model with absolutepaths to a file.
+    The Object placements are made based on the robocasa defined Kitchen task and uses the default randomized
+    placement distribution
     Args:
         task (str): task name
         layout (int): layout id
@@ -89,7 +92,7 @@ def model_generation_wizard(
         write_to_file (str): write to file
         robot_spawn_pose (dict): robot spawn pose {pose: [x, y, z], quat: [x, y, z, w]}
     Returns:
-        Tuple[mujoco.MjModel, str]: model and xml string
+        Tuple[mujoco.MjModel, str, Dict]: model, xml string and Object placements info
     """
     layouts = OrderedDict(
         [
@@ -163,12 +166,38 @@ def model_generation_wizard(
     )
     model = env.sim.model._model
     xml = env.sim.model.get_xml()
+
+    # Add the object placements to the xml
+    click.secho(f"\nMaking Object Placements for task [{task}]...\n", fg="yellow")
+    object_placements_info = {}
+    for i in range(len(env.object_cfgs)):
+        obj_name = env.object_cfgs[i]["name"]
+        category = env.object_cfgs[i]["info"]["cat"]
+        object_placements = env.object_placements
+        print(
+            f"Placing [Object {i}] (category: {category}, body_name: {obj_name}_main) at "
+            f"pos: {np.round(object_placements[obj_name][0],2)} quat: {np.round(object_placements[obj_name][1],2)}"
+        )
+        xml = xml_modify_body_pos(
+            xml,
+            "body",
+            obj_name + "_main",  # Object name ref in the xml
+            pos=object_placements[obj_name][0],
+            quat=object_placements[obj_name][1],
+        )
+        object_placements_info[obj_name + "_main"] = {
+            "cat": category,
+            "pos": object_placements[obj_name][0],
+            "quat": object_placements[obj_name][1],
+        }
+
     xml, robot_base_fixture_pose = custom_cleanups(xml)
 
     if robot_spawn_pose is not None:
         robot_base_fixture_pose = robot_spawn_pose
 
     # add stretch to kitchen
+    click.secho("\nMaking Robot Placement...\n", fg="yellow")
     xml = add_stretch_to_kitchen(xml, robot_base_fixture_pose)
     model = mujoco.MjModel.from_xml_string(xml)
 
@@ -177,7 +206,7 @@ def model_generation_wizard(
             f.write(xml)
         print(colored(f"Model saved to {write_to_file}", "green"))
 
-    return model, xml
+    return model, xml, object_placements_info
 
 
 def custom_cleanups(xml: str) -> Tuple[str, dict]:
@@ -209,7 +238,9 @@ def add_stretch_to_kitchen(xml: str, robot_pose_attrib: dict) -> str:
     """
     Add stretch robot to kitchen xml
     """
-    print("Adding stretch to kitchen at pose: {}".format(robot_pose_attrib))
+    print(
+        f"Adding stretch to kitchen at pos: {robot_pose_attrib['pos']} quat: {robot_pose_attrib['quat']}"
+    )
     stretch_xml_absolute = get_absolute_path_stretch_xml(robot_pose_attrib)
     # add Stretch xml
     xml = insert_line_after_mujoco_tag(
@@ -225,7 +256,7 @@ def add_stretch_to_kitchen(xml: str, robot_pose_attrib: dict) -> str:
 @click.option("--style", type=int, default=None, help="kitchen style (choose number 0-11)")
 @click.option("--write-to-file", type=str, default=None, help="write to file")
 def main(task: str, layout: int, style: int, write_to_file: str):
-    model, xml = model_generation_wizard(
+    model, xml, objects_info = model_generation_wizard(
         task=task,
         layout=layout,
         style=style,
@@ -233,21 +264,6 @@ def main(task: str, layout: int, style: int, write_to_file: str):
     )
     robot_sim = StretchMujocoSimulator(model=model)
     robot_sim.start()
-    # display camera feeds
-    # try:
-    #     while robot_sim.is_running():
-    #         camera_data = robot_sim.pull_camera_data()
-    #         cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
-    #         cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-    #         cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
-    #         cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
-    #         cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
-    #         if cv2.waitKey(1) & 0xFF == ord("q"):
-    #             cv2.destroyAllWindows()
-    #             break
-    # except KeyboardInterrupt:
-    #     robot_sim.stop()
-    #     cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":

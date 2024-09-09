@@ -146,6 +146,22 @@ def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, d
     return ET.tostring(root, encoding="unicode"), removed_body_attrib
 
 
+def xml_modify_body_pos(
+    xml_string: str, tag: str, name: str, pos: np.ndarray, quat: np.ndarray
+) -> str:
+    """
+    Modify the position attribute of a tag with a specified name
+    """
+    # Parse the XML string into an ElementTree
+    root = ET.fromstring(xml_string)
+    # Find the element with body tag and name attribute
+    for elem in root.iter(tag):
+        if elem.get("name") == name:
+            elem.set("pos", " ".join(map(str, pos)))
+            elem.set("quat", " ".join(map(str, quat)))
+    return ET.tostring(root, encoding="unicode")
+
+
 def insert_line_after_mujoco_tag(xml_string: str, line_to_insert: str) -> str:
     """
     Insert a new line after the mujoco tag in the XML string
