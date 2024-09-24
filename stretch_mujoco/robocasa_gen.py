@@ -6,7 +6,7 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 import robosuite
-from robocasa.models.arenas.layout_builder import STYLES
+from robocasa.models.scenes.scene_registry import LayoutType, StyleType
 from robosuite import load_controller_config
 from termcolor import colored
 
@@ -19,6 +19,19 @@ from stretch_mujoco.utils import (
     xml_remove_subelement,
     xml_remove_tag_by_name,
 )
+
+
+def get_styles() -> OrderedDict:
+    raw_styles = dict(
+        map(lambda item: (item.value, item.name.lower().capitalize()), StyleType)
+    )
+    styles = OrderedDict()
+    for k in sorted(raw_styles.keys()):
+        if k < 0:
+            continue
+        styles[k] = raw_styles[k]
+    return styles
+
 
 """
 Modified version of robocasa's kitchen scene generation script
@@ -109,9 +122,7 @@ def model_generation_wizard(
         ]
     )
 
-    styles = OrderedDict()
-    for k in sorted(STYLES.keys()):
-        styles[k] = STYLES[k].capitalize()
+    styles = get_styles()
     if layout is None:
         layout = choose_option(
             layouts, "kitchen layout", default=-1, default_message="random layouts"
