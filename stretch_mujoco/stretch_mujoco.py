@@ -532,6 +532,13 @@ def main(
         robot_sim.stop()
         cv2.destroyAllWindows()
 
-
 if __name__ == "__main__":
-    main()
+    import warnings
+    warnings.warn("use 'python -m stretch_mujoco', not 'python -m stretch_mujoco.stretch_mujoco'", DeprecationWarning)
+
+    # Check if we are on macOS
+    if os.uname().sysname == "Darwin":
+        print("macOS detected. Please use the following command to run the simulator:")
+        print("python3 -m stretch_mujoco")
+    else:
+        main()
