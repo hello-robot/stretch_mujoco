@@ -103,7 +103,7 @@ def model_generation_wizard(
         layout (int): layout id
         style (int): style id
         write_to_file (str): write to file
-        robot_spawn_pose (dict): robot spawn pose {pose: [x, y, z], quat: [x, y, z, w]}
+        robot_spawn_pose (dict): robot spawn pose {pos: "x y z", quat: "x y z w"}
     Returns:
         Tuple[mujoco.MjModel, str, Dict]: model, xml string and Object placements info
     """
