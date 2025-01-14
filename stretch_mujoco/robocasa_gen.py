@@ -146,7 +146,7 @@ def model_generation_wizard(
     config = {
         "env_name": task,
         "robots": "PandaMobile",
-        # "controller_configs": load_part_controller_config(default_controller="OSC_POSE"),
+        "controller_configs": load_part_controller_config(default_controller="OSC_POSE"),
         "translucent_robot": False,
         "layout_and_style_ids": [[layout, style]],
     }
