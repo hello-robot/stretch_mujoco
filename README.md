@@ -138,12 +138,18 @@ The `stretch_mujoco.robocasa_gen.model_generation_wizard()` method gives you:
 ```python
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.robocasa_gen import model_generation_wizard
+
+# Use the wizard:
+model, xml = model_generation_wizard()
+
+# Or, launch a specific task/layout/style
 model, xml = model_generation_wizard(
-    task=task_name,
-    layout=layout_id,
-    style=style_id,
-    wrtie_to_file=filename,
+    task=<task_name>,
+    layout=<layout_id>,
+    style=<style_id>,
+    wrtie_to_file=<filename>,
 )
+
 sim = StretchMujocoSimulator(model=model)
 sim.start()
 ```
