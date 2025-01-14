@@ -8,7 +8,6 @@ import time
 from typing import Any, Dict, Optional
 
 import click
-import cv2
 import mujoco
 import mujoco.viewer
 import numpy as np
@@ -501,44 +500,3 @@ class StretchMujocoSimulator:
             self._headless_running = False
             time.sleep(0.5)
             mujoco.mj_resetData(self.mjmodel, self.mjdata)
-
-
-@click.command()
-@click.option(
-    "--scene-xml-path", default=utils.default_scene_xml_path, help="Path to the scene xml file"
-)
-@click.option("--headless", is_flag=True, help="Run the simulation headless")
-def main(
-    scene_xml_path: str,
-    headless: bool,
-) -> None:
-    robot_sim = StretchMujocoSimulator(scene_xml_path)
-    robot_sim.start(headless=headless)
-    # display camera feeds
-    try:
-        while robot_sim.is_running():
-            camera_data = robot_sim.pull_camera_data()
-            cv2.imshow("cam_d405_rgb", cv2.cvtColor(camera_data["cam_d405_rgb"], cv2.COLOR_RGB2BGR))
-            cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-            cv2.imshow(
-                "cam_d435i_rgb", cv2.cvtColor(camera_data["cam_d435i_rgb"], cv2.COLOR_RGB2BGR)
-            )
-            cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
-            cv2.imshow("cam_nav_rgb", cv2.cvtColor(camera_data["cam_nav_rgb"], cv2.COLOR_RGB2BGR))
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                cv2.destroyAllWindows()
-                break
-    except KeyboardInterrupt:
-        robot_sim.stop()
-        cv2.destroyAllWindows()
-
-if __name__ == "__main__":
-    import warnings
-    warnings.warn("use 'python -m stretch_mujoco', not 'python -m stretch_mujoco.stretch_mujoco'", DeprecationWarning)
-
-    # Check if we are on macOS
-    if os.uname().sysname == "Darwin":
-        print("macOS detected. Please use the following command to run the simulator:")
-        print("python3 -m stretch_mujoco")
-    else:
-        main()

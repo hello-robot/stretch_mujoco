@@ -7,10 +7,9 @@ import mujoco.viewer
 import numpy as np
 import robosuite
 from robocasa.models.scenes.scene_registry import LayoutType, StyleType
-from robosuite import load_controller_config
+from robosuite import load_part_controller_config
 from termcolor import colored
 
-from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.utils import (
     get_absolute_path_stretch_xml,
     insert_line_after_mujoco_tag,
@@ -147,7 +146,7 @@ def model_generation_wizard(
     config = {
         "env_name": task,
         "robots": "PandaMobile",
-        "controller_configs": load_controller_config(default_controller="OSC_POSE"),
+        # "controller_configs": load_part_controller_config(default_controller="OSC_POSE"),
         "translucent_robot": False,
         "layout_and_style_ids": [[layout, style]],
     }
@@ -259,23 +258,3 @@ def add_stretch_to_kitchen(xml: str, robot_pose_attrib: dict) -> str:
         f' <include file="{stretch_xml_absolute}"/>',
     )
     return xml
-
-
-@click.command()
-@click.option("--task", type=str, default="PnPCounterToCab", help="task")
-@click.option("--layout", type=int, default=None, help="kitchen layout (choose number 0-9)")
-@click.option("--style", type=int, default=None, help="kitchen style (choose number 0-11)")
-@click.option("--write-to-file", type=str, default=None, help="write to file")
-def main(task: str, layout: int, style: int, write_to_file: str):
-    model, xml, objects_info = model_generation_wizard(
-        task=task,
-        layout=layout,
-        style=style,
-        write_to_file=write_to_file,
-    )
-    robot_sim = StretchMujocoSimulator(model=model)
-    robot_sim.start()
-
-
-if __name__ == "__main__":
-    main()

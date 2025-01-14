@@ -6,27 +6,24 @@
 
 <img src="./docs/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
 
-Stretch in Kitchen scenes from [Robocasa](https://github.com/robocasa/robocasa)
-
 This library provides the simulation stack for Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
-Currently only Stretch 3 version is fully supported with position control interface for all robot joints and velocity control for base. Camera data with depth perception and camera parameters are provided. The library supports simuation with GUI and also headless mode. Stretch can be spawned in any Robocasa provided kitchen environments.
+Currently only Stretch 3 is fully supported with a position control interface for all arm/head/gripper joints and velocity control for base. Camera data with depth perception and camera parameters are provided. The library supports simuation with GUI or headless mode. Also, Stretch can be spawned in any Robocasa-provided kitchen environment.
 
 ## Getting Started
 
-Install Mujoco (v3.0>), older versions might work but not tested.
+First, install [`uv`](https://docs.astral.sh/uv/#getting-started). Uv is a package manager that we'll use to run this project.
+
+Then, clone this repo:
 
 ```
 git clone https://github.com/hello-robot/stretch_mujoco
 cd stretch_mujoco
-pip install -e .
 ```
 
-Note: For conda environments `conda install mujoco` is recommended.
-
-Spawn Stretch in default scene and see the camera frames
+Lastly, run the simulation. It'll spawn Stretch in default scene and pop up 5 additional windows that shows what the 2 depth cameras and 1 wide-angle camera sees.
 
 ```
-python3 -m stretch_mujoco.stretch_mujoco
+uv run launch_sim.py
 ```
 
 <p>
@@ -34,42 +31,32 @@ python3 -m stretch_mujoco.stretch_mujoco
     <img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
 </p>
 
-#### Install [Robocasa](https://github.com/robocasa/robocasa)
+## Try Example Scripts
+
+[Keyboard teleop](./examples/keyboard_teleop.py)
 
 ```
-git clone https://github.com/ARISE-Initiative/robosuite -b robocasa_v0.1
-cd robosuite
-pip install -e .
-cd ../
-git clone https://github.com/robocasa/robocasa
-cd robocasa
-pip install -e .
-conda install -c numba numba -y
-python robocasa/scripts/download_kitchen_assets.py  
-python robocasa/scripts/setup_macros.py   
+uv run examples/keyboard_teleop.py
 ```
 
-## Try Examples Scripts
-
-[Keyboard teleop](https://github.com/hello-robot/stretch_mujoco/blob/main/examples/keyboard_teleop.py)
-
-```
-cd examples/
-python3 -m keyboard_teleop.py
-```
-
-[Gamepad teleop](https://github.com/hello-robot/stretch_mujoco/blob/main/examples/gamepad_teleop.py)
+[Gamepad teleop](./examples/gamepad_teleop.py)
 
 Control Stretch in simulation using any xbox type gamepad (uses xinput)
 
 ```
-cd examples/
-python3 stretch_mujoco_gamepad.py
+uv run examples/gamepad_teleop.py
 ```
 
-[Robocasa environments](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco/robocasa_gen.py#L73)
+[Robocasa environments](./examples/robocasa_environment.py)
 
-Spawn Stretch in any robocasa kitchen scenes using the [robocasa_gen.model_generation_wizard](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco/robocasa_gen.py#L73) API.
+```
+# Download assets first TODO
+uv run ./.venv/lib/python3.10/site-packages/robosuite/scripts/setup_macros.py
+uv run https://raw.githubusercontent.com/robocasa/robocasa/refs/heads/main/robocasa/scripts/download_kitchen_assets.py
+
+# Run sim
+uv run examples/robocasa_environment.py
+```
 
 <img src="./docs/robocasa_scene_1.png" title="Camera Streams" width="300px">
 <img src="./docs/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">

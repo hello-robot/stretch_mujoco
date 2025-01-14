@@ -17,12 +17,12 @@ def main(task: str, layout: int, style: int, write_to_file):
         style=style,
         write_to_file=write_to_file,
     )
-    robot_sim = StretchMujocoSimulator(model=model)
-    robot_sim.start()
+    sim = StretchMujocoSimulator(model=model)
+    sim.start()
     # display camera feeds
     try:
-        while robot_sim.is_running():
-            camera_data = robot_sim.pull_camera_data()
+        while sim.is_running():
+            camera_data = sim.pull_camera_data()
             cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
             cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
             cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
@@ -32,7 +32,7 @@ def main(task: str, layout: int, style: int, write_to_file):
                 cv2.destroyAllWindows()
                 break
     except KeyboardInterrupt:
-        robot_sim.stop()
+        sim.stop()
         cv2.destroyAllWindows()
 
 
