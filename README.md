@@ -16,7 +16,7 @@ First, install [`uv`](https://docs.astral.sh/uv/#getting-started). Uv is a packa
 Then, clone this repo:
 
 ```
-git clone https://github.com/hello-robot/stretch_mujoco
+git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
 cd stretch_mujoco
 ```
 
@@ -25,6 +25,8 @@ Lastly, run the simulation. It'll spawn Stretch in default scene and pop up 5 ad
 ```
 uv run launch_sim.py
 ```
+
+To exit, press `Ctrl+C` in the terminal.
 
 <p>
     <img src="./docs/camera_streams.png" title="Camera Streams" height="250px">
@@ -50,13 +52,18 @@ uv run examples/gamepad_teleop.py
 [Robocasa environments](./examples/robocasa_environment.py)
 
 ```
-# Download assets TODO
-uv run ./.venv/lib/python3.10/site-packages/robosuite/scripts/setup_macros.py
-uv run https://raw.githubusercontent.com/robocasa/robocasa/refs/heads/main/robocasa/scripts/download_kitchen_assets.py
+# Setup
+uv pip install -e "robocasa@third_party/robocasa"
+uv pip install -e "robosuite@third_party/robosuite"
+uv run third_party/robosuite/robosuite/scripts/setup_macros.py
+uv run third_party/robocasa/robocasa/scripts/setup_macros.py
+uv run third_party/robocasa/robocasa/scripts/download_kitchen_assets.py
 
 # Run sim
 uv run examples/robocasa_environment.py
 ```
+
+Ignore any warnings.
 
 <img src="./docs/robocasa_scene_1.png" title="Camera Streams" width="300px">
 <img src="./docs/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
@@ -140,7 +147,7 @@ from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.robocasa_gen import model_generation_wizard
 
 # Use the wizard:
-model, xml = model_generation_wizard()
+model, xml, objects_info = model_generation_wizard()
 
 # Or, launch a specific task/layout/style
 model, xml = model_generation_wizard(

@@ -1,0 +1,6 @@
+[submodule "third_party/robocasa"]
+	path = third_party/robocasa
+	url = https://github.com/hello-binit/robocasa.git
+[submodule "third_party/robosuite"]
+	path = third_party/robosuite
+	url = https://github.com/hello-binit/robosuite.git

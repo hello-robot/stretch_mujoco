@@ -32,6 +32,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
+[tool.setuptools.packages.find]
+exclude = ["third_party*", "tests*"]
+
 [project.urls]
 Source = "https://github.com/hello-robot/stretch_mujoco"
 Tracker = "https://github.com/hello-robot/stretch_mujoco/issues"
