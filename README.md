@@ -50,7 +50,7 @@ uv run examples/gamepad_teleop.py
 [Robocasa environments](./examples/robocasa_environment.py)
 
 ```
-# Download assets first TODO
+# Download assets TODO
 uv run ./.venv/lib/python3.10/site-packages/robosuite/scripts/setup_macros.py
 uv run https://raw.githubusercontent.com/robocasa/robocasa/refs/heads/main/robocasa/scripts/download_kitchen_assets.py
 
@@ -63,27 +63,36 @@ uv run examples/robocasa_environment.py
 
 ## Try Writing Code
 
-Use the [StretchMujocoSimulator](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco.py) class implementation which provides the control interface for starting the Simulation, position control the robot, read joint status and read all the camera streams. You can try the below lines simply from Ipython terminal. The class also has `mjModel` and `mjData` elements which Advanced users take advantage with [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
+Use the [StretchMujocoSimulator](./stretch_mujoco/stretch_mujoco.py) class to:
+
+ * start the simulation
+ * position control the robot's ranged joints
+ * velocity control the robot's mobile base
+ * read joint states
+ * read camera imagery
+
+Try the code below using `uv run ipython`. For advanced Mujoco users, the class also exposes the `mjModel` and `mjData`. See the [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
 
 ```python
 from stretch_mujoco import StretchMujocoSimulator
 
-robot_sim = StretchMujocoSimulator('./scene.xml')
-robot_sim.start() # This will start the simulation and open Mujoco-Viewer window
+sim = StretchMujocoSimulator()
+sim.start() # This will start the simulation and open Mujoco-Viewer window
 
 # Poses
-robot_sim.home()
-robot_sim.stow()
+sim.stow()
+sim.home()
 
 # Position Control 
-robot_sim.move_to('lift',0.6)
-robot_sim.move_by('head_pan',0.1)
+sim.move_to('lift',1.0)
+sim.move_by('head_pan',0.1)
 
 # Base Velocity control
-robot_sim.set_base_velocity(0.3,-0.1)
+sim.set_base_velocity(0.3,-0.1)
 
 # Get Joint Status (updated continuously in simulation callback mjcb_control)
-print(robot_sim.status)
+from pprint import pprint
+pprint(sim.status)
 """
 Output:
 {'time': 6.421999999999515,
@@ -99,8 +108,8 @@ Output:
 """
 
 # Get Camera Frames
-camera_data = robot_sim.pull_camera_data()
-print(camera_data)
+camera_data = sim.pull_camera_data()
+pprint(camera_data)
 """
 Output:
 {'time': 80.89999999999286,
@@ -114,12 +123,12 @@ Output:
 """
 
 # Kills simulation process
-robot_sim.stop()
+sim.stop()
 ```
 
 ### Loading Robocasa Kitchen Scenes
 
-`robocasa_gen.model_generation_wizard()` API
+The `stretch_mujoco.robocasa_gen.model_generation_wizard()` method gives you:
 
 - Wizard/API to generate a kitchen model for a given task, layout, and style.
 - If layout and style are not provided, it will take you through a wizard to choose them in the terminal.
@@ -135,8 +144,8 @@ model, xml = model_generation_wizard(
     style=style_id,
     wrtie_to_file=filename,
 )
-robot_sim = StretchMujocoSimulator(model=model)
-robot_sim.start()
+sim = StretchMujocoSimulator(model=model)
+sim.start()
 ```
 
 ### Feature Requests and Bug reporting

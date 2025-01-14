@@ -489,13 +489,13 @@ class StretchMujocoSimulator:
         self._running = False
         if not self._headless_running:
             click.secho(
-                f"Exiting Stretch Mujoco Simulator with viewer... runtime={self.status['time']}s",
+                f"Exiting Stretch Mujoco Simulator with viewer... runtime={self.status['time']:.1f}s",
                 fg="red",
             )
             os.kill(os.getpid(), 9)
         else:
             click.secho(
-                f"Stopping headless simulation... runtime={self.status['time']}s", fg="yellow"
+                f"Stopping headless simulation... runtime={self.status['time']:.1f}s", fg="yellow"
             )
             self._headless_running = False
             time.sleep(0.5)
