@@ -532,27 +532,28 @@ class StretchMujocoSimulator:
         signal.signal(signal.SIGINT, self._stop_handler)
         self._manager = Manager()
         self._stop_event = self._manager.Event()
-        self._command = self._manager.dict({'val': {
-            "move_by" : {
-                "trigger": None,
-                "actuator_name": None,
-                "pos": None,
-            },
-            "move_to" : {
-                "trigger": None,
-                "actuator_name": None,
-                "pos": None,
-            },
-            "set_base_velocity" : {
-                "trigger": None,
-                "v_linear": None,
-                "omega": None,
-            },
-            "keyframe" : {
-                "trigger": None,
-                "name": None,
-            },
-        }})
+        # {
+        #     "move_by" : {
+        #         "trigger": None,
+        #         "actuator_name": None,
+        #         "pos": None,
+        #     },
+        #     "move_to" : {
+        #         "trigger": None,
+        #         "actuator_name": None,
+        #         "pos": None,
+        #     },
+        #     "set_base_velocity" : {
+        #         "trigger": None,
+        #         "v_linear": None,
+        #         "omega": None,
+        #     },
+        #     "keyframe" : {
+        #         "trigger": None,
+        #         "name": None,
+        #     },
+        # }
+        self._command = self._manager.dict({'val': {}})
         self._status = self._manager.dict({'val': {
             "time": None,
             "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
