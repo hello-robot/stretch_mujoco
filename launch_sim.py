@@ -14,10 +14,9 @@ def main(
 ) -> None:
     sim = stretch_mujoco.StretchMujocoSimulator(scene_xml_path)
     sim.start(headless=headless)
-    # display camera feeds
     try:
         while sim.is_running():
-            if imagery:
+            if imagery: # display camera feeds
                 camera_data = sim.pull_camera_data()
                 cv2.imshow("cam_d405_rgb", cv2.cvtColor(camera_data["cam_d405_rgb"], cv2.COLOR_RGB2BGR))
                 cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
