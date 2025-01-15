@@ -590,29 +590,6 @@ class StretchMujocoSimulator:
             time.sleep(0.2)
         self.home()
 
-    # def reset_sim(self) -> None:
-    #     """
-    #     Reset the simulator to initial state (experimental)
-    #     """
-    #     _headless_reset = self._headless_running
-    #     if self._headless_running:
-    #         self._headless_running = False
-    #         time.sleep(0.3)
-    #     else:
-    #         click.secho(
-    #             "StretchMujocoSimulator.reset_state() method is experimental with Viewer running",
-    #             fg="yellow",
-    #         )
-    #     mujoco.mj_resetData(self.mjmodel, self.mjdata)
-    #     print("Resetting the simulator to initial state...")
-    #     if _headless_reset:
-    #         threading.Thread(
-    #             target=self.__run_headless_simulation, name="mujoco_headless_thread"
-    #         ).start()
-    #     while not self.mjdata.time:
-    #         time.sleep(0.2)
-    #     self.home()
-
     def _stop_handler(self, signum, frame):
         self.stop()
 
