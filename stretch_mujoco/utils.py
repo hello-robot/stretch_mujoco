@@ -8,6 +8,9 @@ import numpy as np
 import importlib.resources
 import urchin as urdf_loader
 
+import stretch_mujoco.config as config
+
+
 models_path = str(importlib.resources.files('stretch_mujoco') / 'models')
 default_scene_xml_path = models_path + "/scene.xml"
 default_robot_xml_path = models_path + "/stretch.xml"
@@ -17,6 +20,17 @@ model_name = "SE3"  # RE1V0, RE2V0, SE3
 tool_name = "eoa_wrist_dw3_tool_sg3"  # eoa_wrist_dw3_tool_sg3, tool_stretch_gripper, etc
 urdf_file_path = pkg_path + f"/{model_name}/stretch_description_{model_name}_{tool_name}.urdf"
 mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
+
+
+def require_connection(function):
+    """Wraps class methods that need self
+    """
+    def wrapper_function(self, *args, **kwargs):
+        if not self._running:
+            raise ConnectionError("use the start() method")
+        return function(self, *args, **kwargs)
+
+    return wrapper_function
 
 
 def compute_K(fovy: float, width: int, height: int) -> np.ndarray:
@@ -41,6 +55,50 @@ def limit_depth_distance(depth_image_meters: np.ndarray, max_depth: float) -> np
     Limit depth distance
     """
     return np.where(depth_image_meters > max_depth, 0, depth_image_meters)
+
+
+def diff_drive_fwd_kinematics(w_left: float, w_right: float) -> tuple:
+    """
+    Calculate the linear and angular velocity of a differential drive robot.
+    """
+    wheel_diameter = config.robot_settings["wheel_diameter"]
+    wheel_separation = config.robot_settings["wheel_separation"]
+    R = wheel_diameter / 2
+    L = wheel_separation
+    if R <= 0:
+        raise ValueError("Radius must be greater than zero.")
+    if L <= 0:
+        raise ValueError("Distance between wheels must be greater than zero.")
+
+    # Linear velocity (V) is the average of the linear velocities of the two wheels
+    V = R * (w_left + w_right) / 2.0
+
+    # Angular velocity (omega) is the difference in linear velocities divided by the distance
+    # between the wheels
+    omega = R * (w_right - w_left) / L
+
+    return (V, omega)
+
+
+def diff_drive_inv_kinematics(V: float, omega: float) -> tuple:
+    """
+    Calculate the rotational velocities of the left and right wheels for a
+    differential drive robot.
+    """
+    wheel_diameter = config.robot_settings["wheel_diameter"]
+    wheel_separation = config.robot_settings["wheel_separation"]
+    R = wheel_diameter / 2
+    L = wheel_separation
+    if R <= 0:
+        raise ValueError("Radius must be greater than zero.")
+    if L <= 0:
+        raise ValueError("Distance between wheels must be greater than zero.")
+
+    # Calculate the rotational velocities of the wheels
+    w_left = (V - (omega * L / 2)) / R
+    w_right = (V + (omega * L / 2)) / R
+
+    return (w_left, w_right)
 
 
 class URDFmodel:
