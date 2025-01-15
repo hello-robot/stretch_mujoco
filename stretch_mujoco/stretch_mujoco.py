@@ -93,7 +93,7 @@ class MujocoServer:
         self.mjmodel = model
         self.pull_status()
         # self.pull_camera_data()
-        # self.push_command()
+        self.push_command()
 
     def get_base_pose(self) -> np.ndarray:
         """Get the se(2) base pose: x, y, and theta"""
@@ -101,28 +101,6 @@ class MujocoServer:
         rotation = self.mjdata.body("base_link").xmat.reshape(3, 3)
         theta = np.arctan2(rotation[1, 0], rotation[0, 0])
         return np.array([xyz[0], xyz[1], theta])
-
-    def get_ee_pose(self) -> np.ndarray:
-        return self.get_link_pose("link_grasp_center")
-
-    def get_link_pose(self, link_name: str) -> np.ndarray:
-        """Pose of link in world frame"""
-        cfg = {
-            "wrist_yaw": self.status["wrist_yaw"]["pos"],
-            "wrist_pitch": self.status["wrist_pitch"]["pos"],
-            "wrist_roll": self.status["wrist_roll"]["pos"],
-            "lift": self.status["lift"]["pos"],
-            "arm": self.status["arm"]["pos"],
-            "head_pan": self.status["head_pan"]["pos"],
-            "head_tilt": self.status["head_tilt"]["pos"],
-        }
-        T = self.urdf_model.get_transform(cfg, link_name)
-        base_xyt = self.get_base_pose()
-        base_4x4 = np.eye(4)
-        base_4x4[:3, :3] = utils.Rz(base_xyt[2])
-        base_4x4[:2, 3] = base_xyt[:2]
-        world_coord = np.matmul(base_4x4, T)
-        return world_coord
 
     def pull_status(self) -> Dict[str, Any]:
         """
@@ -263,9 +241,9 @@ class MujocoServer:
 
     def push_command(self):
         # move_by
-        if self.command['move_by']['trigger']:
-            actuator_name = self.command['move_by']['actuator_name']
-            pos = self.command['move_by']['pos']
+        if 'move_by' in self.command['val'] and self.command['val']['move_by']['trigger']:
+            actuator_name = self.command['val']['move_by']['actuator_name']
+            pos = self.command['val']['move_by']['pos']
             if actuator_name in ["base_translate", "base_rotate"]:
                 if self._base_in_pos_motion:
                     self._stop_base_pos_tracking()
@@ -277,34 +255,34 @@ class MujocoServer:
             else:
                 if actuator_name == "gripper":
                     self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
-                        self.status[actuator_name]["pos"] + pos
+                        self.status['val'][actuator_name]["pos"] + pos
                     )
                 else:
                     self.mjdata.actuator(actuator_name).ctrl = (
-                        self.status[actuator_name]["pos"] + pos
+                        self.status['val'][actuator_name]["pos"] + pos
                     )
-            self.command['move_by']['trigger'] = False
+            self.command['val'] = {}
 
         # move_to
-        if self.command['move_to']['trigger']:
-            actuator_name = self.command['move_to']['actuator_name']
-            pos = self.command['move_to']['pos']
+        if 'move_to' in self.command['val'] and self.command['val']['move_to']['trigger']:
+            actuator_name = self.command['val']['move_to']['actuator_name']
+            pos = self.command['val']['move_to']['pos']
             if actuator_name == "gripper":
                 self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
             else:
                 self.mjdata.actuator(actuator_name).ctrl = pos
-            self.command['move_to']['trigger'] = False
+            self.command['val'] = {}
 
         # set_base_velocity
-        if self.command['set_base_velocity']['trigger']:
-            self.set_base_velocity(self.command['set_base_velocity']['v_linear'], self.command['set_base_velocity']['omega'])
-            self.command['set_base_velocity']['trigger'] = False
+        if 'set_base_velocity' in self.command['val'] and self.command['val']['set_base_velocity']['trigger']:
+            self.set_base_velocity(self.command['val']['set_base_velocity']['v_linear'], self.command['val']['set_base_velocity']['omega'])
+            self.command['val'] = {}
 
         # keyframe
-        if self.command['keyframe']['trigger']:
-            name = self.command['keyframe']['name']
+        if 'keyframe' in self.command['val'] and self.command['val']['keyframe']['trigger']:
+            name = self.command['val']['keyframe']['name']
             self.mjdata.ctrl = self.mjmodel.keyframe(name).ctrl
-            self.command['keyframe']['trigger'] = False
+            self.command['val'] = {}
 
     def _base_translate_by(self, x_inc: float) -> None:
         """
@@ -405,16 +383,24 @@ class StretchMujocoSimulator:
         """
         Move the robot to home position
         """
-        self._command['keyframe']['name'] = 'home'
-        self._command['keyframe']['trigger'] = True
+        self._command['val'] = {
+            'keyframe': {
+                'name': 'home',
+                'trigger': True
+            }
+        }
 
     @require_connection
     def stow(self) -> None:
         """
         Move the robot to stow position
         """
-        self._command['keyframe']['name'] = 'stow'
-        self._command['keyframe']['trigger'] = True
+        self._command['val'] = {
+            'keyframe': {
+                'name': 'stow',
+                'trigger': True
+            }
+        }
 
     @require_connection
     def move_to(self, actuator_name: str, pos: float) -> None:
@@ -435,9 +421,13 @@ class StretchMujocoSimulator:
             click.secho(f"{actuator_name} not allowed for move_to", fg="red")
             return
 
-        self._command["move_to"]["actuator_name"] = actuator_name
-        self._command["move_to"]["pos"] = pos
-        self._command["move_to"]['trigger'] = True
+        self._command['val'] = {
+            'move_to': {
+                'actuator_name': actuator_name,
+                'pos': pos,
+                'trigger': True
+            }
+        }
 
     @require_connection
     def move_by(self, actuator_name: str, pos: float) -> None:
@@ -455,9 +445,13 @@ class StretchMujocoSimulator:
             )
             return
 
-        self._command["move_by"]["actuator_name"] = actuator_name
-        self._command["move_by"]["pos"] = pos
-        self._command["move_by"]['trigger'] = True
+        self._command['val'] = {
+            'move_by': {
+                'actuator_name': actuator_name,
+                'pos': pos,
+                'trigger': True
+            }
+        }
 
     @require_connection
     def set_base_velocity(self, v_linear: float, omega: float) -> None:
@@ -467,9 +461,13 @@ class StretchMujocoSimulator:
             v_linear: float, linear velocity
             omega: float, angular velocity
         """
-        self._command["set_base_velocity"]["v_linear"] = v_linear
-        self._command["set_base_velocity"]["omega"] = omega
-        self._command["set_base_velocity"]['trigger'] = True
+        self._command['val'] = {
+            'set_base_velocity': {
+                'v_linear': v_linear,
+                'omega': omega,
+                'trigger': True
+            }
+        }
 
     @require_connection
     def get_base_pose(self) -> np.ndarray:
@@ -534,27 +532,27 @@ class StretchMujocoSimulator:
         signal.signal(signal.SIGINT, self._stop_handler)
         self._manager = Manager()
         self._stop_event = self._manager.Event()
-        self._command = self._manager.dict({
-            "move_by" : self._manager.dict({
+        self._command = self._manager.dict({'val': {
+            "move_by" : {
                 "trigger": None,
                 "actuator_name": None,
                 "pos": None,
-            }),
-            "move_to" : self._manager.dict({
+            },
+            "move_to" : {
                 "trigger": None,
                 "actuator_name": None,
                 "pos": None,
-            }),
-            "set_base_velocity" : self._manager.dict({
+            },
+            "set_base_velocity" : {
                 "trigger": None,
                 "v_linear": None,
                 "omega": None,
-            }),
-            "keyframe" : self._manager.dict({
+            },
+            "keyframe" : {
                 "trigger": None,
                 "name": None,
-            }),
-        })
+            },
+        }})
         self._status = self._manager.dict({'val': {
             "time": None,
             "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
@@ -615,6 +613,8 @@ class StretchMujocoSimulator:
         """
         Stop the simulator
         """
+        if not self._running:
+            return
         click.secho(
             f"Stopping Stretch Mujoco Simulator... simulated runtime={self.pull_status()['time']:.1f}s",
             fg="red",
