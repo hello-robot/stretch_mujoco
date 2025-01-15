@@ -17,14 +17,14 @@ import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
 
 
-def launch_server(scene_xml_path, model, show_viewer_ui, headless, stop_event, command, status, imagery):
-    server = MujocoServer(scene_xml_path, model, stop_event, command, status, imagery)
+def launch_server(scene_xml_path, model, camera_hz, show_viewer_ui, headless, stop_event, command, status, imagery):
+    server = MujocoServer(scene_xml_path, model, camera_hz, stop_event, command, status, imagery)
     server.run(show_viewer_ui, headless)
 
 
 class MujocoServer:
 
-    def __init__(self, scene_xml_path, model, stop_event, command, status, imagery):
+    def __init__(self, scene_xml_path, model, camera_hz, stop_event, command, status, imagery):
         """
         Initialize the Simulator handle with a scene
         Args:
@@ -41,6 +41,7 @@ class MujocoServer:
         self.mjdata = mujoco.MjData(self.mjmodel)
         self._set_camera_properties()
 
+        self.camera_rate = config.camera_hzs[camera_hz]
         self.rgb_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer.enable_depth_rendering()
@@ -92,7 +93,8 @@ class MujocoServer:
         self.mjdata = data
         self.mjmodel = model
         self.pull_status()
-        # self.pull_camera_data()
+        if (int(self.status['val']['time']*100)%self.camera_rate == 0):
+            self.pull_camera_data()
         self.push_command()
 
     def get_base_pose(self) -> np.ndarray:
@@ -181,28 +183,31 @@ class MujocoServer:
         """
         Pull camera data from the simulator and return as a dictionary
         """
-        self.imagery["time"] = self.mjdata.time
+        new_imagery = {}
+        new_imagery["time"] = self.mjdata.time
 
         self.rgb_renderer.update_scene(self.mjdata, "d405_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d405_rgb")
 
-        self.imagery["cam_d405_rgb"] = self.rgb_renderer.render()
-        self.imagery["cam_d405_depth"] = utils.limit_depth_distance(
+        new_imagery["cam_d405_rgb"] = self.rgb_renderer.render()
+        new_imagery["cam_d405_depth"] = utils.limit_depth_distance(
             self.depth_renderer.render(), config.depth_limits["d405"]
         )
-        self.imagery["cam_d405_K"] = self.get_camera_params("d405_rgb")
+        new_imagery["cam_d405_K"] = self.get_camera_params("d405_rgb")
 
         self.rgb_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
 
-        self.imagery["cam_d435i_rgb"] = self.rgb_renderer.render()
-        self.imagery["cam_d435i_depth"] = utils.limit_depth_distance(
+        new_imagery["cam_d435i_rgb"] = self.rgb_renderer.render()
+        new_imagery["cam_d435i_depth"] = utils.limit_depth_distance(
             self.depth_renderer.render(), config.depth_limits["d435i"]
         )
-        self.imagery["cam_d435i_K"] = self.get_camera_params("d435i_camera_rgb")
+        new_imagery["cam_d435i_K"] = self.get_camera_params("d435i_camera_rgb")
 
         self.rgb_renderer.update_scene(self.mjdata, "nav_camera_rgb")
-        self.imagery["cam_nav_rgb"] = self.rgb_renderer.render()
+        new_imagery["cam_nav_rgb"] = self.rgb_renderer.render()
+
+        self.imagery['val'] = new_imagery
 
     def get_camera_params(self, camera_name: str) -> np.ndarray:
         """
@@ -365,10 +370,11 @@ class StretchMujocoSimulator:
     """
 
     def __init__(
-        self, scene_xml_path: Optional[str] = None, model: Optional[MjModel] = None
+        self, scene_xml_path: Optional[str] = None, model: Optional[MjModel] = None, camera_hz="10hz",
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
+        self.camera_hz = camera_hz
         self.urdf_model = utils.URDFmodel()
         self._server_process = None
         self._manager = None
@@ -505,7 +511,7 @@ class StretchMujocoSimulator:
         """
         Pull camera data from the simulator and return as a dictionary
         """
-        return copy.copy(self._imagery)
+        return copy.copy(self._imagery['val'])
 
     @require_connection
     def pull_status(self) -> dict:
@@ -566,7 +572,7 @@ class StretchMujocoSimulator:
             "wrist_roll": {"pos": None, "vel": None},
             "gripper": {"pos": None, "vel": None},
         }})
-        self._imagery = self._manager.dict({
+        self._imagery = self._manager.dict({'val': {
             "time": None,
             "cam_d405_rgb": None,
             "cam_d405_depth": None,
@@ -575,12 +581,12 @@ class StretchMujocoSimulator:
             "cam_d435i_depth": None,
             "cam_d435i_K": None,
             "cam_nav_rgb": None,
-        })
-        self._server_process = Process(target=launch_server, args=(self.scene_xml_path, self.model, show_viewer_ui, headless, self._stop_event, self._command, self._status, self._imagery))
+        }})
+        self._server_process = Process(target=launch_server, args=(self.scene_xml_path, self.model, self.camera_hz, show_viewer_ui, headless, self._stop_event, self._command, self._status, self._imagery))
         self._server_process.start()
         self._running = True
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
-        while not self.pull_status()["time"]:
+        while (not self.pull_status()["time"]) or (not self.pull_camera_data()["time"]):
             time.sleep(0.2)
         self.home()
 

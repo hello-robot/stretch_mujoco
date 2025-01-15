@@ -4,6 +4,10 @@ camera_settings = {
     "d435i_camera_rgb": {"fovy": 62, "width": 640, "height": 480},
     "d435i_camera_depth": {"fovy": 62, "width": 640, "height": 480},
 }
+camera_hzs = {
+    "10hz": 10,
+    "20hz": 5, # Can be difficult for most computers to simulate 20hz mujoco imagery at 100% wall time
+}
 
 robot_settings = {
     "wheel_diameter": 0.1016,
