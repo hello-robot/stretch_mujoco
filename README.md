@@ -20,6 +20,12 @@ git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
 cd stretch_mujoco
 ```
 
+Then, install this repo:
+
+```
+uv pip install -e .
+```
+
 Lastly, run the simulation:
 
 ```
