@@ -64,12 +64,21 @@ class MujocoServer:
         """
         Run the simulation with the viewer
         """
-        mujoco.set_mjcb_control(self.__ctrl_callback)
-        self.viewer.launch(
-            self.mjmodel,
-            show_left_ui=show_viewer_ui,
-            show_right_ui=show_viewer_ui,
-        )
+        # mujoco.set_mjcb_control(self.__ctrl_callback)
+        # self.viewer.launch(
+        #     self.mjmodel,
+        #     show_left_ui=show_viewer_ui,
+        #     show_right_ui=show_viewer_ui,
+        # )
+        with self.viewer.launch_passive(self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui) as viewer:
+            while viewer.is_running() and not self.stop_event.is_set():
+                start_ts = time.perf_counter()
+                mujoco.mj_step(self.mjmodel, self.mjdata)
+                self.__ctrl_callback(self.mjmodel, self.mjdata)
+                viewer.sync()
+                elapsed = time.perf_counter() - start_ts
+                if elapsed < self.mjmodel.opt.timestep:
+                    time.sleep(self.mjmodel.opt.timestep - elapsed)
 
     def __run_headless_simulation(self) -> None:
         """
