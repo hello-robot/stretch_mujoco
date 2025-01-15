@@ -17,9 +17,9 @@ import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
 
 
-def launch_server(scene_xml_path, model, camera_hz, show_viewer_ui, headless, stop_event, command, status, imagery):
+def launch_server(scene_xml_path, model, camera_hz, passive, show_viewer_ui, headless, stop_event, command, status, imagery):
     server = MujocoServer(scene_xml_path, model, camera_hz, stop_event, command, status, imagery)
-    server.run(show_viewer_ui, headless)
+    server.run(passive, show_viewer_ui, headless)
 
 
 class MujocoServer:
@@ -54,31 +54,35 @@ class MujocoServer:
         self.status = status
         self.imagery = imagery
 
-    def run(self, show_viewer_ui, headless):
+    def run(self, passive, show_viewer_ui, headless):
         if headless:
             self.__run_headless_simulation()
         else:
-            self.__run(show_viewer_ui)
+            self.__run(passive, show_viewer_ui)
 
-    def __run(self, show_viewer_ui: bool) -> None:
+    def __run(self, passive: bool, show_viewer_ui: bool) -> None:
         """
         Run the simulation with the viewer
         """
-        # mujoco.set_mjcb_control(self.__ctrl_callback)
-        # self.viewer.launch(
-        #     self.mjmodel,
-        #     show_left_ui=show_viewer_ui,
-        #     show_right_ui=show_viewer_ui,
-        # )
-        with self.viewer.launch_passive(self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui) as viewer:
-            while viewer.is_running() and not self.stop_event.is_set():
-                start_ts = time.perf_counter()
-                mujoco.mj_step(self.mjmodel, self.mjdata)
-                self.__ctrl_callback(self.mjmodel, self.mjdata)
-                viewer.sync()
-                elapsed = time.perf_counter() - start_ts
-                if elapsed < self.mjmodel.opt.timestep:
-                    time.sleep(self.mjmodel.opt.timestep - elapsed)
+        if not passive:
+            print('managed')
+            mujoco.set_mjcb_control(self.__ctrl_callback)
+            self.viewer.launch(
+                self.mjmodel,
+                show_left_ui=show_viewer_ui,
+                show_right_ui=show_viewer_ui,
+            )
+        else:
+            print('passive')
+            with self.viewer.launch_passive(self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui) as viewer:
+                while viewer.is_running() and not self.stop_event.is_set():
+                    start_ts = time.perf_counter()
+                    mujoco.mj_step(self.mjmodel, self.mjdata)
+                    self.__ctrl_callback(self.mjmodel, self.mjdata)
+                    viewer.sync()
+                    elapsed = time.perf_counter() - start_ts
+                    if elapsed < self.mjmodel.opt.timestep:
+                        time.sleep(self.mjmodel.opt.timestep - elapsed)
 
     def __run_headless_simulation(self) -> None:
         """
@@ -591,7 +595,7 @@ class StretchMujocoSimulator:
             "cam_d435i_K": None,
             "cam_nav_rgb": None,
         }})
-        self._server_process = Process(target=launch_server, args=(self.scene_xml_path, self.model, self.camera_hz, show_viewer_ui, headless, self._stop_event, self._command, self._status, self._imagery))
+        self._server_process = Process(target=launch_server, args=(self.scene_xml_path, self.model, self.camera_hz, False, show_viewer_ui, headless, self._stop_event, self._command, self._status, self._imagery))
         self._server_process.start()
         self._running = True
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
