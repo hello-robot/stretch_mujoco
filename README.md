@@ -20,7 +20,7 @@ git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
 cd stretch_mujoco
 ```
 
-Lastly, run the simulation. It'll spawn Stretch in default scene and pop up 5 additional windows that shows what the 2 depth cameras and 1 wide-angle camera sees.
+Lastly, run the simulation:
 
 ```
 uv run launch_sim.py
@@ -84,22 +84,23 @@ Try the code below using `uv run ipython`. For advanced Mujoco users, the class 
 from stretch_mujoco import StretchMujocoSimulator
 
 sim = StretchMujocoSimulator()
-sim.start() # This will start the simulation and open Mujoco-Viewer window
+sim.start() # This will open a Mujoco-Viewer window
 
 # Poses
 sim.stow()
 sim.home()
 
 # Position Control 
-sim.move_to('lift',1.0)
-sim.move_by('head_pan',0.1)
+sim.move_to('lift', 1.0)
+sim.move_by('head_pan', -1.1)
+sim.move_by('base_translate', 0.1)
 
 # Base Velocity control
-sim.set_base_velocity(0.3,-0.1)
+sim.set_base_velocity(0.3, -0.1)
 
-# Get Joint Status (updated continuously in simulation callback mjcb_control)
+# Get Joint Status
 from pprint import pprint
-pprint(sim.status)
+pprint(sim.pull_status())
 """
 Output:
 {'time': 6.421999999999515,

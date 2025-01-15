@@ -66,7 +66,8 @@ def map_value(value, in_min, in_max, out_min, out_max):
 def gamepad_loop():
     global sim, gamepad
     dex_switch = False
-    gripper_val = sim.status["gripper"]["pos"]
+    status = sim.pull_status()
+    gripper_val = status["gripper"]["pos"]
     while True:
         time.sleep(1 / 15)
         gamepad_state = gamepad.get_state()
@@ -76,7 +77,7 @@ def gamepad_loop():
 
                     actuator_name, dir, k = button_mapping[button]
                     if actuator_name != "gripper":
-                        pos = sim.status[actuator_name]["pos"] + dir * k
+                        pos = status[actuator_name]["pos"] + dir * k
                         print(f"Moving {actuator_name} to {pos}")
                         sim.move_to(actuator_name, pos)
                     elif actuator_name == "gripper":
@@ -108,7 +109,7 @@ def gamepad_loop():
             if abs(gamepad_state[stick]) > 0.001:
                 actuator_name, prop, val = stick_mapping[stick]
                 if prop == "inc":
-                    pos = sim.status[actuator_name]["pos"] + gamepad_state[stick] * val
+                    pos = status[actuator_name]["pos"] + gamepad_state[stick] * val
                     sim.move_to(actuator_name, pos)
                     print(f"Moving {actuator_name} to {pos}")
         if (
