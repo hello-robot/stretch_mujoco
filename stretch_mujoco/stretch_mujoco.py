@@ -4,22 +4,23 @@ import copy
 import signal
 import threading
 import time
-from typing import Any, Dict, Optional
 
 import click
 import mujoco
+import mujoco._functions
+import mujoco._callbacks
 import mujoco.viewer
 import numpy as np
-from mujoco import MjData, MjModel
+from mujoco._structs import MjData, MjModel
 
 import stretch_mujoco.config as config
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
 
 
-def launch_server(scene_xml_path, model, camera_hz, passive, show_viewer_ui, headless, stop_event, command, status, imagery):
+def launch_server(scene_xml_path, model, camera_hz, show_viewer_ui, headless, stop_event, command, status, imagery):
     server = MujocoServer(scene_xml_path, model, camera_hz, stop_event, command, status, imagery)
-    server.run(passive, show_viewer_ui, headless)
+    server.run( show_viewer_ui, headless)
 
 
 class MujocoServer:
@@ -33,12 +34,12 @@ class MujocoServer:
         """
         if scene_xml_path is None:
             scene_xml_path = utils.default_scene_xml_path
-            self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
+            self.mjmodel = MjModel.from_xml_path(scene_xml_path)
         elif model is None:
-            self.mjmodel = mujoco.MjModel.from_xml_path(scene_xml_path)
+            self.mjmodel = MjModel.from_xml_path(scene_xml_path)
         if model is not None:
             self.mjmodel = model
-        self.mjdata = mujoco.MjData(self.mjmodel)
+        self.mjdata = MjData(self.mjmodel)
         self._set_camera_properties()
 
         self.camera_rate = config.camera_hzs[camera_hz]
@@ -54,35 +55,22 @@ class MujocoServer:
         self.status = status
         self.imagery = imagery
 
-    def run(self, passive, show_viewer_ui, headless):
+    def run(self, show_viewer_ui, headless):
         if headless:
             self.__run_headless_simulation()
         else:
-            self.__run(passive, show_viewer_ui)
+            self.__run(show_viewer_ui)
 
-    def __run(self, passive: bool, show_viewer_ui: bool) -> None:
+    def __run(self, show_viewer_ui: bool) -> None:
         """
         Run the simulation with the viewer
         """
-        if not passive:
-            print('managed')
-            mujoco.set_mjcb_control(self.__ctrl_callback)
-            self.viewer.launch(
-                self.mjmodel,
-                show_left_ui=show_viewer_ui,
-                show_right_ui=show_viewer_ui,
-            )
-        else:
-            print('passive')
-            with self.viewer.launch_passive(self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui) as viewer:
-                while viewer.is_running() and not self.stop_event.is_set():
-                    start_ts = time.perf_counter()
-                    mujoco.mj_step(self.mjmodel, self.mjdata)
-                    self.__ctrl_callback(self.mjmodel, self.mjdata)
-                    viewer.sync()
-                    elapsed = time.perf_counter() - start_ts
-                    if elapsed < self.mjmodel.opt.timestep:
-                        time.sleep(self.mjmodel.opt.timestep - elapsed)
+        mujoco._callbacks.set_mjcb_control(self.__ctrl_callback)
+        self.viewer.launch(
+            self.mjmodel,
+            show_left_ui=show_viewer_ui,
+            show_right_ui=show_viewer_ui,
+        )
 
     def __run_headless_simulation(self) -> None:
         """
@@ -91,7 +79,7 @@ class MujocoServer:
         print("Running headless simulation...")
         while not self.stop_event.is_set():
             start_ts = time.perf_counter()
-            mujoco.mj_step(self.mjmodel, self.mjdata)
+            mujoco._functions.mj_step(self.mjmodel, self.mjdata)
             self.__ctrl_callback(self.mjmodel, self.mjdata)
             elapsed = time.perf_counter() - start_ts
             if elapsed < self.mjmodel.opt.timestep:
@@ -117,7 +105,7 @@ class MujocoServer:
         theta = np.arctan2(rotation[1, 0], rotation[0, 0])
         return np.array([xyz[0], xyz[1], theta])
 
-    def pull_status(self) -> Dict[str, Any]:
+    def pull_status(self):
         """
         Pull joints status of the robot from the simulator
         """
@@ -185,13 +173,6 @@ class MujocoServer:
             config.robot_settings["gripper_min_max"],
         )
 
-    def get_base_pose(self):
-        xyz = self.mjdata.body("base_link").xpos
-        rotation = self.mjdata.body("base_link").xmat.reshape(3, 3)
-        theta = np.arctan2(rotation[1, 0], rotation[0, 0])
-        return np.array([xyz[0], xyz[1], theta])
-
-
     def pull_camera_data(self):
         """
         Pull camera data from the simulator and return as a dictionary
@@ -202,6 +183,7 @@ class MujocoServer:
         self.rgb_renderer.update_scene(self.mjdata, "d405_rgb")
         self.depth_renderer.update_scene(self.mjdata, "d405_rgb")
 
+        # Rendering in the control loop is not ideal, but note: on macos with the cgl lock, this render call blocks while running with the default mujoco viewer.
         new_imagery["cam_d405_rgb"] = self.rgb_renderer.render()
         new_imagery["cam_d405_depth"] = utils.limit_depth_distance(
             self.depth_renderer.render(), config.depth_limits["d405"]
@@ -383,19 +365,46 @@ class StretchMujocoSimulator:
     """
 
     def __init__(
-        self, scene_xml_path: Optional[str] = None, model: Optional[MjModel] = None, camera_hz="10hz",
+        self,
+        scene_xml_path: str|None = None,
+        model: MjModel|None = None, 
+        camera_hz="10hz",
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
         self.camera_hz = camera_hz
         self.urdf_model = utils.URDFmodel()
         self._server_process = None
-        self._manager = None
-        self._command = None
-        self._status = None
-        self._imagery = None
         self._running = False
-        self._stop_event = None
+
+        signal.signal(signal.SIGTERM, self._stop_handler)
+        signal.signal(signal.SIGINT, self._stop_handler)
+
+        self._manager = Manager()
+        self._stop_event = self._manager.Event()
+        self._command = self._manager.dict({'val': {}})
+        self._status = self._manager.dict({'val': {
+            "time": None,
+            "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
+            "lift": {"pos": None, "vel": None},
+            "arm": {"pos": None, "vel": None},
+            "head_pan": {"pos": None, "vel": None},
+            "head_tilt": {"pos": None, "vel": None},
+            "wrist_yaw": {"pos": None, "vel": None},
+            "wrist_pitch": {"pos": None, "vel": None},
+            "wrist_roll": {"pos": None, "vel": None},
+            "gripper": {"pos": None, "vel": None},
+        }})
+        self._imagery = self._manager.dict({'val': {
+            "time": None,
+            "cam_d405_rgb": None,
+            "cam_d405_depth": None,
+            "cam_d405_K": None,
+            "cam_d435i_rgb": None,
+            "cam_d435i_depth": None,
+            "cam_d435i_K": None,
+            "cam_nav_rgb": None,
+        }})
 
     @require_connection
     def home(self) -> None:
@@ -489,10 +498,14 @@ class StretchMujocoSimulator:
         }
 
     @require_connection
-    def get_base_pose(self) -> np.ndarray:
+    def get_base_pose(self) :
         """Get the se(2) base pose: x, y, and theta"""
         status = self.pull_status()
-        return (status['base']['x'], status['base']['y'], status['base']['theta'])
+        return (
+            status['base']['x'], 
+            status['base']['y'], 
+            status['base']['theta']
+            )
 
     @require_connection
     def get_ee_pose(self) -> np.ndarray:
@@ -547,55 +560,7 @@ class StretchMujocoSimulator:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
             headless: bool, whether to run the simulation in headless mode
         """
-        signal.signal(signal.SIGTERM, self._stop_handler)
-        signal.signal(signal.SIGINT, self._stop_handler)
-        self._manager = Manager()
-        self._stop_event = self._manager.Event()
-        # {
-        #     "move_by" : {
-        #         "trigger": None,
-        #         "actuator_name": None,
-        #         "pos": None,
-        #     },
-        #     "move_to" : {
-        #         "trigger": None,
-        #         "actuator_name": None,
-        #         "pos": None,
-        #     },
-        #     "set_base_velocity" : {
-        #         "trigger": None,
-        #         "v_linear": None,
-        #         "omega": None,
-        #     },
-        #     "keyframe" : {
-        #         "trigger": None,
-        #         "name": None,
-        #     },
-        # }
-        self._command = self._manager.dict({'val': {}})
-        self._status = self._manager.dict({'val': {
-            "time": None,
-            "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
-            "lift": {"pos": None, "vel": None},
-            "arm": {"pos": None, "vel": None},
-            "head_pan": {"pos": None, "vel": None},
-            "head_tilt": {"pos": None, "vel": None},
-            "wrist_yaw": {"pos": None, "vel": None},
-            "wrist_pitch": {"pos": None, "vel": None},
-            "wrist_roll": {"pos": None, "vel": None},
-            "gripper": {"pos": None, "vel": None},
-        }})
-        self._imagery = self._manager.dict({'val': {
-            "time": None,
-            "cam_d405_rgb": None,
-            "cam_d405_depth": None,
-            "cam_d405_K": None,
-            "cam_d435i_rgb": None,
-            "cam_d435i_depth": None,
-            "cam_d435i_K": None,
-            "cam_nav_rgb": None,
-        }})
-        self._server_process = Process(target=launch_server, args=(self.scene_xml_path, self.model, self.camera_hz, False, show_viewer_ui, headless, self._stop_event, self._command, self._status, self._imagery))
+        self._server_process = Process(target=launch_server, args=(self.scene_xml_path, self.model, self.camera_hz, show_viewer_ui, headless, self._stop_event, self._command, self._status, self._imagery))
         self._server_process.start()
         self._running = True
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
@@ -618,10 +583,6 @@ class StretchMujocoSimulator:
         )
         self._running = False
         self._stop_event.set()
-        self._server_process.join()
-        self._stop_event = None
+        if self._server_process:
+            self._server_process.join()
         self._server_process = None
-        self._manager = None
-        self._command = None
-        self._status = None
-        self._imagery = None
