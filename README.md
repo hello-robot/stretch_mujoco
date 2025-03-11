@@ -23,6 +23,7 @@ cd stretch_mujoco
 Then, install this repo:
 
 ```
+uv venv
 uv pip install -e .
 ```
 
