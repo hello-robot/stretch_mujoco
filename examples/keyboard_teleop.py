@@ -5,8 +5,10 @@ import tty
 
 import click
 
+from examples.camera_feeds import show_camera_feeds
 from stretch_mujoco import StretchMujocoSimulator
-from stretch_mujoco.config import Actuators, CameraRates
+from stretch_mujoco.cameras import StretchCameras
+from stretch_mujoco.config import Actuators
 
 
 def getch():
@@ -83,17 +85,21 @@ def keyboard_control(sim:StretchMujocoSimulator):
 @click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
 def main(scene_xml_path: str, robocasa_env: bool):
     model = None
+    cameras_to_use = [StretchCameras.cam_d405_rgb]
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
         model, xml, objects_info = model_generation_wizard()
-        sim = StretchMujocoSimulator(model=model, camera_hz=CameraRates.hundredHz)
+        sim = StretchMujocoSimulator(model=model, cameras_to_use=cameras_to_use)
     elif scene_xml_path:
-        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path, camera_hz=CameraRates.hundredHz)
+        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path, cameras_to_use=cameras_to_use)
     else:
-        sim = StretchMujocoSimulator(camera_hz=CameraRates.hundredHz)
+        sim = StretchMujocoSimulator( cameras_to_use=cameras_to_use)
     try:
         sim.start()
+
+        show_camera_feeds(sim, cameras_to_use, print_fps=True)
+        
         keyboard_control(sim)
     except KeyboardInterrupt:
         sim.stop()

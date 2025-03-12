@@ -9,12 +9,6 @@ camera_settings = {
 }
 
 
-class CameraRates(Enum):
-    hundredHz = 100
-    tenHz = 10
-    twentyHz = 20
-
-
 robot_settings = {
     "wheel_diameter": 0.1016,
     "wheel_separation": 0.3153,

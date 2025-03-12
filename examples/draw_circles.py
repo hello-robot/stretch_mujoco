@@ -5,7 +5,7 @@ import numpy as np
 
 from examples.camera_feeds import show_camera_feeds
 from stretch_mujoco.cameras import StretchCameras
-from stretch_mujoco.config import Actuators, CameraRates
+from stretch_mujoco.config import Actuators
 from stretch_mujoco.stretch_mujoco import StretchMujocoSimulator
 
 
@@ -24,19 +24,18 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
         time.sleep(0.5)
         sim.move_to(Actuators.lift, pt[1])
         time.sleep(0.5)
-        print("fps", sim.pull_status().fps)
 
 
 
 if __name__ == "__main__":
     cameras_to_use = StretchCameras.all()
-    cameras_to_use = [StretchCameras.cam_d405_rgb]
-    sim = StretchMujocoSimulator(camera_hz=CameraRates.hundredHz, cameras_to_use=cameras_to_use)
+    cameras_to_use = [StretchCameras.cam_d405_rgb, StretchCameras.cam_d405_depth]
+    sim = StretchMujocoSimulator(camera_hz=20.0, cameras_to_use=cameras_to_use)
     try:
         sim.start()
         time.sleep(2)
 
-        show_camera_feeds(sim, cameras_to_use)
+        show_camera_feeds(sim, cameras_to_use, True)
 
         # sim.move_to(Actuators.wrist_yaw, 1.5707)
         # time.sleep(0.5)

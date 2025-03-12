@@ -30,7 +30,7 @@ from mujoco.glfw import GLContext as GlFwContext
 def launch_server(
     scene_xml_path: str | None,
     model,
-    camera_hz: config.CameraRates,
+    camera_hz: float,
     show_viewer_ui: bool,
     headless: bool,
     stop_event: threading.Event,
@@ -73,7 +73,7 @@ class MujocoServer:
         self,
         scene_xml_path: str | None,
         model,
-        camera_hz: config.CameraRates,
+        camera_hz: float,
         stop_event: threading.Event,
         command: DictProxy,
         status: DictProxy,
@@ -277,7 +277,7 @@ class MujocoServer:
         while not self.status["val"] or not self.status["val"]["time"]:
             time.sleep(0.1)
         while not self.stop_event.is_set():
-            time.sleep(1/self.camera_rate.value)
+            time.sleep(1/self.camera_rate) # Hz to seconds
             self._pull_camera_data()
 
     def _pull_camera_data(self):
@@ -477,7 +477,7 @@ class StretchMujocoSimulator:
         self,
         scene_xml_path: str | None = None,
         model: MjModel | None = None,
-        camera_hz=config.CameraRates.tenHz,
+        camera_hz:float = 10,
         cameras_to_use: list[StretchCameras] = []
     ) -> None:
         self.scene_xml_path = scene_xml_path
