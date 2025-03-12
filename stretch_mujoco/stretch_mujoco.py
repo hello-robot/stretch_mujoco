@@ -21,7 +21,7 @@ from mujoco._structs import MjData, MjModel
 from stretch_mujoco.cameras import StretchCameras
 import stretch_mujoco.config as config
 import stretch_mujoco.utils as utils
-from stretch_mujoco.utils import require_connection
+from stretch_mujoco.utils import FpsCounter, require_connection
 
 from mujoco.glfw import GLContext as GlFwContext
 
@@ -115,6 +115,8 @@ class MujocoServer:
         self.imagery_thread = threading.Thread(target=self._imagery_loop)
         self.imagery_thread.start()
 
+        self.fps_counter = FpsCounter()
+
     def run(self, show_viewer_ui, headless):
         if headless:
             self.__run_headless_simulation()
@@ -168,8 +170,11 @@ class MujocoServer:
         """
         Pull joints status of the robot from the simulator
         """
+        self.fps_counter.tick()
+
         new_status = {
             "time": None,
+            "fps": self.fps_counter.fps,
             "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
             "lift": {"pos": None, "vel": None},
             "arm": {"pos": None, "vel": None},
@@ -284,7 +289,7 @@ class MujocoServer:
 
     def _pull_camera_data(self):
         """
-        Pull camera data from the simulator and return as a dictionary
+        Render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
         """
         new_imagery = {}
         new_imagery["time"] = self.mjdata.time

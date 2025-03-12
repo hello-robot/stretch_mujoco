@@ -1,5 +1,6 @@
 import math
 import re
+import time
 import xml.etree.ElementTree as ET
 from typing import Tuple
 
@@ -100,6 +101,21 @@ def diff_drive_inv_kinematics(V: float, omega: float) -> tuple:
 
     return (w_left, w_right)
 
+class FpsCounter:
+    def __init__(self):
+        self.fps_counter = 0
+        self.fps_start_time = time.time()
+        self.fps = 0
+    
+    def tick(self):
+        self.fps_counter += 1
+        
+        fps_duration = time.time() - self.fps_start_time
+        # When one second has passed, count:
+        if fps_duration > 1: 
+            self.fps = self.fps_counter / fps_duration
+            self.fps_start_time = time.time()
+            self.fps_counter = 0
 
 class URDFmodel:
     def __init__(self) -> None:
