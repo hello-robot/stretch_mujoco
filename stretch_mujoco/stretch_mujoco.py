@@ -1,6 +1,7 @@
 from multiprocessing import Manager, Process
 import os
 import copy
+import platform
 import signal
 import threading
 import time
@@ -9,6 +10,8 @@ import click
 import mujoco
 import mujoco._functions
 import mujoco._callbacks
+import mujoco._render
+import mujoco._enums
 import mujoco.viewer
 import numpy as np
 from mujoco._structs import MjData, MjModel
@@ -17,11 +20,34 @@ import stretch_mujoco.config as config
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
 
+from mujoco.glfw import GLContext as GlFwContext
+
 
 def launch_server(scene_xml_path, model, camera_hz, show_viewer_ui, headless, stop_event, command, status, imagery):
     server = MujocoServer(scene_xml_path, model, camera_hz, stop_event, command, status, imagery)
     server.run( show_viewer_ui, headless)
 
+
+def switch_to_glfw_renderer(mjmodel:MjModel, renderer:mujoco.Renderer):
+    """
+    On Darwin, the default renderer in `mujoco/gl_context.py` is CGL, which is not compatible with offscreen rendering.
+
+    This function frees the initial display context and creates a new one with GLFW.
+    """
+    if renderer._gl_context:
+        renderer._gl_context.free()
+    if renderer._mjr_context:
+        renderer._mjr_context.free()
+
+    renderer._gl_context = GlFwContext(480, 640)
+    
+    renderer._gl_context.make_current()
+
+    renderer._mjr_context = mujoco._render.MjrContext(mjmodel, mujoco._enums.mjtFontScale.mjFONTSCALE_150.value)
+    mujoco._render.mjr_setBuffer(
+        mujoco._enums.mjtFramebuffer.mjFB_OFFSCREEN.value, renderer._mjr_context
+    )
+    renderer._mjr_context.readDepthMap = mujoco._enums.mjtDepthMap.mjDEPTH_ZEROFAR
 
 class MujocoServer:
 
@@ -45,6 +71,12 @@ class MujocoServer:
         self.camera_rate = config.camera_hzs[camera_hz]
         self.rgb_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
         self.depth_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
+
+        if platform.system() == "Darwin":
+            # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering, and blocks the camera renderers
+            switch_to_glfw_renderer(self.mjmodel, self.rgb_renderer)
+            switch_to_glfw_renderer(self.mjmodel, self.depth_renderer)
+
         self.depth_renderer.enable_depth_rendering()
 
         self.viewer = mujoco.viewer
