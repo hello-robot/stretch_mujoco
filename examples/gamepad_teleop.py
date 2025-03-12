@@ -8,8 +8,8 @@ from gamepad_controller import GamePadController
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.utils import get_depth_color_map
 
-sim = None
-gamepad = None
+sim:StretchMujocoSimulator
+gamepad:GamePadController
 
 
 def display_camera_feeds():

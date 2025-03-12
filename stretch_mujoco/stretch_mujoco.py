@@ -1,4 +1,6 @@
 from multiprocessing import Manager, Process
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from multiprocessing.managers import DictProxy
 import os
 import copy
 import platform
@@ -16,6 +18,7 @@ import mujoco.viewer
 import numpy as np
 from mujoco._structs import MjData, MjModel
 
+from stretch_mujoco.cameras import StretchCameras
 import stretch_mujoco.config as config
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
@@ -23,12 +26,23 @@ from stretch_mujoco.utils import require_connection
 from mujoco.glfw import GLContext as GlFwContext
 
 
-def launch_server(scene_xml_path, model, camera_hz, show_viewer_ui, headless, stop_event, command, status, imagery):
-    server = MujocoServer(scene_xml_path, model, camera_hz, stop_event, command, status, imagery)
-    server.run( show_viewer_ui, headless)
+def launch_server(
+    scene_xml_path: str | None,
+    model,
+    camera_hz: config.CameraRates,
+    show_viewer_ui: bool,
+    headless: bool,
+    stop_event: threading.Event,
+    command: DictProxy,
+    status: DictProxy,
+    imagery: DictProxy,
+    cameras_to_use: list[StretchCameras]
+):
+    server = MujocoServer(scene_xml_path, model, camera_hz, stop_event, command, status, imagery, cameras_to_use)
+    server.run(show_viewer_ui, headless)
 
 
-def switch_to_glfw_renderer(mjmodel:MjModel, renderer:mujoco.Renderer):
+def switch_to_glfw_renderer(mjmodel: MjModel, renderer: mujoco.Renderer):
     """
     On Darwin, the default renderer in `mujoco/gl_context.py` is CGL, which is not compatible with offscreen rendering.
 
@@ -40,18 +54,31 @@ def switch_to_glfw_renderer(mjmodel:MjModel, renderer:mujoco.Renderer):
         renderer._mjr_context.free()
 
     renderer._gl_context = GlFwContext(480, 640)
-    
+
     renderer._gl_context.make_current()
 
-    renderer._mjr_context = mujoco._render.MjrContext(mjmodel, mujoco._enums.mjtFontScale.mjFONTSCALE_150.value)
+    renderer._mjr_context = mujoco._render.MjrContext(
+        mjmodel, mujoco._enums.mjtFontScale.mjFONTSCALE_150.value
+    )
     mujoco._render.mjr_setBuffer(
         mujoco._enums.mjtFramebuffer.mjFB_OFFSCREEN.value, renderer._mjr_context
     )
     renderer._mjr_context.readDepthMap = mujoco._enums.mjtDepthMap.mjDEPTH_ZEROFAR
 
+
 class MujocoServer:
 
-    def __init__(self, scene_xml_path, model, camera_hz, stop_event, command, status, imagery):
+    def __init__(
+        self,
+        scene_xml_path: str | None,
+        model,
+        camera_hz: config.CameraRates,
+        stop_event: threading.Event,
+        command: DictProxy,
+        status: DictProxy,
+        imagery:DictProxy,
+        cameras_to_use: list[StretchCameras]
+    ):
         """
         Initialize the Simulator handle with a scene
         Args:
@@ -68,16 +95,12 @@ class MujocoServer:
         self.mjdata = MjData(self.mjmodel)
         self._set_camera_properties()
 
-        self.camera_rate = config.camera_hzs[camera_hz]
-        self.rgb_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
-        self.depth_renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
+        self.camera_rate = camera_hz
 
-        if platform.system() == "Darwin":
-            # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering, and blocks the camera renderers
-            switch_to_glfw_renderer(self.mjmodel, self.rgb_renderer)
-            switch_to_glfw_renderer(self.mjmodel, self.depth_renderer)
+        self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
 
-        self.depth_renderer.enable_depth_rendering()
+        for camera in cameras_to_use:
+            self._toggle_camera(camera)
 
         self.viewer = mujoco.viewer
         self._base_in_pos_motion = False
@@ -86,6 +109,11 @@ class MujocoServer:
         self.command = command
         self.status = status
         self.imagery = imagery
+
+        self.imagery_thread_pool = ThreadPoolExecutor(max_workers=5)
+
+        self.imagery_thread = threading.Thread(target=self._imagery_loop)
+        self.imagery_thread.start()
 
     def run(self, show_viewer_ui, headless):
         if headless:
@@ -122,12 +150,11 @@ class MujocoServer:
         Callback function that gets executed with mj_step
         """
         if self.stop_event.is_set():
+            self.imagery_thread.join()
             os.kill(os.getpid(), 9)
         self.mjdata = data
         self.mjmodel = model
         self.pull_status()
-        if (int(self.status['val']['time']*100)%self.camera_rate == 0):
-            self.pull_camera_data()
         self.push_command()
 
     def get_base_pose(self) -> np.ndarray:
@@ -193,7 +220,7 @@ class MujocoServer:
             new_status["base"]["theta"],
         ) = self.get_base_pose()
 
-        self.status['val'] = new_status
+        self.status["val"] = new_status
 
     def _to_real_gripper_range(self, pos: float) -> float:
         """
@@ -205,36 +232,82 @@ class MujocoServer:
             config.robot_settings["gripper_min_max"],
         )
 
-    def pull_camera_data(self):
+    def _create_camera_renderer(self, is_depth: bool):
+        renderer = mujoco.Renderer(self.mjmodel, height=480, width=640)
+
+        if platform.system() == "Darwin":
+            # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering, and blocks the camera renderers
+            switch_to_glfw_renderer(self.mjmodel, renderer)
+
+        if is_depth:
+            renderer.enable_depth_rendering()
+
+        return renderer
+
+    def _render_camera(self, renderer: mujoco.Renderer, camera: StretchCameras):
+        """
+        This calls update_scene and render() for an offscreen camera buffer.
+
+        Use this with the _toggle_camera() functionality in this class.
+        """
+
+        renderer.update_scene(self.mjdata, camera.camera_name_in_scene)
+
+        render = renderer.render()
+
+        post_render = camera.post_processing_callback
+        if post_render:
+            render = post_render(render)
+
+        return (camera, render)
+
+    def _toggle_camera(self, camera: StretchCameras):
+        """
+        Creates a renderer and render params for the cameras the user wants to use.
+
+        When a camera is toggled off, it's removed from self.camera_renderers to save computation costs.
+        """
+        if camera in self.camera_renderers:
+            del self.camera_renderers[camera]
+            return
+
+        self.camera_renderers[camera] = self._create_camera_renderer(is_depth=camera.is_depth)
+
+    def _imagery_loop(self):
+        while not self.status["val"] or not self.status["val"]["time"]:
+            time.sleep(0.1)
+        while not self.stop_event.is_set():
+            if int(self.status["val"]["time"] * 100) % self.camera_rate.value == 0:
+                self._pull_camera_data()
+            else:
+                time.sleep(0.001)
+
+    def _pull_camera_data(self):
         """
         Pull camera data from the simulator and return as a dictionary
         """
         new_imagery = {}
         new_imagery["time"] = self.mjdata.time
 
-        self.rgb_renderer.update_scene(self.mjdata, "d405_rgb")
-        self.depth_renderer.update_scene(self.mjdata, "d405_rgb")
-
-        # Rendering in the control loop is not ideal, but note: on macos with the cgl lock, this render call blocks while running with the default mujoco viewer.
-        new_imagery["cam_d405_rgb"] = self.rgb_renderer.render()
-        new_imagery["cam_d405_depth"] = utils.limit_depth_distance(
-            self.depth_renderer.render(), config.depth_limits["d405"]
+        # This is a bit hard to read, so here's an explanation,
+        # we're using self.imagery_thread_pool, which is a ThreadPoolExecutor to handle calling self._render_camera off the UI thread.
+        # the parameters for self._render_camera are being fetched from self.camera_renderers and passed along the call:
+        futures = as_completed(
+            [
+                self.imagery_thread_pool.submit(self._render_camera, renderer, camera)
+                for (camera, renderer) in self.camera_renderers.items()
+            ]
         )
+
+        for future in futures:
+            # Put the rendered image data into the new_imagery dictionary
+            (name_in_imagery, render) = future.result()
+            new_imagery[name_in_imagery] = render
+
         new_imagery["cam_d405_K"] = self.get_camera_params("d405_rgb")
-
-        self.rgb_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
-        self.depth_renderer.update_scene(self.mjdata, "d435i_camera_rgb")
-
-        new_imagery["cam_d435i_rgb"] = self.rgb_renderer.render()
-        new_imagery["cam_d435i_depth"] = utils.limit_depth_distance(
-            self.depth_renderer.render(), config.depth_limits["d435i"]
-        )
         new_imagery["cam_d435i_K"] = self.get_camera_params("d435i_camera_rgb")
 
-        self.rgb_renderer.update_scene(self.mjdata, "nav_camera_rgb")
-        new_imagery["cam_nav_rgb"] = self.rgb_renderer.render()
-
-        self.imagery['val'] = new_imagery
+        self.imagery["val"] = new_imagery
 
     def get_camera_params(self, camera_name: str) -> np.ndarray:
         """
@@ -273,9 +346,9 @@ class MujocoServer:
 
     def push_command(self):
         # move_by
-        if 'move_by' in self.command['val'] and self.command['val']['move_by']['trigger']:
-            actuator_name = self.command['val']['move_by']['actuator_name']
-            pos = self.command['val']['move_by']['pos']
+        if "move_by" in self.command["val"] and self.command["val"]["move_by"]["trigger"]:
+            actuator_name = self.command["val"]["move_by"]["actuator_name"]
+            pos = self.command["val"]["move_by"]["pos"]
             if actuator_name in ["base_translate", "base_rotate"]:
                 if self._base_in_pos_motion:
                     self._stop_base_pos_tracking()
@@ -287,34 +360,40 @@ class MujocoServer:
             else:
                 if actuator_name == "gripper":
                     self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
-                        self.status['val'][actuator_name]["pos"] + pos
+                        self.status["val"][actuator_name]["pos"] + pos
                     )
                 else:
                     self.mjdata.actuator(actuator_name).ctrl = (
-                        self.status['val'][actuator_name]["pos"] + pos
+                        self.status["val"][actuator_name]["pos"] + pos
                     )
-            self.command['val'] = {}
+            self.command["val"] = {}
 
         # move_to
-        if 'move_to' in self.command['val'] and self.command['val']['move_to']['trigger']:
-            actuator_name = self.command['val']['move_to']['actuator_name']
-            pos = self.command['val']['move_to']['pos']
+        if "move_to" in self.command["val"] and self.command["val"]["move_to"]["trigger"]:
+            actuator_name = self.command["val"]["move_to"]["actuator_name"]
+            pos = self.command["val"]["move_to"]["pos"]
             if actuator_name == "gripper":
                 self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
             else:
                 self.mjdata.actuator(actuator_name).ctrl = pos
-            self.command['val'] = {}
+            self.command["val"] = {}
 
         # set_base_velocity
-        if 'set_base_velocity' in self.command['val'] and self.command['val']['set_base_velocity']['trigger']:
-            self.set_base_velocity(self.command['val']['set_base_velocity']['v_linear'], self.command['val']['set_base_velocity']['omega'])
-            self.command['val'] = {}
+        if (
+            "set_base_velocity" in self.command["val"]
+            and self.command["val"]["set_base_velocity"]["trigger"]
+        ):
+            self.set_base_velocity(
+                self.command["val"]["set_base_velocity"]["v_linear"],
+                self.command["val"]["set_base_velocity"]["omega"],
+            )
+            self.command["val"] = {}
 
         # keyframe
-        if 'keyframe' in self.command['val'] and self.command['val']['keyframe']['trigger']:
-            name = self.command['val']['keyframe']['name']
+        if "keyframe" in self.command["val"] and self.command["val"]["keyframe"]["trigger"]:
+            name = self.command["val"]["keyframe"]["name"]
             self.mjdata.ctrl = self.mjmodel.keyframe(name).ctrl
-            self.command['val'] = {}
+            self.command["val"] = {}
 
     def _base_translate_by(self, x_inc: float) -> None:
         """
@@ -398,9 +477,10 @@ class StretchMujocoSimulator:
 
     def __init__(
         self,
-        scene_xml_path: str|None = None,
-        model: MjModel|None = None, 
-        camera_hz="10hz",
+        scene_xml_path: str | None = None,
+        model: MjModel | None = None,
+        camera_hz=config.CameraRates.tenHz,
+        cameras_to_use: list[StretchCameras] = [StretchCameras.cam_d405_rgb]
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
@@ -408,59 +488,58 @@ class StretchMujocoSimulator:
         self.urdf_model = utils.URDFmodel()
         self._server_process = None
         self._running = False
+        self._cameras_to_use = cameras_to_use
 
         signal.signal(signal.SIGTERM, self._stop_handler)
         signal.signal(signal.SIGINT, self._stop_handler)
 
         self._manager = Manager()
         self._stop_event = self._manager.Event()
-        self._command = self._manager.dict({'val': {}})
-        self._status = self._manager.dict({'val': {
-            "time": None,
-            "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
-            "lift": {"pos": None, "vel": None},
-            "arm": {"pos": None, "vel": None},
-            "head_pan": {"pos": None, "vel": None},
-            "head_tilt": {"pos": None, "vel": None},
-            "wrist_yaw": {"pos": None, "vel": None},
-            "wrist_pitch": {"pos": None, "vel": None},
-            "wrist_roll": {"pos": None, "vel": None},
-            "gripper": {"pos": None, "vel": None},
-        }})
-        self._imagery = self._manager.dict({'val': {
-            "time": None,
-            "cam_d405_rgb": None,
-            "cam_d405_depth": None,
-            "cam_d405_K": None,
-            "cam_d435i_rgb": None,
-            "cam_d435i_depth": None,
-            "cam_d435i_K": None,
-            "cam_nav_rgb": None,
-        }})
+        self._command = self._manager.dict({"val": {}})
+        self._status = self._manager.dict(
+            {
+                "val": {
+                    "time": None,
+                    "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
+                    "lift": {"pos": None, "vel": None},
+                    "arm": {"pos": None, "vel": None},
+                    "head_pan": {"pos": None, "vel": None},
+                    "head_tilt": {"pos": None, "vel": None},
+                    "wrist_yaw": {"pos": None, "vel": None},
+                    "wrist_pitch": {"pos": None, "vel": None},
+                    "wrist_roll": {"pos": None, "vel": None},
+                    "gripper": {"pos": None, "vel": None},
+                }
+            }
+        )
+        self._imagery = self._manager.dict(
+            {
+                "val": {
+                    "time": None,
+                    "cam_d405_rgb": None,
+                    "cam_d405_depth": None,
+                    "cam_d405_K": None,
+                    "cam_d435i_rgb": None,
+                    "cam_d435i_depth": None,
+                    "cam_d435i_K": None,
+                    "cam_nav_rgb": None,
+                }
+            }
+        )
 
     @require_connection
     def home(self) -> None:
         """
         Move the robot to home position
         """
-        self._command['val'] = {
-            'keyframe': {
-                'name': 'home',
-                'trigger': True
-            }
-        }
+        self._command["val"] = {"keyframe": {"name": "home", "trigger": True}}
 
     @require_connection
     def stow(self) -> None:
         """
         Move the robot to stow position
         """
-        self._command['val'] = {
-            'keyframe': {
-                'name': 'stow',
-                'trigger': True
-            }
-        }
+        self._command["val"] = {"keyframe": {"name": "stow", "trigger": True}}
 
     @require_connection
     def move_to(self, actuator_name: str, pos: float) -> None:
@@ -481,12 +560,8 @@ class StretchMujocoSimulator:
             click.secho(f"{actuator_name} not allowed for move_to", fg="red")
             return
 
-        self._command['val'] = {
-            'move_to': {
-                'actuator_name': actuator_name,
-                'pos': pos,
-                'trigger': True
-            }
+        self._command["val"] = {
+            "move_to": {"actuator_name": actuator_name, "pos": pos, "trigger": True}
         }
 
     @require_connection
@@ -505,12 +580,8 @@ class StretchMujocoSimulator:
             )
             return
 
-        self._command['val'] = {
-            'move_by': {
-                'actuator_name': actuator_name,
-                'pos': pos,
-                'trigger': True
-            }
+        self._command["val"] = {
+            "move_by": {"actuator_name": actuator_name, "pos": pos, "trigger": True}
         }
 
     @require_connection
@@ -521,23 +592,15 @@ class StretchMujocoSimulator:
             v_linear: float, linear velocity
             omega: float, angular velocity
         """
-        self._command['val'] = {
-            'set_base_velocity': {
-                'v_linear': v_linear,
-                'omega': omega,
-                'trigger': True
-            }
+        self._command["val"] = {
+            "set_base_velocity": {"v_linear": v_linear, "omega": omega, "trigger": True}
         }
 
     @require_connection
-    def get_base_pose(self) :
+    def get_base_pose(self):
         """Get the se(2) base pose: x, y, and theta"""
         status = self.pull_status()
-        return (
-            status['base']['x'], 
-            status['base']['y'], 
-            status['base']['theta']
-            )
+        return (status["base"]["x"], status["base"]["y"], status["base"]["theta"])
 
     @require_connection
     def get_ee_pose(self) -> np.ndarray:
@@ -569,14 +632,14 @@ class StretchMujocoSimulator:
         """
         Pull camera data from the simulator and return as a dictionary
         """
-        return copy.copy(self._imagery['val'])
+        return copy.copy(self._imagery["val"])
 
     @require_connection
     def pull_status(self) -> dict:
         """
         Pull robot joint states from the simulator and return as a dictionary
         """
-        return copy.copy(self._status['val'])
+        return copy.copy(self._status["val"])
 
     def is_running(self) -> bool:
         """
@@ -592,7 +655,21 @@ class StretchMujocoSimulator:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
             headless: bool, whether to run the simulation in headless mode
         """
-        self._server_process = Process(target=launch_server, args=(self.scene_xml_path, self.model, self.camera_hz, show_viewer_ui, headless, self._stop_event, self._command, self._status, self._imagery))
+        self._server_process = Process(
+            target=launch_server,
+            args=(
+                self.scene_xml_path,
+                self.model,
+                self.camera_hz,
+                show_viewer_ui,
+                headless,
+                self._stop_event,
+                self._command,
+                self._status,
+                self._imagery,
+                self._cameras_to_use
+            ),
+        )
         self._server_process.start()
         self._running = True
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
