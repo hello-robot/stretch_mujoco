@@ -1,3 +1,4 @@
+import dataclasses
 import math
 import re
 import time
@@ -137,7 +138,7 @@ class URDFmodel:
             "joint_gripper_finger_left",
         ]
 
-    def get_transform(self, cfg: dict, link_name: str) -> np.ndarray:
+    def get_transform(self, cfg: dict, link_name: str) -> dict:
         """
         Get transformation matrix of the link w.r.t. the base_link
         """
@@ -195,7 +196,7 @@ def xml_remove_subelement(xml_str: str, subelement: str) -> str:
     return ET.tostring(root, encoding="unicode")
 
 
-def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, dict]:
+def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, dict|None]:
     """
     Remove a subelement from an XML string with a specified tag and name attribute
     """
@@ -248,7 +249,7 @@ def insert_line_after_mujoco_tag(xml_string: str, line_to_insert: str) -> str:
     return modified_xml
 
 
-def get_absolute_path_stretch_xml(robot_pose_attrib: dict = None) -> str:
+def get_absolute_path_stretch_xml(robot_pose_attrib: dict|None = None) -> str:
     """
     Generates Robot XML with absolute path to mesh files
     Args:
@@ -311,3 +312,11 @@ def get_depth_color_map(depth_image, clor_map=cv2.COLORMAP_JET):
     depth_8bit = ((1 - normalized_depth) * 255).astype(np.uint8)
     depth_8bit = cv2.applyColorMap(depth_8bit, clor_map)
     return depth_8bit
+
+def dataclass_from_dict(klass, dict_data:dict):
+    # references https://stackoverflow.com/a/54769644
+    try:
+        fieldtypes = {f.name:f.type for f in dataclasses.fields(klass)}
+        return klass(**{f:dataclass_from_dict(fieldtypes[f],dict_data[f]) for f in dict_data})
+    except:
+        return dict_data # Not a dataclass field

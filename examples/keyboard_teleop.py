@@ -6,7 +6,7 @@ import tty
 import click
 
 from stretch_mujoco import StretchMujocoSimulator
-from stretch_mujoco.config import CameraRates
+from stretch_mujoco.config import Actuators, CameraRates
 
 
 def getch():
@@ -36,42 +36,42 @@ def print_keyboard_options():
     click.secho("=====================================", fg="yellow")
 
 
-def keyboard_control(sim):
+def keyboard_control(sim:StretchMujocoSimulator):
     while True:
         print_keyboard_options()
         key = getch().lower()
         if key == "w":
-            sim.move_by("base_translate", 0.07)
+            sim.move_by(Actuators.base_translate, 0.07)
         elif key == "s":
-            sim.move_by("base_translate", -0.07)
+            sim.move_by(Actuators.base_translate, -0.07)
         elif key == "a":
-            sim.move_by("base_rotate", 0.15)
+            sim.move_by(Actuators.base_rotate, 0.15)
         elif key == "d":
-            sim.move_by("base_rotate", -0.15)
+            sim.move_by(Actuators.base_rotate, -0.15)
         elif key == "u":
-            sim.move_by("lift", 0.1)
+            sim.move_by(Actuators.lift, 0.1)
         elif key == "j":
-            sim.move_by("lift", -0.1)
+            sim.move_by(Actuators.lift, -0.1)
         elif key == "h":
-            sim.move_by("arm", -0.05)
+            sim.move_by(Actuators.arm, -0.05)
         elif key == "k":
-            sim.move_by("arm", 0.05)
+            sim.move_by(Actuators.arm, 0.05)
         elif key == "o":
-            sim.move_by("wrist_yaw", 0.2)
+            sim.move_by(Actuators.wrist_yaw, 0.2)
         elif key == "p":
-            sim.move_by("wrist_yaw", -0.2)
+            sim.move_by(Actuators.wrist_yaw, -0.2)
         elif key == "c":
-            sim.move_by("wrist_pitch", 0.2)
+            sim.move_by(Actuators.wrist_pitch, 0.2)
         elif key == "v":
-            sim.move_by("wrist_pitch", -0.2)
+            sim.move_by(Actuators.wrist_pitch, -0.2)
         elif key == "t":
-            sim.move_by("wrist_roll", 0.2)
+            sim.move_by(Actuators.wrist_roll, 0.2)
         elif key == "y":
-            sim.move_by("wrist_roll", -0.2)
+            sim.move_by(Actuators.wrist_roll, -0.2)
         elif key == "n":
-            sim.move_by("gripper", 0.07)
+            sim.move_by(Actuators.gripper, 0.07)
         elif key == "m":
-            sim.move_by("gripper", -0.07)
+            sim.move_by(Actuators.gripper, -0.07)
         elif key == "q":
             sim.stop()
             exit()

@@ -20,6 +20,7 @@ from mujoco._structs import MjData, MjModel
 
 from stretch_mujoco.cameras import StretchCameras
 import stretch_mujoco.config as config
+from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import FpsCounter, require_connection
 
@@ -172,60 +173,54 @@ class MujocoServer:
         """
         self.fps_counter.tick()
 
-        new_status = {
-            "time": None,
-            "fps": self.fps_counter.fps,
-            "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
-            "lift": {"pos": None, "vel": None},
-            "arm": {"pos": None, "vel": None},
-            "head_pan": {"pos": None, "vel": None},
-            "head_tilt": {"pos": None, "vel": None},
-            "wrist_yaw": {"pos": None, "vel": None},
-            "wrist_pitch": {"pos": None, "vel": None},
-            "wrist_roll": {"pos": None, "vel": None},
-            "gripper": {"pos": None, "vel": None},
-        }
-        new_status["time"] = self.mjdata.time
-        new_status["lift"]["pos"] = self.mjdata.actuator("lift").length[0]
-        new_status["lift"]["vel"] = self.mjdata.actuator("lift").velocity[0]
+        new_status = StretchStatus.default()
+        new_status.fps = self.fps_counter.fps
+        
+        if not self.mjdata or not self.mjdata.time:
+            print("WARNING: no mujoco data to report")
+            return
 
-        new_status["arm"]["pos"] = self.mjdata.actuator("arm").length[0]
-        new_status["arm"]["vel"] = self.mjdata.actuator("arm").velocity[0]
+        new_status.time = self.mjdata.time
+        new_status.lift.pos = self.mjdata.actuator("lift").length[0]
+        new_status.lift.vel = self.mjdata.actuator("lift").velocity[0]
 
-        new_status["head_pan"]["pos"] = self.mjdata.actuator("head_pan").length[0]
-        new_status["head_pan"]["vel"] = self.mjdata.actuator("head_pan").velocity[0]
+        new_status.arm.pos = self.mjdata.actuator("arm").length[0]
+        new_status.arm.vel = self.mjdata.actuator("arm").velocity[0]
 
-        new_status["head_tilt"]["pos"] = self.mjdata.actuator("head_tilt").length[0]
-        new_status["head_tilt"]["vel"] = self.mjdata.actuator("head_tilt").velocity[0]
+        new_status.head_pan.pos = self.mjdata.actuator("head_pan").length[0]
+        new_status.head_pan.vel = self.mjdata.actuator("head_pan").velocity[0]
 
-        new_status["wrist_yaw"]["pos"] = self.mjdata.actuator("wrist_yaw").length[0]
-        new_status["wrist_yaw"]["vel"] = self.mjdata.actuator("wrist_yaw").velocity[0]
+        new_status.head_tilt.pos = self.mjdata.actuator("head_tilt").length[0]
+        new_status.head_tilt.vel = self.mjdata.actuator("head_tilt").velocity[0]
 
-        new_status["wrist_pitch"]["pos"] = self.mjdata.actuator("wrist_pitch").length[0]
-        new_status["wrist_pitch"]["vel"] = self.mjdata.actuator("wrist_pitch").velocity[0]
+        new_status.wrist_yaw.pos = self.mjdata.actuator("wrist_yaw").length[0]
+        new_status.wrist_yaw.vel = self.mjdata.actuator("wrist_yaw").velocity[0]
 
-        new_status["wrist_roll"]["pos"] = self.mjdata.actuator("wrist_roll").length[0]
-        new_status["wrist_roll"]["vel"] = self.mjdata.actuator("wrist_roll").velocity[0]
+        new_status.wrist_pitch.pos = self.mjdata.actuator("wrist_pitch").length[0]
+        new_status.wrist_pitch.vel = self.mjdata.actuator("wrist_pitch").velocity[0]
+
+        new_status.wrist_roll.pos = self.mjdata.actuator("wrist_roll").length[0]
+        new_status.wrist_roll.vel = self.mjdata.actuator("wrist_roll").velocity[0]
 
         real_gripper_pos = self._to_real_gripper_range(self.mjdata.actuator("gripper").length[0])
-        new_status["gripper"]["pos"] = real_gripper_pos
-        new_status["gripper"]["vel"] = self.mjdata.actuator("gripper").velocity[
+        new_status.gripper.pos = real_gripper_pos
+        new_status.gripper.vel = self.mjdata.actuator("gripper").velocity[
             0
         ]  # This is still in sim gripper range
 
         left_wheel_vel = self.mjdata.actuator("left_wheel_vel").velocity[0]
         right_wheel_vel = self.mjdata.actuator("right_wheel_vel").velocity[0]
         (
-            new_status["base"]["x_vel"],
-            new_status["base"]["theta_vel"],
+            new_status.base.x_vel,
+            new_status.base.theta_vel,
         ) = utils.diff_drive_fwd_kinematics(left_wheel_vel, right_wheel_vel)
         (
-            new_status["base"]["x"],
-            new_status["base"]["y"],
-            new_status["base"]["theta"],
+            new_status.base.x,
+            new_status.base.y,
+            new_status.base.theta,
         ) = self.get_base_pose()
 
-        self.status["val"] = new_status
+        self.status["val"] = new_status.to_dict()
 
     def _to_real_gripper_range(self, pos: float) -> float:
         """
@@ -291,8 +286,8 @@ class MujocoServer:
         """
         Render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
         """
-        new_imagery = {}
-        new_imagery["time"] = self.mjdata.time
+        new_imagery = StretchCameraStatus.default()
+        new_imagery.time = self.mjdata.time
 
         # This is a bit hard to read, so here's an explanation,
         # we're using self.imagery_thread_pool, which is a ThreadPoolExecutor to handle calling self._render_camera off the UI thread.
@@ -306,13 +301,13 @@ class MujocoServer:
 
         for future in futures:
             # Put the rendered image data into the new_imagery dictionary
-            (name_in_imagery, render) = future.result()
-            new_imagery[name_in_imagery] = render
+            (camera, render) = future.result()
+            new_imagery.set_camera_data(camera, render)
 
-        new_imagery["cam_d405_K"] = self.get_camera_params("d405_rgb")
-        new_imagery["cam_d435i_K"] = self.get_camera_params("d435i_camera_rgb")
+        new_imagery.cam_d405_K = self.get_camera_params("d405_rgb")
+        new_imagery.cam_d435i_K = self.get_camera_params("d435i_camera_rgb")
 
-        self.imagery["val"] = new_imagery
+        self.imagery["val"] = new_imagery.to_dict()
 
     def get_camera_params(self, camera_name: str) -> np.ndarray:
         """
@@ -485,7 +480,7 @@ class StretchMujocoSimulator:
         scene_xml_path: str | None = None,
         model: MjModel | None = None,
         camera_hz=config.CameraRates.tenHz,
-        cameras_to_use: list[StretchCameras] = [StretchCameras.cam_d405_rgb]
+        cameras_to_use: list[StretchCameras] = []
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
@@ -503,32 +498,12 @@ class StretchMujocoSimulator:
         self._command = self._manager.dict({"val": {}})
         self._status = self._manager.dict(
             {
-                "val": {
-                    "time": None,
-                    "base": {"x": None, "y": None, "theta": None, "x_vel": None, "theta_vel": None},
-                    "lift": {"pos": None, "vel": None},
-                    "arm": {"pos": None, "vel": None},
-                    "head_pan": {"pos": None, "vel": None},
-                    "head_tilt": {"pos": None, "vel": None},
-                    "wrist_yaw": {"pos": None, "vel": None},
-                    "wrist_pitch": {"pos": None, "vel": None},
-                    "wrist_roll": {"pos": None, "vel": None},
-                    "gripper": {"pos": None, "vel": None},
-                }
+                "val": StretchStatus.default().to_dict()
             }
         )
         self._imagery = self._manager.dict(
             {
-                "val": {
-                    "time": None,
-                    "cam_d405_rgb": None,
-                    "cam_d405_depth": None,
-                    "cam_d405_K": None,
-                    "cam_d435i_rgb": None,
-                    "cam_d435i_depth": None,
-                    "cam_d435i_K": None,
-                    "cam_nav_rgb": None,
-                }
+                "val": StretchCameraStatus.default().to_dict()
             }
         )
 
@@ -547,46 +522,46 @@ class StretchMujocoSimulator:
         self._command["val"] = {"keyframe": {"name": "stow", "trigger": True}}
 
     @require_connection
-    def move_to(self, actuator_name: str, pos: float) -> None:
+    def move_to(self, actuator:  config.Actuators, pos: float) -> None:
         """
         Move the actuator to a specific position
         Args:
             actuator_name: str, name of the actuator
             pos: float, absolute position goal
         """
-        if actuator_name not in config.allowed_position_actuators:
+        if not actuator.is_position_actuator:
             click.secho(
-                f"Actuator {actuator_name} not recognized."
-                f"\n Available position actuators: {config.allowed_position_actuators}",
+                f"Actuator {actuator} not recognized."
+                f"\n Available position actuators: {config.Actuators.position_actuators()}",
                 fg="red",
             )
             return
-        if actuator_name in ["base_translate", "base_rotate"]:
-            click.secho(f"{actuator_name} not allowed for move_to", fg="red")
+        if actuator in ["base_translate", "base_rotate"]:
+            click.secho(f"{actuator} not allowed for move_to", fg="red")
             return
 
         self._command["val"] = {
-            "move_to": {"actuator_name": actuator_name, "pos": pos, "trigger": True}
+            "move_to": {"actuator_name": actuator.name, "pos": pos, "trigger": True}
         }
 
     @require_connection
-    def move_by(self, actuator_name: str, pos: float) -> None:
+    def move_by(self, actuator: config.Actuators, pos: float) -> None:
         """
         Move the actuator by a specific amount
         Args:
-            actuator_name: str, name of the actuator
+            actuator_name: Actuators, name of the actuator
             pos: float, position to increment by
         """
-        if actuator_name not in config.allowed_position_actuators:
+        if not actuator.is_position_actuator:
             click.secho(
-                f"Actuator {actuator_name} not recognized."
-                f"\n Available position actuators: {config.allowed_position_actuators}",
+                f"Actuator {actuator} not recognized."
+                f"\n Available position actuators: {config.Actuators.position_actuators()}",
                 fg="red",
             )
             return
 
         self._command["val"] = {
-            "move_by": {"actuator_name": actuator_name, "pos": pos, "trigger": True}
+            "move_by": {"actuator_name": actuator.name, "pos": pos, "trigger": True}
         }
 
     @require_connection
@@ -605,7 +580,7 @@ class StretchMujocoSimulator:
     def get_base_pose(self):
         """Get the se(2) base pose: x, y, and theta"""
         status = self.pull_status()
-        return (status["base"]["x"], status["base"]["y"], status["base"]["theta"])
+        return (status.base.x, status.base.y, status.base.theta)
 
     @require_connection
     def get_ee_pose(self) -> np.ndarray:
@@ -616,35 +591,35 @@ class StretchMujocoSimulator:
         """Pose of link in world frame"""
         status = self.pull_status()
         cfg = {
-            "wrist_yaw": status["wrist_yaw"]["pos"],
-            "wrist_pitch": status["wrist_pitch"]["pos"],
-            "wrist_roll": status["wrist_roll"]["pos"],
-            "lift": status["lift"]["pos"],
-            "arm": status["arm"]["pos"],
-            "head_pan": status["head_pan"]["pos"],
-            "head_tilt": status["head_tilt"]["pos"],
+            "wrist_yaw": status.wrist_yaw.pos,
+            "wrist_pitch": status.wrist_pitch.pos,
+            "wrist_roll": status.wrist_roll.pos,
+            "lift": status.lift.pos,
+            "arm": status.arm.pos,
+            "head_pan": status.head_pan.pos,
+            "head_tilt": status.head_tilt.pos,
         }
-        T = self.urdf_model.get_transform(cfg, link_name)
+        transform = self.urdf_model.get_transform(cfg, link_name)
         base_xyt = self.get_base_pose()
         base_4x4 = np.eye(4)
         base_4x4[:3, :3] = utils.Rz(base_xyt[2])
         base_4x4[:2, 3] = base_xyt[:2]
-        world_coord = np.matmul(base_4x4, T)
+        world_coord = np.matmul(base_4x4, transform)
         return world_coord
 
     @require_connection
-    def pull_camera_data(self) -> dict:
+    def pull_camera_data(self) -> StretchCameraStatus:
         """
         Pull camera data from the simulator and return as a dictionary
         """
-        return copy.copy(self._imagery["val"])
+        return StretchCameraStatus(**copy.copy(self._imagery["val"]))
 
     @require_connection
-    def pull_status(self) -> dict:
+    def pull_status(self) -> StretchStatus:
         """
         Pull robot joint states from the simulator and return as a dictionary
         """
-        return copy.copy(self._status["val"])
+        return StretchStatus.from_dict(copy.copy(self._status["val"]))
 
     def is_running(self) -> bool:
         """
@@ -678,7 +653,7 @@ class StretchMujocoSimulator:
         self._server_process.start()
         self._running = True
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
-        while (not self.pull_status()["time"]) or (not self.pull_camera_data()["time"]):
+        while (self.pull_status().time == 0) or (self.pull_camera_data().time == 0):
             time.sleep(0.2)
         self.home()
 
@@ -692,7 +667,7 @@ class StretchMujocoSimulator:
         if not self._running:
             return
         click.secho(
-            f"Stopping Stretch Mujoco Simulator... simulated runtime={self.pull_status()['time']:.1f}s",
+            f"Stopping Stretch Mujoco Simulator... simulated runtime={self.pull_status().time:.1f}s",
             fg="red",
         )
         self._running = False

@@ -21,6 +21,13 @@ class StretchCameras(Enum):
             self.name,
             self.post_processing_callback
         )
+    
+    @staticmethod
+    def all() -> list["StretchCameras"]:
+        """
+        Returns all the available cameras
+        """
+        return [camera for camera in StretchCameras]
 
     @property
     def camera_name_in_scene(self) -> str:

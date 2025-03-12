@@ -23,11 +23,16 @@ def main(task: str, layout: int, style: int, write_to_file):
     try:
         while sim.is_running():
             camera_data = sim.pull_camera_data()
-            cv2.imshow("cam_d405_rgb", camera_data["cam_d405_rgb"])
-            cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-            cv2.imshow("cam_d435i_rgb", camera_data["cam_d435i_rgb"])
-            cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
-            cv2.imshow("cam_nav_rgb", camera_data["cam_nav_rgb"])
+            if camera_data.cam_d405_rgb:
+                cv2.imshow("cam_d405_rgb", camera_data.cam_d405_rgb)
+            if camera_data.cam_d405_depth:
+                cv2.imshow("cam_d405_depth", camera_data.cam_d405_depth)
+            if  camera_data.cam_d435i_rgb:
+                cv2.imshow("cam_d435i_rgb", camera_data.cam_d435i_rgb)
+            if camera_data.cam_d435i_depth:
+                cv2.imshow("cam_d435i_depth", camera_data.cam_d435i_depth)
+            if camera_data.cam_nav_rgb:
+                cv2.imshow("cam_nav_rgb", camera_data.cam_nav_rgb)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 cv2.destroyAllWindows()
                 break
