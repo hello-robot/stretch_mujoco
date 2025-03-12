@@ -138,7 +138,7 @@ class URDFmodel:
             "joint_gripper_finger_left",
         ]
 
-    def get_transform(self, cfg: dict, link_name: str) -> dict:
+    def get_transform(self, cfg: dict, link_name: str) -> np.ndarray:
         """
         Get transformation matrix of the link w.r.t. the base_link
         """
@@ -157,7 +157,7 @@ class URDFmodel:
         if "gripper" in cfg.keys():
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
-        return self.urdf.link_fk(lk_cfg, link=link_name)
+        return self.urdf.link_fk(lk_cfg, link=link_name) #type: ignore
 
 
 def replace_xml_tag_value(xml_str: str, tag: str, attribute: str, pattern: str, value: str) -> str:

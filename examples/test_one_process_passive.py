@@ -8,7 +8,7 @@ imagery = {'val': {}}
 launch_server(
     None, 
     None, 
-    CameraRates.off, 
+    CameraRates.hundredHz, 
     True, 
     False, 
     threading.Event(), 

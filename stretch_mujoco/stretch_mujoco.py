@@ -277,10 +277,8 @@ class MujocoServer:
         while not self.status["val"] or not self.status["val"]["time"]:
             time.sleep(0.1)
         while not self.stop_event.is_set():
-            if int(self.status["val"]["time"] * 100) % self.camera_rate.value == 0:
-                self._pull_camera_data()
-            else:
-                time.sleep(0.001)
+            time.sleep(1/self.camera_rate.value)
+            self._pull_camera_data()
 
     def _pull_camera_data(self):
         """

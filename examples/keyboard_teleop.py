@@ -87,11 +87,11 @@ def main(scene_xml_path: str, robocasa_env: bool):
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
         model, xml, objects_info = model_generation_wizard()
-        sim = StretchMujocoSimulator(model=model, camera_hz=CameraRates.off)
+        sim = StretchMujocoSimulator(model=model, camera_hz=CameraRates.hundredHz)
     elif scene_xml_path:
-        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path, camera_hz=CameraRates.off)
+        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path, camera_hz=CameraRates.hundredHz)
     else:
-        sim = StretchMujocoSimulator(camera_hz=CameraRates.off)
+        sim = StretchMujocoSimulator(camera_hz=CameraRates.hundredHz)
     try:
         sim.start()
         keyboard_control(sim)

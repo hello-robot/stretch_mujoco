@@ -6,5 +6,5 @@ command = {"val": {}}
 status = {"val": {}}
 imagery = {"val": {}}
 launch_server(
-    None, None, CameraRates.off, False, False, threading.Event(), command, status, imagery, []
+    None, None, CameraRates.hundredHz, False, False, threading.Event(), command, status, imagery, []
 )

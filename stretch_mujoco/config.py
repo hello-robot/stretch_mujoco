@@ -10,11 +10,9 @@ camera_settings = {
 
 
 class CameraRates(Enum):
-    off = 101
+    hundredHz = 100
     tenHz = 10
-    twentyHz = (
-        5  # Can be difficult for most computers to simulate 20hz mujoco imagery at 100% wall time
-    )
+    twentyHz = 20
 
 
 robot_settings = {
