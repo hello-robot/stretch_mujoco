@@ -94,14 +94,6 @@ class MujocoServer:
         if model is not None:
             self.mjmodel = model
         self.mjdata = MjData(self.mjmodel)
-        self._set_camera_properties()
-
-        self.camera_rate = camera_hz
-
-        self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
-
-        for camera in cameras_to_use:
-            self._toggle_camera(camera)
 
         self.viewer = mujoco.viewer
         self._base_in_pos_motion = False
@@ -111,7 +103,16 @@ class MujocoServer:
         self.status = status
         self.imagery = imagery
 
-        self.imagery_thread_pool = ThreadPoolExecutor(max_workers=5)
+        self._set_camera_properties()
+
+        self.camera_rate = camera_hz
+
+        self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
+
+        for camera in cameras_to_use:
+            self._toggle_camera(camera)
+
+        self.imagery_thread_pool = ThreadPoolExecutor(max_workers=len(cameras_to_use))
 
         self.imagery_thread = threading.Thread(target=self._imagery_loop)
         self.imagery_thread.start()
