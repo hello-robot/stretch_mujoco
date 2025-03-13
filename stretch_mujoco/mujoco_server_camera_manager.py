@@ -1,0 +1,178 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import platform
+import threading
+import time
+from typing import TYPE_CHECKING
+import mujoco
+import numpy as np
+
+from stretch_mujoco import config, utils
+from stretch_mujoco.cameras import StretchCameras
+from stretch_mujoco.status import StretchCameraStatus
+from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
+
+if TYPE_CHECKING:
+    from stretch_mujoco.mujoco_server import MujocoServer
+
+class MujocoServerCameraManager:
+
+    def __init__(self, camera_hz: float, cameras_to_use:list[StretchCameras], mujoco_server: "MujocoServer") -> None:
+        
+        self.mujoco_server = mujoco_server
+
+        self.camera_rate = 1/camera_hz  # Hz to seconds
+
+        self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
+
+        self._set_camera_properties()
+
+        for camera in cameras_to_use:
+            # Add this camera for the cameras_rendering_thread_pool to do rendering on
+            self._add_camera_renderer(camera)
+
+        if platform.system() == "Darwin":
+            self.cameras_rendering_thread_pool = ThreadPoolExecutor(
+                max_workers=len(cameras_to_use) if cameras_to_use else 1
+            )
+        else:
+            # Linux is currently struggling with multi-threaded camera rendering:
+            self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=1)
+
+        self.cameras_thread = threading.Thread(target=self._camera_loop)
+        self.cameras_thread.start()
+        self.camera_fps_counter = FpsCounter()
+
+    def _camera_loop(self):
+        """
+        This is the thread loop that handles camera rendering.
+        """
+        while not self.mujoco_server.status["val"] or not self.mujoco_server.status["val"]["time"]:
+            # wait for sim to start
+            time.sleep(0.1)
+        time_start = time.perf_counter()
+        while not self.mujoco_server.stop_event.is_set():
+            self.camera_fps_counter.tick()
+
+            elapsed = time.perf_counter() - time_start
+            if elapsed < self.camera_rate:
+                # Wait to honor camera render rate requested by the user - or completely miss it if the rendering is slow.
+                time.sleep(self.camera_rate - elapsed)
+                time_start = time.perf_counter()
+
+            self._pull_camera_data()
+
+    def _pull_camera_data(self):
+        """
+        Render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
+        """
+        new_imagery = StretchCameraStatus.default()
+        new_imagery.time = self.mujoco_server.mjdata.time
+        new_imagery.fps = self.camera_fps_counter.fps
+
+        # This is a bit hard to read, so here's an explanation,
+        # we're using self.imagery_thread_pool, which is a ThreadPoolExecutor to handle calling self._render_camera off the UI thread.
+        # the parameters for self._render_camera are being fetched from self.camera_renderers and passed along the call:
+        futures = as_completed(
+            [
+                self.cameras_rendering_thread_pool.submit(self._render_camera, renderer, camera)
+                for (camera, renderer) in self.camera_renderers.items()
+            ]
+        )
+
+        for future in futures:
+            # Put the rendered image data into the new_imagery dictionary
+            (camera, render) = future.result()
+            new_imagery.set_camera_data(camera, render)
+
+        new_imagery.cam_d405_K = self.get_camera_params("d405_rgb")
+        new_imagery.cam_d435i_K = self.get_camera_params("d435i_camera_rgb")
+
+        self.mujoco_server.cameras["val"] = new_imagery.to_dict()
+
+    def _create_camera_renderer(self, is_depth: bool):
+        renderer = mujoco.Renderer(self.mujoco_server.mjmodel, height=480, width=640)
+
+        if platform.system() == "Darwin":
+            # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering, and blocks the camera renderers
+            switch_to_glfw_renderer(self.mujoco_server.mjmodel, renderer)
+
+        if is_depth:
+            renderer.enable_depth_rendering()
+
+        return renderer
+
+    def _render_camera(self, renderer: mujoco.Renderer, camera: StretchCameras):
+        """
+        This calls update_scene and render() for an offscreen camera buffer.
+
+        Use this with the _toggle_camera() functionality in this class.
+        """
+
+        renderer.update_scene(self.mujoco_server.mjdata, camera.camera_name_in_scene)
+
+        render = renderer.render()
+        # render = np.array([])
+
+        post_render = camera.post_processing_callback
+        if post_render:
+            render = post_render(render)
+
+        return (camera, render)
+
+    def _remove_camera_renderer(self, camera: StretchCameras):
+        """
+        When a camera is not needed, it's removed from self.camera_renderers to save computation costs.
+
+        Note: `_add_camera_renderer()` creates a renderer and render params for the cameras the user wants to use.
+        """
+        if camera in self.camera_renderers:
+            del self.camera_renderers[camera]
+            return
+
+        raise Exception(f"Camera {camera} was not in {self.camera_renderers=}")
+
+    def _add_camera_renderer(self, camera: StretchCameras):
+        """
+        Creates a renderer and render params for the cameras the user wants to use.
+
+        Note: `_remove_camera_renderer()` removes the renderer in self.camera_renderers to save computation costs.
+        """
+        if camera in self.camera_renderers:
+            raise Exception(f"Camera {camera} is already in {self.camera_renderers=}")
+
+        self.camera_renderers[camera] = self._create_camera_renderer(is_depth=camera.is_depth)
+
+    def get_camera_params(self, camera_name: str) -> np.ndarray:
+        """
+        Get camera parameters
+        """
+        cam = self.mujoco_server.mjmodel.camera(camera_name)
+        d = {
+            "fovy": cam.fovy,
+            "f": self.mujoco_server.mjmodel.cam_intrinsic[cam.id][:2],
+            "p": self.mujoco_server.mjmodel.cam_intrinsic[cam.id][2:],
+            "res": self.mujoco_server.mjmodel.cam_resolution[cam.id],
+        }
+        K = utils.compute_K(d["fovy"][0], d["res"][0], d["res"][1])
+        return K
+
+    def set_camera_params(self, camera_name: str, fovy: float, res: tuple) -> None:
+        """
+        Set camera parameters
+        Args:
+            camera_name: str, name of the camera
+            fovy: float, vertical field of view in degrees
+            res: tuple, size of the camera Image
+        """
+        cam = self.mujoco_server.mjmodel.camera(camera_name)
+        self.mujoco_server.mjmodel.cam_fovy[cam.id] = fovy
+        self.mujoco_server.mjmodel.cam_resolution[cam.id] = res
+
+    def _set_camera_properties(self):
+        """
+        Set the camera properties
+        """
+        for camera_name, settings in config.camera_settings.items():
+            self.set_camera_params(
+                camera_name, settings["fovy"], (settings["width"], settings["height"])
+            )
