@@ -6,7 +6,7 @@ import numpy as np
 from examples.camera_feeds import show_camera_feeds
 from stretch_mujoco.cameras import StretchCameras
 from stretch_mujoco.config import Actuators
-from stretch_mujoco.stretch_mujoco import StretchMujocoSimulator
+from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
 
 def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
@@ -28,8 +28,9 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
 
 
 if __name__ == "__main__":
-    cameras_to_use = StretchCameras.all()
-    # cameras_to_use = [StretchCameras.cam_d405_rgb, StretchCameras.cam_d405_depth]
+    # cameras_to_use = StretchCameras.all()
+    cameras_to_use = [StretchCameras.cam_d405_rgb, StretchCameras.cam_d405_depth]
+    cameras_to_use = [StretchCameras.cam_d405_rgb]
     sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
     try:
         sim.start()
@@ -37,13 +38,13 @@ if __name__ == "__main__":
 
         show_camera_feeds(sim, cameras_to_use, True)
 
-        # sim.move_to(Actuators.wrist_yaw, 1.5707)
-        # time.sleep(0.5)
-        sim.move_to(Actuators.gripper, 100)
+        sim.move_to(Actuators.wrist_yaw, 1.5707)
         time.sleep(0.5)
+        sim.move_to(Actuators.gripper, 100)
+        time.sleep(3)
         # input('Press enter to close the gripper')
-        # sim.move_to(Actuators.gripper, -100)
-        # time.sleep(0.5)
+        sim.move_to(Actuators.gripper, -100)
+        time.sleep(0.5)
         while True:
             status = sim.pull_status()
             draw_circle(25, 0.2, status.arm.pos, status.lift.pos, sim)

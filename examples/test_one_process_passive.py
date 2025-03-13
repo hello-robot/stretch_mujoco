@@ -1,5 +1,5 @@
 import threading
-from stretch_mujoco.stretch_mujoco import launch_server
+from stretch_mujoco.stretch_mujoco_simulator import launch_server
 
 command = {'val': {}}
 status = {'val': {}}
