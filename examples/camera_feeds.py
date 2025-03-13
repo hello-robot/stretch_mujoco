@@ -1,3 +1,4 @@
+import platform
 import threading
 import cv2
 from stretch_mujoco.cameras import StretchCameras
@@ -21,4 +22,8 @@ def show_camera_feeds(sim:StretchMujocoSimulator, cameras_to_use: list[StretchCa
 
     There will be a ~1ms delay due to cv2.waitKey(1)
     """
+    if platform.system() == "Darwin":
+        print("show_camera_feeds() does not work on MacOS because cv2.imshow() does not work from a thread.")
+        return
+
     threading.Thread(target=_show_camera_feeds, args=(sim, cameras_to_use, print_fps)).start()

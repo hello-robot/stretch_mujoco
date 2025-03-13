@@ -29,8 +29,8 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
 
 if __name__ == "__main__":
     cameras_to_use = StretchCameras.all()
-    cameras_to_use = [StretchCameras.cam_d405_rgb, StretchCameras.cam_d405_depth]
-    sim = StretchMujocoSimulator(camera_hz=20.0, cameras_to_use=cameras_to_use)
+    # cameras_to_use = [StretchCameras.cam_d405_rgb, StretchCameras.cam_d405_depth]
+    sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
     try:
         sim.start()
         time.sleep(2)
