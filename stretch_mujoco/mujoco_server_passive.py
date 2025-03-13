@@ -7,6 +7,15 @@ from stretch_mujoco.mujoco_server import MujocoServer
 
 
 class MujocoServerPassive(MujocoServer):
+    """
+    A MujocoServer flavor that uses the mujoco passive viewer. 
+
+    Use `MujocoServerPassive.launch_server()` to start the simulator.
+    
+    On MacOS, this needs to be started with `mjpython`.
+
+    https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer 
+    """
     @override
     def _run(self, show_viewer_ui: bool):
         with self.viewer.launch_passive(self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui) as viewer:

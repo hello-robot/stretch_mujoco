@@ -1,6 +1,9 @@
 from multiprocessing import Manager, Process
 import copy
+import multiprocessing
+import platform
 import signal
+import sys
 import time
 
 import click
@@ -14,8 +17,6 @@ from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 from stretch_mujoco.mujoco_server import MujocoServer
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
-
-
 
 class StretchMujocoSimulator:
     """
@@ -59,6 +60,61 @@ class StretchMujocoSimulator:
                 "val": StretchCameraStatus.default().to_dict()
             }
         )
+
+    def start(self, show_viewer_ui: bool = False, headless: bool = False) -> None:
+        """
+        Start the simulator
+
+        Args:
+            show_viewer_ui: bool, whether to show the Mujoco viewer UI
+            headless: bool, whether to run the simulation in headless mode
+        """
+        print(f"{sys.executable=}")
+        if platform.system() == "Darwin":
+            # On a mac, the process needs to be started with mjpython
+            mjpython_path = sys.executable.replace("bin/python", "bin/mjpython")
+            print(f"{mjpython_path=}")
+            multiprocessing.set_executable(mjpython_path)
+
+        self._server_process = Process(
+            target=MujocoServerPassive.launch_server,
+            args=(
+                self.scene_xml_path,
+                self.model,
+                self.camera_hz,
+                show_viewer_ui,
+                headless,
+                self._stop_event,
+                self._command,
+                self._status,
+                self._imagery,
+                self._cameras_to_use
+            ),
+        )
+        self._server_process.start()
+        self._running = True
+        click.secho("Starting Stretch Mujoco Simulator...", fg="green")
+        while (self.pull_status().time == 0) or (self.pull_camera_data().time == 0):
+            time.sleep(0.2)
+        self.home()
+
+    def _stop_handler(self, signum, frame):
+        self.stop()
+
+    def stop(self) -> None:
+        """
+        Stop the simulator
+        """
+        if not self._running:
+            return
+        click.secho(
+            f"Stopping Stretch Mujoco Simulator... simulated runtime={self.pull_status().time:.1f}s",
+            fg="red",
+        )
+        self._running = False
+        self._stop_event.set()
+        if self._server_process:
+            self._server_process.join()
 
     @require_connection
     def home(self) -> None:
@@ -179,52 +235,3 @@ class StretchMujocoSimulator:
         Check if the simulator is running
         """
         return self._running
-
-    def start(self, show_viewer_ui: bool = False, headless: bool = False) -> None:
-        """
-        Start the simulator
-
-        Args:
-            show_viewer_ui: bool, whether to show the Mujoco viewer UI
-            headless: bool, whether to run the simulation in headless mode
-        """
-        self._server_process = Process(
-            target=MujocoServerPassive.launch_server,
-            args=(
-                self.scene_xml_path,
-                self.model,
-                self.camera_hz,
-                show_viewer_ui,
-                headless,
-                self._stop_event,
-                self._command,
-                self._status,
-                self._imagery,
-                self._cameras_to_use
-            ),
-        )
-        self._server_process.start()
-        self._running = True
-        click.secho("Starting Stretch Mujoco Simulator...", fg="green")
-        while (self.pull_status().time == 0) or (self.pull_camera_data().time == 0):
-            time.sleep(0.2)
-        self.home()
-
-    def _stop_handler(self, signum, frame):
-        self.stop()
-
-    def stop(self) -> None:
-        """
-        Stop the simulator
-        """
-        if not self._running:
-            return
-        click.secho(
-            f"Stopping Stretch Mujoco Simulator... simulated runtime={self.pull_status().time:.1f}s",
-            fg="red",
-        )
-        self._running = False
-        self._stop_event.set()
-        if self._server_process:
-            self._server_process.join()
-        self._server_process = None

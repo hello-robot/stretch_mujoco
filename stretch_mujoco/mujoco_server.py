@@ -22,21 +22,25 @@ import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
 
 
-
-
-
 class MujocoServer:
+    """
+    Use `MucocoServer.launch_server()` to start the simulator.
+
+    This uses the mujoco managed viewer.
+
+    https://mujoco.readthedocs.io/en/stable/python.html#managed-viewer
+    """
 
     def __init__(
         self,
         scene_xml_path: str | None,
-        model: MjModel|None,
+        model: MjModel | None,
         camera_hz: float,
         stop_event: threading.Event,
         command: DictProxy,
         status: DictProxy,
-        imagery:DictProxy,
-        cameras_to_use: list[StretchCameras]
+        imagery: DictProxy,
+        cameras_to_use: list[StretchCameras],
     ):
         """
         Initialize the Simulator handle with a scene
@@ -72,7 +76,9 @@ class MujocoServer:
             self._add_camera_renderer(camera)
 
         if platform.system() == "Darwin":
-            self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=len(cameras_to_use))
+            self.cameras_rendering_thread_pool = ThreadPoolExecutor(
+                max_workers=len(cameras_to_use) if cameras_to_use else 1
+            )
         else:
             # Linux is currently struggling with multi-threaded camera rendering:
             self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=1)
@@ -87,7 +93,7 @@ class MujocoServer:
     def launch_server(
         cls,
         scene_xml_path: str | None,
-        model: MjModel|None,
+        model: MjModel | None,
         camera_hz: float,
         show_viewer_ui: bool,
         headless: bool,
@@ -95,11 +101,12 @@ class MujocoServer:
         command: DictProxy,
         status: DictProxy,
         imagery: DictProxy,
-        cameras_to_use: list[StretchCameras]
+        cameras_to_use: list[StretchCameras],
     ):
-        server = cls(scene_xml_path, model, camera_hz, stop_event, command, status, imagery, cameras_to_use)
+        server = cls(
+            scene_xml_path, model, camera_hz, stop_event, command, status, imagery, cameras_to_use
+        )
         server.run(show_viewer_ui, headless)
-
 
     def run(self, show_viewer_ui, headless):
         if headless:
@@ -159,7 +166,7 @@ class MujocoServer:
 
         new_status = StretchStatus.default()
         new_status.fps = self.simulation_fps_counter.fps
-        
+
         if not self.mjdata or not self.mjdata.time:
             print("WARNING: no mujoco data to report")
             return
@@ -255,9 +262,9 @@ class MujocoServer:
         if camera in self.camera_renderers:
             del self.camera_renderers[camera]
             return
-        
+
         raise Exception(f"Camera {camera} was not in {self.camera_renderers=}")
-        
+
     def _add_camera_renderer(self, camera: StretchCameras):
         """
         Creates a renderer and render params for the cameras the user wants to use.
@@ -266,7 +273,7 @@ class MujocoServer:
         """
         if camera in self.camera_renderers:
             raise Exception(f"Camera {camera} is already in {self.camera_renderers=}")
-        
+
         self.camera_renderers[camera] = self._create_camera_renderer(is_depth=camera.is_depth)
 
     def _camera_loop(self):
@@ -276,9 +283,16 @@ class MujocoServer:
         while not self.status["val"] or not self.status["val"]["time"]:
             # wait for sim to start
             time.sleep(0.1)
+        time_start = time.perf_counter()
+        camera_sleep_time = 1 / self.camera_rate  # Hz to seconds
         while not self.stop_event.is_set():
             self.camera_fps_counter.tick()
-            time.sleep(1/self.camera_rate) # Hz to seconds
+
+            elapsed = time.perf_counter() - time_start
+            if elapsed < camera_sleep_time:
+                time.sleep(camera_sleep_time - elapsed)
+                time_start = time.perf_counter()
+
             self._pull_camera_data()
 
     def _pull_camera_data(self):
@@ -468,4 +482,3 @@ class MujocoServer:
         Stop the base position tracking
         """
         self._base_in_pos_motion = False
-
