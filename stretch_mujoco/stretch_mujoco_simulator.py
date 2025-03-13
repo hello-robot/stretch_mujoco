@@ -9,8 +9,9 @@ from mujoco._structs import MjModel
 
 from stretch_mujoco.cameras import StretchCameras
 import stretch_mujoco.config as config
+from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
-from stretch_mujoco.mujoco_server import launch_server
+from stretch_mujoco.mujoco_server import MujocoServer
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
 
@@ -18,7 +19,13 @@ from stretch_mujoco.utils import require_connection
 
 class StretchMujocoSimulator:
     """
-    Stretch Mujoco Simulator class for interfacing with the Mujoco simulator
+    Stretch Mujoco Simulator class for interfacing with the Mujoco Server.
+
+    Calling `run()` will spawn a new process that runs `MujocoServer` that runs the actual simulator.
+
+    Data from the MujocoServer is sent to StretchMujocoSimulator using proxies.
+    
+    Use `pull_status()` and `pull_camera_data()` to access simulation data.
     """
 
     def __init__(
@@ -182,7 +189,7 @@ class StretchMujocoSimulator:
             headless: bool, whether to run the simulation in headless mode
         """
         self._server_process = Process(
-            target=launch_server,
+            target=MujocoServerPassive.launch_server,
             args=(
                 self.scene_xml_path,
                 self.model,

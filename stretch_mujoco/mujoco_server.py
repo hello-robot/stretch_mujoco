@@ -19,49 +19,10 @@ from stretch_mujoco.cameras import StretchCameras
 import stretch_mujoco.config as config
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
-from stretch_mujoco.utils import FpsCounter
-
-from mujoco.glfw import GLContext as GlFwContext
+from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
 
 
-def launch_server(
-    scene_xml_path: str | None,
-    model: MjModel|None,
-    camera_hz: float,
-    show_viewer_ui: bool,
-    headless: bool,
-    stop_event: threading.Event,
-    command: DictProxy,
-    status: DictProxy,
-    imagery: DictProxy,
-    cameras_to_use: list[StretchCameras]
-):
-    server = MujocoServer(scene_xml_path, model, camera_hz, stop_event, command, status, imagery, cameras_to_use)
-    server.run(show_viewer_ui, headless)
 
-
-def switch_to_glfw_renderer(mjmodel: MjModel, renderer: mujoco.Renderer):
-    """
-    On Darwin, the default renderer in `mujoco/gl_context.py` is CGL, which is not compatible with offscreen rendering.
-
-    This function frees the initial display context and creates a new one with GLFW.
-    """
-    if renderer._gl_context:
-        renderer._gl_context.free()
-    if renderer._mjr_context:
-        renderer._mjr_context.free()
-
-    renderer._gl_context = GlFwContext(480, 640)
-
-    renderer._gl_context.make_current()
-
-    renderer._mjr_context = mujoco._render.MjrContext(
-        mjmodel, mujoco._enums.mjtFontScale.mjFONTSCALE_150.value
-    )
-    mujoco._render.mjr_setBuffer(
-        mujoco._enums.mjtFramebuffer.mjFB_OFFSCREEN.value, renderer._mjr_context
-    )
-    renderer._mjr_context.readDepthMap = mujoco._enums.mjtDepthMap.mjDEPTH_ZEROFAR
 
 
 class MujocoServer:
@@ -121,24 +82,42 @@ class MujocoServer:
 
         self.fps_counter = FpsCounter()
 
+    @classmethod
+    def launch_server(
+        cls,
+        scene_xml_path: str | None,
+        model: MjModel|None,
+        camera_hz: float,
+        show_viewer_ui: bool,
+        headless: bool,
+        stop_event: threading.Event,
+        command: DictProxy,
+        status: DictProxy,
+        imagery: DictProxy,
+        cameras_to_use: list[StretchCameras]
+    ):
+        server = cls(scene_xml_path, model, camera_hz, stop_event, command, status, imagery, cameras_to_use)
+        server.run(show_viewer_ui, headless)
+
+
     def run(self, show_viewer_ui, headless):
         if headless:
-            self.__run_headless_simulation()
+            self._run_headless_simulation()
         else:
-            self.__run(show_viewer_ui)
+            self._run(show_viewer_ui)
 
-    def __run(self, show_viewer_ui: bool) -> None:
+    def _run(self, show_viewer_ui: bool) -> None:
         """
         Run the simulation with the viewer
         """
-        mujoco._callbacks.set_mjcb_control(self.__ctrl_callback)
+        mujoco._callbacks.set_mjcb_control(self._ctrl_callback)
         self.viewer.launch(
             self.mjmodel,
             show_left_ui=show_viewer_ui,
             show_right_ui=show_viewer_ui,
         )
 
-    def __run_headless_simulation(self) -> None:
+    def _run_headless_simulation(self) -> None:
         """
         Run the simulation without the viewer headless
         """
@@ -146,15 +125,17 @@ class MujocoServer:
         while not self.stop_event.is_set():
             start_ts = time.perf_counter()
             mujoco._functions.mj_step(self.mjmodel, self.mjdata)
-            self.__ctrl_callback(self.mjmodel, self.mjdata)
+            self._ctrl_callback(self.mjmodel, self.mjdata)
             elapsed = time.perf_counter() - start_ts
             if elapsed < self.mjmodel.opt.timestep:
                 time.sleep(self.mjmodel.opt.timestep - elapsed)
 
-    def __ctrl_callback(self, model: MjModel, data: MjData) -> None:
+    def _ctrl_callback(self, model: MjModel, data: MjData) -> None:
         """
         Callback function that gets executed with mj_step
         """
+        self.fps_counter.tick()
+
         if self.stop_event.is_set():
             self.cameras_thread.join()
             os.kill(os.getpid(), 9)
@@ -174,7 +155,6 @@ class MujocoServer:
         """
         Pull joints status of the robot from the simulator
         """
-        self.fps_counter.tick()
 
         new_status = StretchStatus.default()
         new_status.fps = self.fps_counter.fps

@@ -10,6 +10,16 @@ import numpy as np
 import importlib.resources
 import urchin as urdf_loader
 
+import mujoco
+import mujoco._functions
+import mujoco._callbacks
+import mujoco._render
+import mujoco._enums
+import mujoco.viewer
+import numpy as np
+from mujoco._structs import MjData, MjModel
+from mujoco.glfw import GLContext as GlFwContext
+
 import stretch_mujoco.config as config
 
 
@@ -105,18 +115,20 @@ def diff_drive_inv_kinematics(V: float, omega: float) -> tuple:
 class FpsCounter:
     def __init__(self):
         self.fps_counter = 0
-        self.fps_start_time = time.time()
+        self.fps_start_time = time.perf_counter()
         self.fps = 0
     
     def tick(self):
         self.fps_counter += 1
         
-        fps_duration = time.time() - self.fps_start_time
+        elapsed = time.perf_counter() - self.fps_start_time
         # When one second has passed, count:
-        if fps_duration > 1: 
-            self.fps = self.fps_counter / fps_duration
-            self.fps_start_time = time.time()
+        if elapsed > 1.0: 
+            self.fps = self.fps_counter / elapsed
+            self.fps_start_time = time.perf_counter()
             self.fps_counter = 0
+        
+
 
 class URDFmodel:
     def __init__(self) -> None:
@@ -320,3 +332,28 @@ def dataclass_from_dict(klass, dict_data:dict):
         return klass(**{f:dataclass_from_dict(fieldtypes[f],dict_data[f]) for f in dict_data})
     except:
         return dict_data # Not a dataclass field
+    
+
+
+def switch_to_glfw_renderer(mjmodel: MjModel, renderer: mujoco.Renderer):
+    """
+    On Darwin, the default renderer in `mujoco/gl_context.py` is CGL, which is not compatible with offscreen rendering.
+
+    This function frees the initial display context and creates a new one with GLFW.
+    """
+    if renderer._gl_context:
+        renderer._gl_context.free()
+    if renderer._mjr_context:
+        renderer._mjr_context.free()
+
+    renderer._gl_context = GlFwContext(480, 640)
+
+    renderer._gl_context.make_current()
+
+    renderer._mjr_context = mujoco._render.MjrContext(
+        mjmodel, mujoco._enums.mjtFontScale.mjFONTSCALE_150.value
+    )
+    mujoco._render.mjr_setBuffer(
+        mujoco._enums.mjtFramebuffer.mjFB_OFFSCREEN.value, renderer._mjr_context
+    )
+    renderer._mjr_context.readDepthMap = mujoco._enums.mjtDepthMap.mjDEPTH_ZEROFAR

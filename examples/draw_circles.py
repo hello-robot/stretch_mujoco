@@ -1,6 +1,5 @@
 
 import time
-import cv2
 import numpy as np
 
 from examples.camera_feeds import show_camera_feeds
@@ -10,7 +9,6 @@ from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
 
 def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
-    global cameras_to_use
     """
     From https://forum.hello-robot.com/t/creating-smooth-motion-using-trajectories/671
     """
@@ -19,7 +17,7 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
     y = (diameter_m / 2) * np.sin(t) + lift_init
     circle_mat = np.c_[x, y]
     for pt in circle_mat:
-        print(f"Moiving to {pt}")
+        print(f"Moving to {pt}")
         sim.move_to(Actuators.arm, pt[0])
         time.sleep(0.5)
         sim.move_to(Actuators.lift, pt[1])
@@ -28,10 +26,13 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
 
 
 if __name__ == "__main__":
+
+    # You can use all the camera's, but it takes longer to render, and may affect camera rendering FPS.
     # cameras_to_use = StretchCameras.all()
-    cameras_to_use = [StretchCameras.cam_d405_rgb, StretchCameras.cam_d405_depth]
     cameras_to_use = [StretchCameras.cam_d405_rgb]
+
     sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
+
     try:
         sim.start()
         time.sleep(2)

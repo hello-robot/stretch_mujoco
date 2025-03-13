@@ -38,7 +38,7 @@ def print_keyboard_options():
     click.secho("=====================================", fg="yellow")
 
 
-def keyboard_control(sim:StretchMujocoSimulator):
+def keyboard_control(sim: StretchMujocoSimulator):
     while True:
         print_keyboard_options()
         key = getch().lower()
@@ -94,12 +94,12 @@ def main(scene_xml_path: str, robocasa_env: bool):
     elif scene_xml_path:
         sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path, cameras_to_use=cameras_to_use)
     else:
-        sim = StretchMujocoSimulator( cameras_to_use=cameras_to_use)
+        sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
     try:
         sim.start()
 
-        show_camera_feeds(sim, cameras_to_use, print_fps=True)
-        
+        show_camera_feeds(sim, cameras_to_use, print_fps=False)
+
         keyboard_control(sim)
     except KeyboardInterrupt:
         sim.stop()
