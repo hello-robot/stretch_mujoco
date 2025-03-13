@@ -29,7 +29,7 @@ from mujoco.glfw import GLContext as GlFwContext
 
 def launch_server(
     scene_xml_path: str | None,
-    model,
+    model: MjModel|None,
     camera_hz: float,
     show_viewer_ui: bool,
     headless: bool,
@@ -72,7 +72,7 @@ class MujocoServer:
     def __init__(
         self,
         scene_xml_path: str | None,
-        model,
+        model: MjModel|None,
         camera_hz: float,
         stop_event: threading.Event,
         command: DictProxy,
