@@ -70,6 +70,7 @@ class StretchStatus:
 @dataclass
 class StretchCameraStatus:
     time: float
+    fps: float
     cam_d405_rgb: np.ndarray|None = None
     cam_d405_depth:np.ndarray|None = None
     cam_d405_K: np.ndarray|None = None
@@ -120,5 +121,5 @@ class StretchCameraStatus:
     
     @staticmethod
     def default():
-        return StretchCameraStatus(0)
+        return StretchCameraStatus(0, 0)
     

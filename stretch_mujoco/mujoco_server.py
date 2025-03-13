@@ -80,7 +80,8 @@ class MujocoServer:
         self.cameras_thread = threading.Thread(target=self._camera_loop)
         self.cameras_thread.start()
 
-        self.fps_counter = FpsCounter()
+        self.simulation_fps_counter = FpsCounter()
+        self.camera_fps_counter = FpsCounter()
 
     @classmethod
     def launch_server(
@@ -134,7 +135,7 @@ class MujocoServer:
         """
         Callback function that gets executed with mj_step
         """
-        self.fps_counter.tick()
+        self.simulation_fps_counter.tick()
 
         if self.stop_event.is_set():
             self.cameras_thread.join()
@@ -157,7 +158,7 @@ class MujocoServer:
         """
 
         new_status = StretchStatus.default()
-        new_status.fps = self.fps_counter.fps
+        new_status.fps = self.simulation_fps_counter.fps
         
         if not self.mjdata or not self.mjdata.time:
             print("WARNING: no mujoco data to report")
@@ -276,6 +277,7 @@ class MujocoServer:
             # wait for sim to start
             time.sleep(0.1)
         while not self.stop_event.is_set():
+            self.camera_fps_counter.tick()
             time.sleep(1/self.camera_rate) # Hz to seconds
             self._pull_camera_data()
 
@@ -285,6 +287,7 @@ class MujocoServer:
         """
         new_imagery = StretchCameraStatus.default()
         new_imagery.time = self.mjdata.time
+        new_imagery.fps = self.camera_fps_counter.fps
 
         # This is a bit hard to read, so here's an explanation,
         # we're using self.imagery_thread_pool, which is a ThreadPoolExecutor to handle calling self._render_camera off the UI thread.

@@ -3,26 +3,22 @@ import threading
 import cv2
 from stretch_mujoco.cameras import StretchCameras
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
-from stretch_mujoco.utils import FpsCounter
-
 
 def _show_camera_feeds(sim:StretchMujocoSimulator, cameras_to_use: list[StretchCameras], print_fps: bool):
-    camera_fps = FpsCounter()
-
     if not cameras_to_use:
-        raise ValueError("The cameras_to_use array is empty. Did you mean to use StretchCameras.all()?")
+        print("show_camera_feeds: The cameras_to_use array is empty. Did you mean to use StretchCameras.all()?")
+        return
     
     while sim._running:
 
-        if print_fps:
-            camera_fps.tick()
-            print(f"Simulation fps: {sim.pull_status().fps}. Camera FPS: {camera_fps.fps}.")
-
         camera_data = sim.pull_camera_data()
+
+        if print_fps:
+            print(f"Simulation fps: {sim.pull_status().fps}. Camera FPS: {camera_data.fps}.")
 
         for camera in cameras_to_use:
             cv2.imshow(camera.name, camera_data.get_camera_data(camera))
-            
+
         cv2.waitKey(1)
 
 def show_camera_feeds(sim:StretchMujocoSimulator, cameras_to_use: list[StretchCameras], print_fps: bool):
