@@ -26,7 +26,6 @@ from stretch_mujoco.utils import FpsCounter, require_connection
 
 from mujoco.glfw import GLContext as GlFwContext
 
-
 def launch_server(
     scene_xml_path: str | None,
     model: MjModel|None,
@@ -101,7 +100,7 @@ class MujocoServer:
         self.stop_event = stop_event
         self.command = command
         self.status = status
-        self.imagery = imagery
+        self.cameras = imagery
 
         self._set_camera_properties()
 
@@ -110,12 +109,13 @@ class MujocoServer:
         self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
 
         for camera in cameras_to_use:
-            self._toggle_camera(camera)
+            # Add this for the ima
+            self._add_camera_renderer(camera)
 
-        self.imagery_thread_pool = ThreadPoolExecutor(max_workers=len(cameras_to_use))
+        self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=len(cameras_to_use))
 
-        self.imagery_thread = threading.Thread(target=self._imagery_loop)
-        self.imagery_thread.start()
+        self.cameras_thread = threading.Thread(target=self._camera_loop)
+        self.cameras_thread.start()
 
         self.fps_counter = FpsCounter()
 
@@ -154,7 +154,7 @@ class MujocoServer:
         Callback function that gets executed with mj_step
         """
         if self.stop_event.is_set():
-            self.imagery_thread.join()
+            self.cameras_thread.join()
             os.kill(os.getpid(), 9)
         self.mjdata = data
         self.mjmodel = model
@@ -262,19 +262,30 @@ class MujocoServer:
 
         return (camera, render)
 
-    def _toggle_camera(self, camera: StretchCameras):
+    def _remove_camera_renderer(self, camera: StretchCameras):
         """
-        Creates a renderer and render params for the cameras the user wants to use.
+        When a camera is not needed, it's removed from self.camera_renderers to save computation costs.
 
-        When a camera is toggled off, it's removed from self.camera_renderers to save computation costs.
+        Note: `_add_camera_renderer()` creates a renderer and render params for the cameras the user wants to use.
         """
         if camera in self.camera_renderers:
             del self.camera_renderers[camera]
             return
+        
+        raise Exception(f"Camera {camera} was not in {self.camera_renderers=}")
+        
+    def _add_camera_renderer(self, camera: StretchCameras):
+        """
+        Creates a renderer and render params for the cameras the user wants to use.
 
+        Note: `_remove_camera_renderer()` removes the renderer in self.camera_renderers to save computation costs.
+        """
+        if camera in self.camera_renderers:
+            raise Exception(f"Camera {camera} is already in {self.camera_renderers=}")
+        
         self.camera_renderers[camera] = self._create_camera_renderer(is_depth=camera.is_depth)
 
-    def _imagery_loop(self):
+    def _camera_loop(self):
         while not self.status["val"] or not self.status["val"]["time"]:
             time.sleep(0.1)
         while not self.stop_event.is_set():
@@ -293,7 +304,7 @@ class MujocoServer:
         # the parameters for self._render_camera are being fetched from self.camera_renderers and passed along the call:
         futures = as_completed(
             [
-                self.imagery_thread_pool.submit(self._render_camera, renderer, camera)
+                self.cameras_rendering_thread_pool.submit(self._render_camera, renderer, camera)
                 for (camera, renderer) in self.camera_renderers.items()
             ]
         )
@@ -306,7 +317,7 @@ class MujocoServer:
         new_imagery.cam_d405_K = self.get_camera_params("d405_rgb")
         new_imagery.cam_d435i_K = self.get_camera_params("d435i_camera_rgb")
 
-        self.imagery["val"] = new_imagery.to_dict()
+        self.cameras["val"] = new_imagery.to_dict()
 
     def get_camera_params(self, camera_name: str) -> np.ndarray:
         """
