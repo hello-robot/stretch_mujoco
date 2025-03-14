@@ -106,7 +106,7 @@ class MujocoServerPassive(MujocoServer):
             # Wait for any active threads to close, otherwise the mujoco window gets stuck:
             active_threads = threading.enumerate()
             for index, thread in enumerate(active_threads): 
-                if thread != threading.main_thread():
+                if thread != threading.main_thread() and not isinstance(thread, threading._DummyThread):
                     click.secho(
                         f"Stopping thread {index}/{len(active_threads)-1} on the Mujoco Process.",
                         fg="blue",

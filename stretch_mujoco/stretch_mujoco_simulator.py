@@ -124,7 +124,7 @@ class StretchMujocoSimulator:
         # For example, the main thread or a thread may not be checking `sim.is_running()` and is oblivious that it should stop. Nothing we can do to stop it except sigkill.
         active_threads = threading.enumerate()
         for index, thread in enumerate(active_threads): 
-            if thread != threading.main_thread():
+            if thread != threading.main_thread() and not isinstance(thread, threading._DummyThread):
                 click.secho(
                     f"Stopping thread {index}/{len(active_threads)-1}.",
                     fg="yellow",
