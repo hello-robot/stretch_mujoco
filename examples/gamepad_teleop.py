@@ -6,8 +6,8 @@ import cv2
 from gamepad_controller import GamePadController
 
 from stretch_mujoco import StretchMujocoSimulator
-from stretch_mujoco.cameras import StretchCameras
-from stretch_mujoco.config import Actuators
+from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.utils import get_depth_color_map
 
 sim:StretchMujocoSimulator

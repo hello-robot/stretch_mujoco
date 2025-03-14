@@ -10,13 +10,13 @@ import click
 import numpy as np
 from mujoco._structs import MjModel
 
-from stretch_mujoco.cameras import StretchCameras
+from stretch_mujoco.enums.cameras import StretchCameras
 import stretch_mujoco.config as config
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
-from stretch_mujoco.mujoco_server import MujocoServer
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
+
 
 class StretchMujocoSimulator:
     """
@@ -25,7 +25,7 @@ class StretchMujocoSimulator:
     Calling `run()` will spawn a new process that runs `MujocoServer` that runs the actual simulator.
 
     Data from the MujocoServer is sent to StretchMujocoSimulator using proxies.
-    
+
     Use `pull_status()` and `pull_camera_data()` to access simulation data.
     """
 
@@ -33,8 +33,8 @@ class StretchMujocoSimulator:
         self,
         scene_xml_path: str | None = None,
         model: MjModel | None = None,
-        camera_hz:float = 30,
-        cameras_to_use: list[StretchCameras] = []
+        camera_hz: float = 30,
+        cameras_to_use: list[StretchCameras] = [],
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
@@ -50,16 +50,8 @@ class StretchMujocoSimulator:
         self._manager = Manager()
         self._stop_event = self._manager.Event()
         self._command = self._manager.dict({"val": {}})
-        self._status = self._manager.dict(
-            {
-                "val": StretchStatus.default().to_dict()
-            }
-        )
-        self._imagery = self._manager.dict(
-            {
-                "val": StretchCameraStatus.default().to_dict()
-            }
-        )
+        self._status = self._manager.dict({"val": StretchStatus.default().to_dict()})
+        self._imagery = self._manager.dict({"val": StretchCameraStatus.default().to_dict()})
 
     def start(self, show_viewer_ui: bool = False, headless: bool = False) -> None:
         """
@@ -88,7 +80,7 @@ class StretchMujocoSimulator:
                 self._command,
                 self._status,
                 self._imagery,
-                self._cameras_to_use
+                self._cameras_to_use,
             ),
         )
         self._server_process.start()
@@ -116,7 +108,7 @@ class StretchMujocoSimulator:
         if self._server_process:
             self._server_process.join()
 
-        exit(0) # exit this script, otherwise it tries to keep running even though we're stopped.
+        exit(0)  # exit this script, otherwise it tries to keep running even though we're stopped.
 
     @require_connection
     def home(self) -> None:
@@ -133,7 +125,7 @@ class StretchMujocoSimulator:
         self._command["val"] = {"keyframe": {"name": "stow", "trigger": True}}
 
     @require_connection
-    def move_to(self, actuator:  config.Actuators, pos: float) -> None:
+    def move_to(self, actuator: config.Actuators, pos: float) -> None:
         """
         Move the actuator to a specific position
         Args:

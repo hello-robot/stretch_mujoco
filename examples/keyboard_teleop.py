@@ -7,8 +7,8 @@ import click
 
 from examples.camera_feeds import show_camera_feeds
 from stretch_mujoco import StretchMujocoSimulator
-from stretch_mujoco.cameras import StretchCameras
-from stretch_mujoco.config import Actuators
+from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.actuators import Actuators
 
 
 def getch():

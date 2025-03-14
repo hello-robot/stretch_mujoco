@@ -3,8 +3,8 @@ import time
 import numpy as np
 
 from examples.camera_feeds import show_camera_feeds
-from stretch_mujoco.cameras import StretchCameras
-from stretch_mujoco.config import Actuators
+from stretch_mujoco.enums.actuators import Actuators
+from stretch_mujoco.enums.cameras import StretchCameras
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
 

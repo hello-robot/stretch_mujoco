@@ -7,12 +7,13 @@ import mujoco
 import numpy as np
 
 from stretch_mujoco import config, utils
-from stretch_mujoco.cameras import StretchCameras
+from stretch_mujoco.enums.cameras import StretchCameras
 from stretch_mujoco.status import StretchCameraStatus
 from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
 
 if TYPE_CHECKING:
     from stretch_mujoco.mujoco_server import MujocoServer
+
 
 class MujocoServerCameraManagerSync:
     """
@@ -21,11 +22,13 @@ class MujocoServerCameraManagerSync:
     Call `pull_camera_data_at_camera_rate()` from the UI thread and the cameras will be rendered at the specified `camera_hz`.
     """
 
-    def __init__(self, camera_hz: float, cameras_to_use:list[StretchCameras], mujoco_server: "MujocoServer") -> None:
-        
+    def __init__(
+        self, camera_hz: float, cameras_to_use: list[StretchCameras], mujoco_server: "MujocoServer"
+    ) -> None:
+
         self.mujoco_server = mujoco_server
 
-        self.camera_rate = 1/camera_hz  # Hz to seconds
+        self.camera_rate = 1 / camera_hz  # Hz to seconds
 
         self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
 
@@ -47,13 +50,12 @@ class MujocoServerCameraManagerSync:
         if elapsed < self.camera_rate:
             # If we're not ready to render camera, return.
             return
-        
+
         self.time_start = time.perf_counter()
 
         self._pull_camera_data()
-        
+
         self.camera_fps_counter.tick()
-        
 
     def _pull_camera_data(self):
         """
@@ -63,7 +65,7 @@ class MujocoServerCameraManagerSync:
         new_imagery.time = self.mujoco_server.mjdata.time
         new_imagery.fps = self.camera_fps_counter.fps
 
-        for (camera, renderer) in self.camera_renderers.items():
+        for camera, renderer in self.camera_renderers.items():
             (_, data) = self._render_camera(renderer, camera)
             new_imagery.set_camera_data(camera, data)
 
@@ -166,9 +168,11 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
     Starts a camera loop on init to pull camera data using threading.
     """
 
-    def __init__(self, camera_hz: float, cameras_to_use:list[StretchCameras], mujoco_server: "MujocoServer"):
+    def __init__(
+        self, camera_hz: float, cameras_to_use: list[StretchCameras], mujoco_server: "MujocoServer"
+    ):
 
-        super().__init__(camera_hz, cameras_to_use, mujoco_server )
+        super().__init__(camera_hz, cameras_to_use, mujoco_server)
 
         if platform.system() == "Darwin":
             self.cameras_rendering_thread_pool = ThreadPoolExecutor(
@@ -203,7 +207,6 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
 
             self._pull_camera_data_async()
 
-
     def _pull_camera_data_async(self):
         """
         Render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
@@ -212,9 +215,9 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
         new_imagery.time = self.mujoco_server.mjdata.time
         new_imagery.fps = self.camera_fps_counter.fps
 
-        #This is a bit hard to read, so here's an explanation,
-        #we're using self.imagery_thread_pool, which is a ThreadPoolExecutor to handle calling self._render_camera off the UI thread.
-        #the parameters for self._render_camera are being fetched from self.camera_renderers and passed along the call:
+        # This is a bit hard to read, so here's an explanation,
+        # we're using self.imagery_thread_pool, which is a ThreadPoolExecutor to handle calling self._render_camera off the UI thread.
+        # the parameters for self._render_camera are being fetched from self.camera_renderers and passed along the call:
         futures = as_completed(
             [
                 self.cameras_rendering_thread_pool.submit(self._render_camera, renderer, camera)

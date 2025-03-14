@@ -1,7 +1,5 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing.managers import DictProxy
 import os
-import platform
 import threading
 import time
 
@@ -15,15 +13,15 @@ import mujoco.viewer
 import numpy as np
 from mujoco._structs import MjData, MjModel
 
-from stretch_mujoco.cameras import StretchCameras
+from stretch_mujoco.enums.cameras import StretchCameras
 import stretch_mujoco.config as config
 from stretch_mujoco.mujoco_server_camera_manager import (
     MujocoServerCameraManagerAsync,
     MujocoServerCameraManagerSync,
 )
-from stretch_mujoco.status import StretchCameraStatus, StretchStatus
+from stretch_mujoco.status import StretchStatus
 import stretch_mujoco.utils as utils
-from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
+from stretch_mujoco.utils import FpsCounter
 
 
 class MujocoServer:

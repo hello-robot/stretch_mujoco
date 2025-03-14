@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass
 import numpy as np
 
-from stretch_mujoco.cameras import StretchCameras
+from stretch_mujoco.enums.cameras import StretchCameras
 from stretch_mujoco.utils import dataclass_from_dict
 
 @dataclass

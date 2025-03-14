@@ -1,7 +1,7 @@
 import platform
 import threading
 import cv2
-from stretch_mujoco.cameras import StretchCameras
+from stretch_mujoco.enums.cameras import StretchCameras
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
 def _show_camera_feeds(sim:StretchMujocoSimulator, cameras_to_use: list[StretchCameras], print_fps: bool):
