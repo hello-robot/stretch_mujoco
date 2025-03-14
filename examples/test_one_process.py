@@ -21,6 +21,5 @@ MujocoServer.launch_server(
     command=command, 
     status=status, 
     imagery=imagery,
-    cameras_to_use=[],
-    use_camera_thread=True
+    cameras_to_use=[]
 )
