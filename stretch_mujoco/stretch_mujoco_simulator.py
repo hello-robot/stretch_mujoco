@@ -71,6 +71,7 @@ class StretchMujocoSimulator:
 
         self._server_process = Process(
             target=MujocoServerPassive.launch_server,
+            name="MujocoProcess",
             args=(
                 self.scene_xml_path,
                 self.model,
@@ -110,7 +111,7 @@ class StretchMujocoSimulator:
         if not self._running:
             return
         
-        simulation_time = self.pull_status().time
+        simulation_time = self._status["val"]["time"]
         
         click.secho(
             f"Stopping Stretch Mujoco Simulator... simulated runtime={simulation_time:.1f}s",
@@ -134,7 +135,7 @@ class StretchMujocoSimulator:
 
         time.sleep(1) # Not great, but wait for main thread to really settle.
 
-        atexit.register(self.stop_mujoco_process) # Hacky, but works.
+        atexit.register(self.stop_mujoco_process) # Calling it directly doesn't always work if the main thread isn't 
 
     def stop_mujoco_process(self):
         click.secho(

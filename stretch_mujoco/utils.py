@@ -17,7 +17,7 @@ import mujoco._render
 import mujoco._enums
 import mujoco.viewer
 import numpy as np
-from mujoco._structs import MjData, MjModel
+from mujoco._structs import MjModel
 from mujoco.glfw import GLContext as GlFwContext
 
 import stretch_mujoco.config as config

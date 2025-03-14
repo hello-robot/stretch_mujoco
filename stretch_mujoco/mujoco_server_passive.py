@@ -77,7 +77,7 @@ class MujocoServerPassive(MujocoServer):
         with mujoco.viewer.launch_passive(
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
         ) as viewer:
-            physics_thread = threading.Thread(target=self._do_physics, args=(viewer,), daemon=True)
+            physics_thread = threading.Thread(target=self._do_physics, name="PhysicsThread", args=(viewer,), daemon=True)
             physics_thread.start()
 
             fps = FpsCounter()
