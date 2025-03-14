@@ -1,8 +1,9 @@
 
+import threading
 import time
 import numpy as np
 
-from examples.camera_feeds import show_camera_feeds
+from examples.camera_feeds import show_camera_feeds_sync
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.cameras import StretchCameras
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
@@ -23,6 +24,21 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
         sim.move_to(Actuators.lift, pt[1])
         time.sleep(0.5)
 
+def _run_draw_circle():
+    time.sleep(2)
+    sim.move_to(Actuators.wrist_yaw, 1.5707)
+    time.sleep(0.5)
+    sim.move_to(Actuators.gripper, 100)
+    time.sleep(3)
+    # input('Press enter to close the gripper')
+    sim.move_to(Actuators.gripper, -100)
+    time.sleep(0.5)
+
+    while True: 
+        status = sim.pull_status()
+        draw_circle(25, 0.2, status.arm.pos, status.lift.pos, sim)
+        time.sleep(1)
+
 
 
 if __name__ == "__main__":
@@ -33,22 +49,13 @@ if __name__ == "__main__":
 
     sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
 
+    sim.start()
+
+    threading.Thread(target=_run_draw_circle).start()
+
     try:
-        sim.start()
-        time.sleep(2)
-
-        show_camera_feeds(sim, cameras_to_use, True)
-
-        sim.move_to(Actuators.wrist_yaw, 1.5707)
-        time.sleep(0.5)
-        sim.move_to(Actuators.gripper, 100)
-        time.sleep(3)
-        # input('Press enter to close the gripper')
-        sim.move_to(Actuators.gripper, -100)
-        time.sleep(0.5)
         while True:
-            status = sim.pull_status()
-            draw_circle(25, 0.2, status.arm.pos, status.lift.pos, sim)
-            time.sleep(1)
+            show_camera_feeds_sync(sim, cameras_to_use, True)
+
     except KeyboardInterrupt:
         sim.stop()

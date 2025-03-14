@@ -1,11 +1,12 @@
 import sys
 import termios
+import threading
 import time
 import tty
 
 import click
 
-from examples.camera_feeds import show_camera_feeds
+from examples.camera_feeds import show_camera_feeds_sync
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.cameras import StretchCameras
 from stretch_mujoco.enums.actuators import Actuators
@@ -85,7 +86,7 @@ def keyboard_control(sim: StretchMujocoSimulator):
 @click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
 def main(scene_xml_path: str, robocasa_env: bool):
     model = None
-    cameras_to_use = [StretchCameras.cam_d405_rgb]
+    cameras_to_use = StretchCameras.all()
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
@@ -98,9 +99,10 @@ def main(scene_xml_path: str, robocasa_env: bool):
     try:
         sim.start()
 
-        show_camera_feeds(sim, cameras_to_use, print_fps=False)
+        threading.Thread(target= keyboard_control, args=(sim,), daemon=True).start()
 
-        keyboard_control(sim)
+        while True:
+            show_camera_feeds_sync(sim, cameras_to_use, print_fps=True)
     except KeyboardInterrupt:
         sim.stop()
 

@@ -65,7 +65,8 @@ class MujocoServerPassive(MujocoServer):
                 fps.tick()
                 # print(f"UI thread: {fps.fps=}, {self.simulation_fps_counter.fps=}, {self.camera_manager.camera_fps_counter.fps=}")
 
-                self.camera_manager.pull_camera_data_at_camera_rate()
+                with viewer.lock():
+                    self.camera_manager.pull_camera_data_at_camera_rate()
 
                 time_until_next_step = self.mjmodel.opt.timestep - (
                     time.time() - fps.fps_start_time
@@ -76,4 +77,5 @@ class MujocoServerPassive(MujocoServer):
 
                 viewer.sync()
 
-            physics_thread.join()
+            viewer.close()
+        physics_thread.join()

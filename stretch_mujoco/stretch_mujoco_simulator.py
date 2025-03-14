@@ -10,6 +10,7 @@ import click
 import numpy as np
 from mujoco._structs import MjModel
 
+from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.cameras import StretchCameras
 import stretch_mujoco.config as config
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
@@ -61,10 +62,11 @@ class StretchMujocoSimulator:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
             headless: bool, whether to run the simulation in headless mode
         """
-        print(f"{sys.executable=}")
         if platform.system() == "Darwin":
             # On a mac, the process needs to be started with mjpython
-            mjpython_path = sys.executable.replace("bin/python", "bin/mjpython")
+            mjpython_path = sys.executable.replace("bin/python3", "bin/mjpython").replace(
+                "bin/python", "bin/mjpython"
+            )
             print(f"{mjpython_path=}")
             multiprocessing.set_executable(mjpython_path)
 
@@ -125,7 +127,7 @@ class StretchMujocoSimulator:
         self._command["val"] = {"keyframe": {"name": "stow", "trigger": True}}
 
     @require_connection
-    def move_to(self, actuator: config.Actuators, pos: float) -> None:
+    def move_to(self, actuator: Actuators, pos: float) -> None:
         """
         Move the actuator to a specific position
         Args:
@@ -135,7 +137,7 @@ class StretchMujocoSimulator:
         if not actuator.is_position_actuator:
             click.secho(
                 f"Actuator {actuator} not recognized."
-                f"\n Available position actuators: {config.Actuators.position_actuators()}",
+                f"\n Available position actuators: {Actuators.position_actuators()}",
                 fg="red",
             )
             return
@@ -148,7 +150,7 @@ class StretchMujocoSimulator:
         }
 
     @require_connection
-    def move_by(self, actuator: config.Actuators, pos: float) -> None:
+    def move_by(self, actuator: Actuators, pos: float) -> None:
         """
         Move the actuator by a specific amount
         Args:
@@ -158,7 +160,7 @@ class StretchMujocoSimulator:
         if not actuator.is_position_actuator:
             click.secho(
                 f"Actuator {actuator} not recognized."
-                f"\n Available position actuators: {config.Actuators.position_actuators()}",
+                f"\n Available position actuators: {Actuators.position_actuators()}",
                 fg="red",
             )
             return
