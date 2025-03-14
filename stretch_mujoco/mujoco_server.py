@@ -64,7 +64,7 @@ class MujocoServer:
         self.status = status
         self.cameras = imagery
 
-        self.simulation_fps_counter = FpsCounter()
+        self.physics_fps_counter = FpsCounter()
 
     def set_camera_manager(
         self, use_camera_thread: bool, camera_hz: float, cameras_to_use: list[StretchCameras]
@@ -146,7 +146,7 @@ class MujocoServer:
         """
         Callback function that gets executed with mj_step
         """
-        self.simulation_fps_counter.tick()
+        self.physics_fps_counter.tick()
 
         if self.stop_event.is_set():
             if isinstance(self.camera_manager, MujocoServerCameraManagerAsync):
@@ -170,7 +170,7 @@ class MujocoServer:
         """
 
         new_status = StretchStatus.default()
-        new_status.fps = self.simulation_fps_counter.fps
+        new_status.fps = self.physics_fps_counter.fps
 
         if not self.mjdata or not self.mjdata.time:
             print("WARNING: no mujoco data to report")
@@ -238,9 +238,9 @@ class MujocoServer:
                     self._stop_base_pos_tracking()
                     time.sleep(1 / 20)
                 if actuator_name == "base_translate":
-                    threading.Thread(target=self._base_translate_by, args=(pos,)).start()
+                    threading.Thread(target=self._base_translate_by, args=(pos,), daemon=True).start()
                 else:
-                    threading.Thread(target=self._base_rotate_by, args=(pos,)).start()
+                    threading.Thread(target=self._base_rotate_by, args=(pos,), daemon=True).start()
             else:
                 if actuator_name == "gripper":
                     self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(

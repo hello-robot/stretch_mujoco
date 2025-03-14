@@ -39,7 +39,7 @@ def require_connection(function):
     """
     def wrapper_function(self, *args, **kwargs):
         if not self._running:
-            raise ConnectionError("use the start() method")
+            raise ConnectionError("The Stretch Mujoco Simulator is not running. Use the start() method to start it.")
         return function(self, *args, **kwargs)
 
     return wrapper_function

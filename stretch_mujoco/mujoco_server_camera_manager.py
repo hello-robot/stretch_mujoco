@@ -182,7 +182,7 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
             # Linux is currently struggling with multi-threaded camera rendering:
             self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=1)
 
-        self.cameras_thread = threading.Thread(target=self._camera_loop)
+        self.cameras_thread = threading.Thread(target=self._camera_loop, daemon=True)
         self.cameras_thread.start()
 
     def pull_camera_data_at_camera_rate(self):

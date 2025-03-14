@@ -12,7 +12,6 @@ from mujoco._structs import MjModel
 
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.cameras import StretchCameras
-import stretch_mujoco.config as config
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
@@ -23,7 +22,9 @@ class StretchMujocoSimulator:
     """
     Stretch Mujoco Simulator class for interfacing with the Mujoco Server.
 
-    Calling `run()` will spawn a new process that runs `MujocoServer` that runs the actual simulator.
+    Calling `start()` will spawn a new process that runs `MujocoServer` and the simulator.
+
+    You can specify `start(headless=True)` to run the simulation without a GUI.
 
     Data from the MujocoServer is sent to StretchMujocoSimulator using proxies.
 
@@ -84,12 +85,15 @@ class StretchMujocoSimulator:
                 self._imagery,
                 self._cameras_to_use,
             ),
+            daemon=False
         )
         self._server_process.start()
         self._running = True
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
         while (self.pull_status().time == 0) or (self.pull_camera_data().time == 0):
-            time.sleep(0.2)
+            time.sleep(1)
+            click.secho("Still waiting to connect to the Mujoco Simulatior.", fg="yellow")
+
         self.home()
 
     def _stop_handler(self, signum, frame):
@@ -105,12 +109,14 @@ class StretchMujocoSimulator:
             f"Stopping Stretch Mujoco Simulator... simulated runtime={self.pull_status().time:.1f}s",
             fg="red",
         )
-        self._running = False
         self._stop_event.set()
         if self._server_process:
             self._server_process.join()
 
-        exit(0)  # exit this script, otherwise it tries to keep running even though we're stopped.
+        self._running = False
+        
+        print("Done shutting down")
+
 
     @require_connection
     def home(self) -> None:

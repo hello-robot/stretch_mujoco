@@ -34,10 +34,13 @@ def _run_draw_circle():
     sim.move_to(Actuators.gripper, -100)
     time.sleep(0.5)
 
-    while True: 
-        status = sim.pull_status()
-        draw_circle(25, 0.2, status.arm.pos, status.lift.pos, sim)
-        time.sleep(1)
+    try:
+        while sim.is_running(): 
+            status = sim.pull_status()
+            draw_circle(25, 0.2, status.arm.pos, status.lift.pos, sim)
+            time.sleep(1)
+    except Exception as e:
+        print(f"{e}")
 
 
 
@@ -51,10 +54,10 @@ if __name__ == "__main__":
 
     sim.start()
 
-    threading.Thread(target=_run_draw_circle).start()
+    threading.Thread(target=_run_draw_circle, daemon=True).start()
 
     try:
-        while True:
+        while sim.is_running():
             show_camera_feeds_sync(sim, cameras_to_use, True)
 
     except KeyboardInterrupt:

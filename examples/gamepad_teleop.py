@@ -156,7 +156,7 @@ def main(scene_xml_path: str, robocasa_env: bool, headless: bool):
     try:
         sim.start(headless=headless)
         gamepad.start()
-        threading.Thread(target=gamepad_loop).start()
+        threading.Thread(target=gamepad_loop, daemon=True).start()
         display_camera_feeds()
     except KeyboardInterrupt:
         sim.stop()

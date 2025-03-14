@@ -53,4 +53,4 @@ def show_camera_feeds_async(
         )
         return
 
-    threading.Thread(target=_show_camera_feeds_loop, args=(sim, cameras_to_use, print_fps)).start()
+    threading.Thread(target=_show_camera_feeds_loop, args=(sim, cameras_to_use, print_fps), daemon=True).start()
