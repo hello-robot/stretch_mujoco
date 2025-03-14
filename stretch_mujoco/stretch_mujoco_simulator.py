@@ -1,9 +1,11 @@
+import atexit
 from multiprocessing import Manager, Process
 import copy
 import multiprocessing
 import platform
 import signal
 import sys
+import threading
 import time
 
 import click
@@ -16,7 +18,6 @@ from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection
-
 
 class StretchMujocoSimulator:
     """
@@ -45,9 +46,6 @@ class StretchMujocoSimulator:
         self._server_process = None
         self._running = False
         self._cameras_to_use = cameras_to_use
-
-        signal.signal(signal.SIGTERM, self._stop_handler)
-        signal.signal(signal.SIGINT, self._stop_handler)
 
         self._manager = Manager()
         self._stop_event = self._manager.Event()
@@ -85,9 +83,15 @@ class StretchMujocoSimulator:
                 self._imagery,
                 self._cameras_to_use,
             ),
-            daemon=False
+            daemon=False # We're gonna handle terminating this in stop_mujoco_process()
         )
         self._server_process.start()
+        
+        # Handle stopping, in all its various ways:
+        signal.signal(signal.SIGTERM, lambda num, sig: self.stop())
+        signal.signal(signal.SIGINT, lambda num, sig: self.stop())
+        atexit.register(self.stop)
+
         self._running = True
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
         while (self.pull_status().time == 0) or (self.pull_camera_data().time == 0):
@@ -96,26 +100,58 @@ class StretchMujocoSimulator:
 
         self.home()
 
-    def _stop_handler(self, signum, frame):
-        self.stop()
 
     def stop(self) -> None:
         """
-        Stop the simulator
+        This is called at exit to gracefully terminate the simulation and the Mujoco Process, and their many threads.
+
+        Fingers-crossed we get a SIGTERM, and not a SIGKILL..
         """
         if not self._running:
             return
+        
+        simulation_time = self.pull_status().time
+        
         click.secho(
-            f"Stopping Stretch Mujoco Simulator... simulated runtime={self.pull_status().time:.1f}s",
+            f"Stopping Stretch Mujoco Simulator... simulated runtime={simulation_time:.1f}s",
             fg="red",
         )
-        self._stop_event.set()
-        if self._server_process:
-            self._server_process.join()
 
         self._running = False
+
+        # We're going to try to wait for threads to end. They might not gracefully stop before hitting an exception. Race conditions are rampant.
+        # For example, the main thread or a thread may not be checking `sim.is_running()` and is oblivious that it should stop. Nothing we can do to stop it except sigkill.
+        active_threads = threading.enumerate()
+        for index, thread in enumerate(active_threads): 
+            if thread != threading.main_thread():
+                click.secho(
+                    f"Stopping thread {index}/{len(active_threads)-1}.",
+                    fg="yellow",
+                )
+                thread.join(timeout=5.0)
+                if thread.is_alive():
+                    click.secho(f"{thread.name} is not terminating. Make sure to check 'sim.is_running()' in threading loops.", fg="red")
+
+        time.sleep(1) # Not great, but wait for main thread to really settle.
+
+        atexit.register(self.stop_mujoco_process) # Hacky, but works.
+
+    def stop_mujoco_process(self):
+        click.secho(
+            f"Sending signal to stop the Mujoco process...",
+            fg="red",
+        )
         
-        print("Done shutting down")
+        # Wait until the main control loop ends before sending this stop event.
+        self._stop_event.set()
+        if self._server_process:
+            # self._server_process.terminate() # ask it nicely.
+            self._server_process.join()
+
+        click.secho(
+            f"The Mujoco process has ended. Good-bye!",
+            fg="red",
+        )
 
 
     @require_connection
@@ -232,8 +268,18 @@ class StretchMujocoSimulator:
         """
         return StretchStatus.from_dict(copy.copy(self._status["val"]))
 
+    def is_server_alive_or_stopevent_untriggered(self):
+        return self._server_process is not None and self._server_process.is_alive() and not self._stop_event.is_set()
+
     def is_running(self) -> bool:
         """
-        Check if the simulator is running
+        Check if the simulator and mujoco are running, or if the stopevent signal has been triggered.
+
+        Side-effect here is that if the mujoco process is terminated or the stopevent is triggered, `self.stop()` is called. 
         """
-        return self._running
+        if not self.is_server_alive_or_stopevent_untriggered():
+            # Send the signal to stop the program:
+            self.stop()
+            return False
+        
+        return self._running 

@@ -1,7 +1,9 @@
+import signal
 import threading
 import time
 from typing import override
 
+import click
 import mujoco
 import mujoco._functions
 import mujoco.viewer
@@ -70,8 +72,8 @@ class MujocoServerPassive(MujocoServer):
         https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer
         """
 
-        # signal.signal(signal.SIGTERM, lambda num, h: None)
-        # signal.signal(signal.SIGINT, lambda num, h: None)
+        signal.signal(signal.SIGTERM, lambda num, h: self.stop_event.set())
+        signal.signal(signal.SIGINT, lambda num, h: self.stop_event.set())
         with mujoco.viewer.launch_passive(
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
         ) as viewer:
@@ -101,6 +103,15 @@ class MujocoServerPassive(MujocoServer):
                     # Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()`.
                     time.sleep(time_until_next_ui_update)
 
-            viewer.close()
+            # Wait for any active threads to close, otherwise the mujoco window gets stuck:
+            active_threads = threading.enumerate()
+            for index, thread in enumerate(active_threads): 
+                if thread != threading.main_thread():
+                    click.secho(
+                        f"Stopping thread {index}/{len(active_threads)-1} on the Mujoco Process.",
+                        fg="blue",
+                    )
+                    thread.join(timeout=5.0)
 
-        physics_thread.join()
+            click.secho("Mujoco viewer has terminated.", fg="blue")
+
