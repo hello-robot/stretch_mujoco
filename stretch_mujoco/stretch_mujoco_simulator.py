@@ -116,6 +116,8 @@ class StretchMujocoSimulator:
         if self._server_process:
             self._server_process.join()
 
+        exit(0) # exit this script, otherwise it tries to keep running even though we're stopped.
+
     @require_connection
     def home(self) -> None:
         """
