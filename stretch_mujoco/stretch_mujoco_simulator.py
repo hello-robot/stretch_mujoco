@@ -13,7 +13,7 @@ import numpy as np
 from mujoco._structs import MjModel
 
 from stretch_mujoco.enums.actuators import Actuators
-from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
@@ -37,7 +37,7 @@ class StretchMujocoSimulator:
         scene_xml_path: str | None = None,
         model: MjModel | None = None,
         camera_hz: float = 30,
-        cameras_to_use: list[StretchCameras] = [],
+        cameras_to_use: list[StretchCamera] = [],
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
@@ -51,7 +51,7 @@ class StretchMujocoSimulator:
         self._stop_event = self._manager.Event()
         self._command = self._manager.dict({"val": {}})
         self._status = self._manager.dict({"val": StretchStatus.default().to_dict()})
-        self._imagery = self._manager.dict({"val": StretchCameraStatus.default().to_dict()})
+        self._cameras = self._manager.dict({"val": StretchCameraStatus.default().to_dict()})
 
     def start(self, show_viewer_ui: bool = False, headless: bool = False) -> None:
         """
@@ -81,7 +81,7 @@ class StretchMujocoSimulator:
                 self._stop_event,
                 self._command,
                 self._status,
-                self._imagery,
+                self._cameras,
                 self._cameras_to_use,
             ),
             daemon=False # We're gonna handle terminating this in stop_mujoco_process()
@@ -129,7 +129,7 @@ class StretchMujocoSimulator:
                     f"Stopping thread {index}/{len(active_threads)-1}.",
                     fg="yellow",
                 )
-                thread.join(timeout=5.0)
+                thread.join(timeout=2.0)
                 if thread.is_alive():
                     click.secho(f"{thread.name} is not terminating. Make sure to check 'sim.is_running()' in threading loops.", fg="red")
 
@@ -260,7 +260,7 @@ class StretchMujocoSimulator:
         """
         Pull camera data from the simulator and return as a dictionary
         """
-        return StretchCameraStatus(**copy.copy(self._imagery["val"]))
+        return StretchCameraStatus(**copy.copy(self._cameras["val"]))
 
     @require_connection
     def pull_status(self) -> StretchStatus:

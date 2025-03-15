@@ -13,7 +13,7 @@ import mujoco.viewer
 import numpy as np
 from mujoco._structs import MjData, MjModel
 
-from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.stretch_cameras import StretchCamera
 import stretch_mujoco.config as config
 from stretch_mujoco.mujoco_server_camera_manager import (
     MujocoServerCameraManagerAsync,
@@ -67,7 +67,7 @@ class MujocoServer:
         self.physics_fps_counter = FpsCounter()
 
     def set_camera_manager(
-        self, use_camera_thread: bool, camera_hz: float, cameras_to_use: list[StretchCameras]
+        self, use_camera_thread: bool, camera_hz: float, cameras_to_use: list[StretchCamera]
     ):
         if use_camera_thread:
             self.camera_manager = MujocoServerCameraManagerAsync(
@@ -90,7 +90,7 @@ class MujocoServer:
         command: DictProxy,
         status: DictProxy,
         imagery: DictProxy,
-        cameras_to_use: list[StretchCameras],
+        cameras_to_use: list[StretchCamera],
     ):
         server = cls(scene_xml_path, model, stop_event, command, status, imagery)
         server.run(
@@ -105,7 +105,7 @@ class MujocoServer:
         show_viewer_ui: bool,
         headless: bool,
         camera_hz: float,
-        cameras_to_use: list[StretchCameras],
+        cameras_to_use: list[StretchCamera],
     ):
 
         # We're using the managed viewer, and don't have access to the UI thread, so use the camera thread to manage camera rendering:

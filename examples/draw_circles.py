@@ -5,7 +5,7 @@ import numpy as np
 
 from examples.camera_feeds import show_camera_feeds_sync
 from stretch_mujoco.enums.actuators import Actuators
-from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
 
@@ -32,7 +32,7 @@ def _run_draw_circle():
         sim.move_to(Actuators.gripper, 100)
         time.sleep(3)
         # input('Press enter to close the gripper')
-        sim.move_to(Actuators.gripper, -100)
+        sim.move_to(Actuators.gripper, pos=-10)
         time.sleep(0.5)
 
         while sim.is_running(): 
@@ -46,9 +46,9 @@ def _run_draw_circle():
 
 if __name__ == "__main__":
 
-    # You can use all the camera's, but it takes longer to render, and may affect camera rendering FPS.
+    # You can use all the camera's, but it takes longer to render, and may affect overall simulation FPS.
     # cameras_to_use = StretchCameras.all()
-    cameras_to_use = [StretchCameras.cam_d405_rgb]
+    cameras_to_use = [StretchCamera.cam_d405_rgb]
 
     sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
 

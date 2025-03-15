@@ -6,7 +6,7 @@ import cv2
 from gamepad_controller import GamePadController
 
 from stretch_mujoco import StretchMujocoSimulator
-from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.utils import get_depth_color_map
 
@@ -141,7 +141,7 @@ def gamepad_loop():
 @click.option("--headless", is_flag=True, help="Run in headless mode")
 def main(scene_xml_path: str, robocasa_env: bool, headless: bool):
     global sim, gamepad
-    cameras_to_use = StretchCameras.all()
+    cameras_to_use = StretchCamera.all()
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 

@@ -7,7 +7,7 @@ import click
 import mujoco
 import mujoco._functions
 import mujoco.viewer
-from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.utils import FpsCounter
 
@@ -31,7 +31,7 @@ class MujocoServerPassive(MujocoServer):
         show_viewer_ui: bool,
         headless: bool,
         camera_hz: float,
-        cameras_to_use: list[StretchCameras],
+        cameras_to_use: list[StretchCamera],
     ):
         # We're using the passive viewer, and have access to the UI thread. We can manage camera rendering on the UI thread:
         self.set_camera_manager(
@@ -87,21 +87,21 @@ class MujocoServerPassive(MujocoServer):
             while viewer.is_running() and not self.stop_event.is_set():
                 fps.tick()
                 start_time = time.perf_counter()
-                print(f"UI thread: {fps.fps=}, {self.physics_fps_counter.fps=}, {self.camera_manager.camera_fps_counter.fps=}")
+                # print(f"UI thread: {fps.fps=}, {self.physics_fps_counter.fps=}, {self.camera_manager.camera_fps_counter.fps=}")
 
                 with viewer.lock():
                     self.camera_manager.pull_camera_data_at_camera_rate()
 
                 viewer.sync()
 
-
                 time_until_next_ui_update = UI_FPS_CAP_RATE - (
                     time.perf_counter() - start_time
                 )
-                print(f"{time_until_next_ui_update=}")
                 if time_until_next_ui_update > 0:
                     # Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()`.
                     time.sleep(time_until_next_ui_update)
+                else:
+                    click.secho("WARNING: The simulation is running below 30FPS", fg="yellow")
 
             # Wait for any active threads to close, otherwise the mujoco window gets stuck:
             active_threads = threading.enumerate()

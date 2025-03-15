@@ -1,14 +1,11 @@
 import sys
 import termios
-import threading
 import time
 import tty
 
 import click
 
-from examples.camera_feeds import show_camera_feeds_sync
 from stretch_mujoco import StretchMujocoSimulator
-from stretch_mujoco.enums.cameras import StretchCameras
 from stretch_mujoco.enums.actuators import Actuators
 
 
@@ -40,7 +37,7 @@ def print_keyboard_options():
 
 
 def keyboard_control(sim: StretchMujocoSimulator):
-    while True:
+    while sim.is_running():
         print_keyboard_options()
         key = getch().lower()
         if key == "w":
@@ -86,23 +83,20 @@ def keyboard_control(sim: StretchMujocoSimulator):
 @click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
 def main(scene_xml_path: str, robocasa_env: bool):
     model = None
-    cameras_to_use = StretchCameras.all()
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
         model, xml, objects_info = model_generation_wizard()
-        sim = StretchMujocoSimulator(model=model, cameras_to_use=cameras_to_use)
+        sim = StretchMujocoSimulator(model=model)
     elif scene_xml_path:
-        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path, cameras_to_use=cameras_to_use)
+        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path)
     else:
-        sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
+        sim = StretchMujocoSimulator()
+
     try:
         sim.start()
 
-        threading.Thread(target= keyboard_control, args=(sim,), daemon=True).start()
-
-        while True:
-            show_camera_feeds_sync(sim, cameras_to_use, print_fps=True)
+        keyboard_control(sim)
     except KeyboardInterrupt:
         sim.stop()
 

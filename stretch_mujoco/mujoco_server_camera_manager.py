@@ -7,7 +7,7 @@ import mujoco
 import numpy as np
 
 from stretch_mujoco import config, utils
-from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.status import StretchCameraStatus
 from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
 
@@ -23,14 +23,14 @@ class MujocoServerCameraManagerSync:
     """
 
     def __init__(
-        self, camera_hz: float, cameras_to_use: list[StretchCameras], mujoco_server: "MujocoServer"
+        self, camera_hz: float, cameras_to_use: list[StretchCamera], mujoco_server: "MujocoServer"
     ) -> None:
 
         self.mujoco_server = mujoco_server
 
         self.camera_rate = 1 / camera_hz  # Hz to seconds
 
-        self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
+        self.camera_renderers: dict[StretchCamera, mujoco.Renderer] = {}
 
         self._set_camera_properties()
 
@@ -87,7 +87,7 @@ class MujocoServerCameraManagerSync:
 
         return renderer
 
-    def _render_camera(self, renderer: mujoco.Renderer, camera: StretchCameras):
+    def _render_camera(self, renderer: mujoco.Renderer, camera: StretchCamera):
         """
         This calls update_scene and render() for an offscreen camera buffer.
 
@@ -104,7 +104,7 @@ class MujocoServerCameraManagerSync:
 
         return (camera, render)
 
-    def _remove_camera_renderer(self, camera: StretchCameras):
+    def _remove_camera_renderer(self, camera: StretchCamera):
         """
         When a camera is not needed, it's removed from self.camera_renderers to save computation costs.
 
@@ -116,7 +116,7 @@ class MujocoServerCameraManagerSync:
 
         raise Exception(f"Camera {camera} was not in {self.camera_renderers=}")
 
-    def _add_camera_renderer(self, camera: StretchCameras):
+    def _add_camera_renderer(self, camera: StretchCamera):
         """
         Creates a renderer and render params for the cameras the user wants to use.
 
@@ -169,7 +169,7 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
     """
 
     def __init__(
-        self, camera_hz: float, cameras_to_use: list[StretchCameras], mujoco_server: "MujocoServer"
+        self, camera_hz: float, cameras_to_use: list[StretchCamera], mujoco_server: "MujocoServer"
     ):
 
         super().__init__(camera_hz, cameras_to_use, mujoco_server)

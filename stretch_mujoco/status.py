@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass
 import numpy as np
 
-from stretch_mujoco.enums.cameras import StretchCameras
+from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.utils import dataclass_from_dict
 
 @dataclass
@@ -82,36 +82,36 @@ class StretchCameraStatus:
     def to_dict(self):
         return asdict(self)
     
-    def set_camera_data(self, camera:StretchCameras, data:np.ndarray):
-        if camera == StretchCameras.cam_d405_rgb:
+    def set_camera_data(self, camera:StretchCamera, data:np.ndarray):
+        if camera == StretchCamera.cam_d405_rgb:
             self.cam_d405_rgb = data
             return
-        if camera == StretchCameras.cam_d405_depth:
+        if camera == StretchCamera.cam_d405_depth:
             self.cam_d405_depth = data
             return
-        if camera == StretchCameras.cam_d435i_rgb:
+        if camera == StretchCamera.cam_d435i_rgb:
             self.cam_d435i_rgb = data
             return
-        if camera == StretchCameras.cam_d435i_depth:
+        if camera == StretchCamera.cam_d435i_depth:
             self.cam_d435i_depth = data
             return
-        if camera == StretchCameras.cam_nav_rgb:
+        if camera == StretchCamera.cam_nav_rgb:
             self.cam_nav_rgb = data
             return
         
         raise NotImplementedError(f"Camera {camera} is not implemented.")
 
-    def get_camera_data(self, camera:StretchCameras) -> np.ndarray:
+    def get_camera_data(self, camera:StretchCamera) -> np.ndarray:
         data:np.ndarray|None = None
-        if camera == StretchCameras.cam_d405_rgb:
+        if camera == StretchCamera.cam_d405_rgb:
             data = self.cam_d405_rgb
-        if camera == StretchCameras.cam_d405_depth:
+        if camera == StretchCamera.cam_d405_depth:
             data = self.cam_d405_depth
-        if camera == StretchCameras.cam_d435i_rgb:
+        if camera == StretchCamera.cam_d435i_rgb:
             data = self.cam_d435i_rgb
-        if camera == StretchCameras.cam_d435i_depth:
+        if camera == StretchCamera.cam_d435i_depth:
             data = self.cam_d435i_depth
-        if camera == StretchCameras.cam_nav_rgb:
+        if camera == StretchCamera.cam_nav_rgb:
             data = self.cam_nav_rgb
 
         if data is None:
