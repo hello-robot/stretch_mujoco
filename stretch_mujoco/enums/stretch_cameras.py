@@ -40,7 +40,7 @@ class StretchCamera(Enum):
         return [
             StretchCamera.cam_d405_rgb,
             StretchCamera.cam_d435i_rgb,
-            StretchCamera.cam_d435i_rgb,
+            StretchCamera.cam_nav_rgb,
         ]
     @staticmethod
     def depth() -> list["StretchCamera"]:
