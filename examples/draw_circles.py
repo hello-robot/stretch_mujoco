@@ -20,27 +20,18 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
     for pt in circle_mat:
         print(f"Moving to {pt}")
         sim.move_to(Actuators.arm, pt[0])
-        time.sleep(0.5)
         sim.move_to(Actuators.lift, pt[1])
-        time.sleep(0.5)
 
 def _run_draw_circle():
-    try:
-        time.sleep(2)
-        sim.move_to(Actuators.wrist_yaw, 1.5707)
-        time.sleep(0.5)
-        sim.move_to(Actuators.gripper, 100)
-        time.sleep(3)
-        # input('Press enter to close the gripper')
-        sim.move_to(Actuators.gripper, pos=-10)
-        time.sleep(0.5)
+    sim.move_to(Actuators.wrist_yaw, 1.5707)
+    sim.move_to(Actuators.gripper, 100)
+    # input('Press enter to close the gripper')
+    sim.move_to(Actuators.gripper, pos=-10)
 
-        while sim.is_running(): 
-            status = sim.pull_status()
-            draw_circle(25, 0.2, status.arm.pos, status.lift.pos, sim)
-            time.sleep(1)
-    except Exception as e:
-        print(f"{e}")
+    while sim.is_running(): 
+        status = sim.pull_status()
+        draw_circle(25, 0.2, status.arm.pos, status.lift.pos, sim)
+        time.sleep(1)
 
 
 
@@ -58,7 +49,7 @@ if __name__ == "__main__":
 
     try:
         while sim.is_running():
-            show_camera_feeds_sync(sim, cameras_to_use, True)
+            show_camera_feeds_sync(sim, cameras_to_use, False)
 
     except KeyboardInterrupt:
         sim.stop()

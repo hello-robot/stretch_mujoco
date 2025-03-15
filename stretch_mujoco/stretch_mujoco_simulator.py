@@ -17,7 +17,8 @@ from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
-from stretch_mujoco.utils import require_connection
+from stretch_mujoco.utils import require_connection, wait_and_check
+
 
 class StretchMujocoSimulator:
     """
@@ -84,10 +85,10 @@ class StretchMujocoSimulator:
                 self._cameras,
                 self._cameras_to_use,
             ),
-            daemon=False # We're gonna handle terminating this in stop_mujoco_process()
+            daemon=False,  # We're gonna handle terminating this in stop_mujoco_process()
         )
         self._server_process.start()
-        
+
         # Handle stopping, in all its various ways:
         signal.signal(signal.SIGTERM, lambda num, sig: self.stop())
         signal.signal(signal.SIGINT, lambda num, sig: self.stop())
@@ -101,7 +102,6 @@ class StretchMujocoSimulator:
 
         self.home()
 
-
     def stop(self) -> None:
         """
         This is called at exit to gracefully terminate the simulation and the Mujoco Process, and their many threads.
@@ -110,9 +110,9 @@ class StretchMujocoSimulator:
         """
         if not self._running:
             return
-        
+
         simulation_time = self._status["val"]["time"]
-        
+
         click.secho(
             f"Stopping Stretch Mujoco Simulator... simulated runtime={simulation_time:.1f}s",
             fg="red",
@@ -123,7 +123,7 @@ class StretchMujocoSimulator:
         # We're going to try to wait for threads to end. They might not gracefully stop before hitting an exception. Race conditions are rampant.
         # For example, the main thread or a thread may not be checking `sim.is_running()` and is oblivious that it should stop. Nothing we can do to stop it except sigkill.
         active_threads = threading.enumerate()
-        for index, thread in enumerate(active_threads): 
+        for index, thread in enumerate(active_threads):
             if thread != threading.main_thread() and not isinstance(thread, threading._DummyThread):
                 click.secho(
                     f"Stopping thread {index}/{len(active_threads)-1}.",
@@ -131,18 +131,23 @@ class StretchMujocoSimulator:
                 )
                 thread.join(timeout=2.0)
                 if thread.is_alive():
-                    click.secho(f"{thread.name} is not terminating. Make sure to check 'sim.is_running()' in threading loops.", fg="red")
+                    click.secho(
+                        f"{thread.name} is not terminating. Make sure to check 'sim.is_running()' in threading loops.",
+                        fg="red",
+                    )
 
-        time.sleep(1) # Not great, but wait for main thread to really settle.
+        time.sleep(1)  # Not great, but wait for main thread to really settle.
 
-        atexit.register(self.stop_mujoco_process) # Calling it directly doesn't always work if the main thread isn't 
+        atexit.register(
+            self.stop_mujoco_process
+        )  # Calling it directly doesn't always work if the main thread isn't
 
     def stop_mujoco_process(self):
         click.secho(
             f"Sending signal to stop the Mujoco process...",
             fg="red",
         )
-        
+
         # Wait until the main control loop ends before sending this stop event.
         self._stop_event.set()
         if self._server_process:
@@ -153,7 +158,6 @@ class StretchMujocoSimulator:
             f"The Mujoco process has ended. Good-bye!",
             fg="red",
         )
-
 
     @require_connection
     def home(self) -> None:
@@ -170,40 +174,49 @@ class StretchMujocoSimulator:
         self._command["val"] = {"keyframe": {"name": "stow", "trigger": True}}
 
     @require_connection
-    def move_to(self, actuator: Actuators, pos: float) -> None:
+    def move_to(self, actuator: Actuators, pos: float, timeout: float | None = 15.0) -> None:
         """
         Move the actuator to a specific position
         Args:
             actuator_name: str, name of the actuator
             pos: float, absolute position goal
+            timeout: if not None, then it will wait for the joint to reach that position, or throw.
         """
-        if not actuator.is_position_actuator:
+        if actuator in [
+            Actuators.left_wheel_vel,
+            Actuators.right_wheel_vel,
+            Actuators.base_rotate,
+            Actuators.base_translate,
+        ]:
             click.secho(
-                f"Actuator {actuator} not recognized."
-                f"\n Available position actuators: {Actuators.position_actuators()}",
+                f"Cannot set an absolute position for a continuous joint {actuator.name}",
                 fg="red",
             )
-            return
-        if actuator in ["base_translate", "base_rotate"]:
-            click.secho(f"{actuator} not allowed for move_to", fg="red")
             return
 
         self._command["val"] = {
             "move_to": {"actuator_name": actuator.name, "pos": pos, "trigger": True}
         }
 
+        if timeout:
+            if not wait_and_check(
+                timeout,
+                lambda: np.isclose(actuator.get_position(self.pull_status()), pos, 0.01) == True,
+            ):
+                raise Exception(f"Joint {actuator.name} did not reach {pos}. Actual: {actuator.get_position(self.pull_status())}")
+
     @require_connection
-    def move_by(self, actuator: Actuators, pos: float) -> None:
+    def move_by(self, actuator: Actuators, pos: float, timeout: float | None = 15.0) -> None:
         """
         Move the actuator by a specific amount
         Args:
             actuator_name: Actuators, name of the actuator
             pos: float, position to increment by
+            timeout: if not None, then it will wait for the joint to reach that position, or throw.
         """
-        if not actuator.is_position_actuator:
+        if actuator in [Actuators.left_wheel_vel, Actuators.right_wheel_vel]:
             click.secho(
-                f"Actuator {actuator} not recognized."
-                f"\n Available position actuators: {Actuators.position_actuators()}",
+                f"Cannot set a position for a velocity joint {actuator.name}",
                 fg="red",
             )
             return
@@ -211,6 +224,14 @@ class StretchMujocoSimulator:
         self._command["val"] = {
             "move_by": {"actuator_name": actuator.name, "pos": pos, "trigger": True}
         }
+
+        if timeout:
+            initial_position = actuator.get_position(self.pull_status())
+            if not wait_and_check(
+                timeout,
+                lambda: np.isclose(initial_position-actuator.get_position(self.pull_status()), pos, 0.01) == True,
+            ):
+                raise Exception(f"Joint {actuator.name} did not move by {pos}. Actual relative: {initial_position-actuator.get_position(self.pull_status())}")
 
     @require_connection
     def set_base_velocity(self, v_linear: float, omega: float) -> None:
@@ -270,17 +291,21 @@ class StretchMujocoSimulator:
         return StretchStatus.from_dict(copy.copy(self._status["val"]))
 
     def is_server_alive_or_stopevent_untriggered(self):
-        return self._server_process is not None and self._server_process.is_alive() and not self._stop_event.is_set()
+        return (
+            self._server_process is not None
+            and self._server_process.is_alive()
+            and not self._stop_event.is_set()
+        )
 
     def is_running(self) -> bool:
         """
         Check if the simulator and mujoco are running, or if the stopevent signal has been triggered.
 
-        Side-effect here is that if the mujoco process is terminated or the stopevent is triggered, `self.stop()` is called. 
+        Side-effect here is that if the mujoco process is terminated or the stopevent is triggered, `self.stop()` is called.
         """
         if not self.is_server_alive_or_stopevent_untriggered():
             # Send the signal to stop the program:
             self.stop()
             return False
-        
-        return self._running 
+
+        return self._running

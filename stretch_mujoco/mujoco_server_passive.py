@@ -100,8 +100,8 @@ class MujocoServerPassive(MujocoServer):
                 if time_until_next_ui_update > 0:
                     # Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()`.
                     time.sleep(time_until_next_ui_update)
-                else:
-                    click.secho("WARNING: The simulation is running below 30FPS", fg="yellow")
+                # else:
+                #     click.secho("WARNING: The simulation is running below 30FPS", fg="yellow")
 
             # Wait for any active threads to close, otherwise the mujoco window gets stuck:
             active_threads = threading.enumerate()

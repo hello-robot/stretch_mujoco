@@ -3,7 +3,7 @@ import math
 import re
 import time
 import xml.etree.ElementTree as ET
-from typing import Tuple
+from typing import Callable, Tuple
 
 import cv2
 import numpy as np
@@ -333,7 +333,14 @@ def dataclass_from_dict(klass, dict_data:dict):
     except:
         return dict_data # Not a dataclass field
     
-
+def wait_and_check(wait_timeout: float, check: Callable[[], bool]) -> bool:
+    start_time = time.perf_counter()
+    
+    while time.perf_counter() - start_time < wait_timeout:
+        if check():
+            return True
+        
+    return False
 
 def switch_to_glfw_renderer(mjmodel: MjModel, renderer: mujoco.Renderer):
     """
