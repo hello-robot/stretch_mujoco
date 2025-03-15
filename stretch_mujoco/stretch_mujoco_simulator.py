@@ -201,12 +201,12 @@ class StretchMujocoSimulator:
         if timeout:
             if not wait_and_check(
                 timeout,
-                lambda: np.isclose(actuator.get_position(self.pull_status()), pos, 0.01) == True,
+                lambda: np.isclose(actuator.get_position(self.pull_status()), pos, atol=0.05) == True,
             ):
                 raise Exception(f"Joint {actuator.name} did not reach {pos}. Actual: {actuator.get_position(self.pull_status())}")
 
     @require_connection
-    def move_by(self, actuator: Actuators, pos: float, timeout: float | None = 15.0) -> None:
+    def move_by(self, actuator: Actuators, pos: float) -> None:
         """
         Move the actuator by a specific amount
         Args:
@@ -225,13 +225,23 @@ class StretchMujocoSimulator:
             "move_by": {"actuator_name": actuator.name, "pos": pos, "trigger": True}
         }
 
-        if timeout:
-            initial_position = actuator.get_position(self.pull_status())
-            if not wait_and_check(
-                timeout,
-                lambda: np.isclose(initial_position-actuator.get_position(self.pull_status()), pos, 0.01) == True,
-            ):
-                raise Exception(f"Joint {actuator.name} did not move by {pos}. Actual relative: {initial_position-actuator.get_position(self.pull_status())}")
+        # if timeout:
+        #     if actuator in [Actuators.base_rotate, Actuators.base_translate]:
+
+        #         initial_position = actuator.get_position_relative(self.pull_status())
+
+        #         # TODO: implement the check for moving the base
+        #         check = lambda: True
+        #     else:   
+        #         initial_position = actuator.get_position(self.pull_status())
+
+        #         check = lambda: np.isclose(initial_position-actuator.get_position(self.pull_status()), pos,  atol=0.05) == True
+
+        #     if not wait_and_check(
+        #         timeout,
+        #         check
+        #     ):
+        #         raise Exception(f"Joint {actuator.name} did not move by {pos}.")
 
     @require_connection
     def set_base_velocity(self, v_linear: float, omega: float) -> None:

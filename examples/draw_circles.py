@@ -23,10 +23,11 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
         sim.move_to(Actuators.lift, pt[1])
 
 def _run_draw_circle():
+    time.sleep(2)
     sim.move_to(Actuators.wrist_yaw, 1.5707)
-    sim.move_to(Actuators.gripper, 100)
+    sim.move_to(Actuators.gripper, 0.5)
     # input('Press enter to close the gripper')
-    sim.move_to(Actuators.gripper, pos=-10)
+    sim.move_to(Actuators.gripper, pos=-0.15)
 
     while sim.is_running(): 
         status = sim.pull_status()
