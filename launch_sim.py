@@ -2,6 +2,8 @@ import stretch_mujoco
 import click
 import cv2
 
+from stretch_mujoco.enums.stretch_cameras import StretchCamera
+
 
 @click.command()
 @click.option("--scene-xml-path", help="Path to a scene xml file")
@@ -14,20 +16,16 @@ def main(
 ) -> None:
     sim = stretch_mujoco.StretchMujocoSimulator(scene_xml_path)
     sim.start(headless=headless)
+    cameras_to_use = StretchCamera.all() if imagery else StretchCamera.none()
     try:
         while sim.is_running():
             if imagery: # display camera feeds
                 camera_data = sim.pull_camera_data()
-                cv2.imshow("cam_d405_rgb", cv2.cvtColor(camera_data["cam_d405_rgb"], cv2.COLOR_RGB2BGR))
-                cv2.imshow("cam_d405_depth", camera_data["cam_d405_depth"])
-                cv2.imshow(
-                    "cam_d435i_rgb", cv2.cvtColor(camera_data["cam_d435i_rgb"], cv2.COLOR_RGB2BGR)
-                )
-                cv2.imshow("cam_d435i_depth", camera_data["cam_d435i_depth"])
-                cv2.imshow("cam_nav_rgb", cv2.cvtColor(camera_data["cam_nav_rgb"], cv2.COLOR_RGB2BGR))
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    cv2.destroyAllWindows()
-                    break
+
+                for camera in cameras_to_use:
+                    image = cv2.cvtColor(camera_data.get_camera_data(camera), cv2.COLOR_RGB2BGR)
+                    cv2.imshow(camera.name, image)
+
     except KeyboardInterrupt:
         sim.stop()
         cv2.destroyAllWindows()
