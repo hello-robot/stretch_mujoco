@@ -64,7 +64,7 @@ class StretchMujocoSimulator:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
             headless: bool, whether to run the simulation in headless mode
         """
-        mujoco_server = MujocoServer
+        mujoco_server = MujocoServerPassive
         
         if platform.system() == "Darwin":
             # On a mac, the process for MujocoServerPassive needs to be started with mjpython

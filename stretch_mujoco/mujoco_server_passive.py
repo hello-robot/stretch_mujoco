@@ -90,8 +90,7 @@ class MujocoServerPassive(MujocoServer):
                 start_time = time.perf_counter()
                 # print(f"UI thread: {fps.fps=}, {self.physics_fps_counter.fps=}, {self.camera_manager.camera_fps_counter.fps=}")
 
-                with viewer.lock():
-                    self.camera_manager.pull_camera_data_at_camera_rate()
+                self.camera_manager.pull_camera_data_at_camera_rate()
 
                 viewer.sync()
 
@@ -101,9 +100,7 @@ class MujocoServerPassive(MujocoServer):
                 if time_until_next_ui_update > 0:
                     # Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()` taking up ticks.
                     time.sleep(time_until_next_ui_update)
-                else:
-                    click.secho(f"WARNING: The simulation is running below {1/self.camera_manager.camera_rate}FPS", fg="yellow")
-
+                    
             self.close()
             
             # Wait for any active threads to close, otherwise the mujoco window gets stuck:
