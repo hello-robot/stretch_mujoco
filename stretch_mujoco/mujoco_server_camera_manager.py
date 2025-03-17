@@ -41,6 +41,13 @@ class MujocoServerCameraManagerSync:
         self.camera_fps_counter = FpsCounter()
 
         self.time_start = time.perf_counter()
+    
+    def close(self):
+        """
+        Clean up renderer resources
+        """
+        for renderer in self.camera_renderers.values():
+            renderer.close()
 
     def pull_camera_data_at_camera_rate(self):
         """
@@ -77,9 +84,8 @@ class MujocoServerCameraManagerSync:
     def _create_camera_renderer(self, is_depth: bool):
         renderer = mujoco.Renderer(self.mujoco_server.mjmodel, height=480, width=640)
 
-        from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
-        if platform.system() == "Darwin" and not isinstance(self.mujoco_server, MujocoServerPassive):
-            # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering, and blocks the camera renderers ONLY if using the managed viewer.
+        if platform.system() == "Darwin" and isinstance(self, MujocoServerCameraManagerAsync):
+            # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering in async mode.
             switch_to_glfw_renderer(self.mujoco_server.mjmodel, renderer)
 
         if is_depth:
@@ -94,7 +100,7 @@ class MujocoServerCameraManagerSync:
         Use this with the _toggle_camera() functionality in this class.
         """
 
-        renderer.update_scene(self.mujoco_server.mjdata, camera.camera_name_in_scene)
+        renderer.update_scene(data=self.mujoco_server.mjdata, camera=camera.camera_name_in_scene)
 
         render = renderer.render()
 

@@ -104,6 +104,8 @@ class MujocoServerPassive(MujocoServer):
                 else:
                     click.secho(f"WARNING: The simulation is running below {1/self.camera_manager.camera_rate}FPS", fg="yellow")
 
+            self.close()
+            
             # Wait for any active threads to close, otherwise the mujoco window gets stuck:
             active_threads = threading.enumerate()
             for index, thread in enumerate(active_threads): 

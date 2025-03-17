@@ -118,11 +118,17 @@ class MujocoServer:
         else:
             self._run_ui_simulation(show_viewer_ui)
 
+    def close(self):
+        """
+        Clean up C++ resources
+        """
+        self.camera_manager.close()
+
     def _run_ui_simulation(self, show_viewer_ui: bool) -> None:
         """
         Run the simulation with the viewer
         """
-        mujoco._callbacks.set_mjcb_control(self._ctrl_callback)
+        mujoco._callbacks.set_mjcb_control(self._managed_viewer_loop)
         mujoco.viewer.launch(
             self.mjmodel,
             show_left_ui=show_viewer_ui,
@@ -142,16 +148,25 @@ class MujocoServer:
             if elapsed < self.mjmodel.opt.timestep:
                 time.sleep(self.mjmodel.opt.timestep - elapsed)
 
+    def _managed_viewer_loop(self, model: MjModel, data: MjData):
+
+        if self.stop_event.is_set():
+            if isinstance(self.camera_manager, MujocoServerCameraManagerAsync):
+                self.camera_manager.cameras_thread.join()
+            
+            self.close()
+
+            os.kill(os.getpid(), 9)
+
+
+        self._ctrl_callback(model, data)
+
     def _ctrl_callback(self, model: MjModel, data: MjData) -> None:
         """
         Callback function that gets executed with mj_step
         """
         self.physics_fps_counter.tick()
 
-        if self.stop_event.is_set():
-            if isinstance(self.camera_manager, MujocoServerCameraManagerAsync):
-                self.camera_manager.cameras_thread.join()
-            os.kill(os.getpid(), 9)
         self.mjdata = data
         self.mjmodel = model
         self.pull_status()
