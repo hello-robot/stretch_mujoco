@@ -5,6 +5,7 @@ import time
 import xml.etree.ElementTree as ET
 from typing import Callable, Tuple
 
+import click
 import cv2
 import numpy as np
 import importlib.resources
@@ -40,6 +41,7 @@ def require_connection(function):
     def wrapper_function(self, *args, **kwargs):
         if not self._running:
             raise ConnectionError("The Stretch Mujoco Simulator is not running. Use the start() method to start it.")
+            # click.secho("The Stretch Mujoco Simulator is not running. Use the start() method to start it.", fg="red")
         return function(self, *args, **kwargs)
 
     return wrapper_function
@@ -333,10 +335,11 @@ def dataclass_from_dict(klass, dict_data:dict):
     except:
         return dict_data # Not a dataclass field
     
-def wait_and_check(wait_timeout: float, check: Callable[[], bool]) -> bool:
-    start_time = time.perf_counter()
+def wait_and_check(wait_timeout: float, check: Callable[[], bool], is_alive: Callable[[],bool]) -> bool:
+    start_time = time.time()
     
-    while time.perf_counter() - start_time < wait_timeout:
+    while time.time() - start_time < wait_timeout:
+        if not is_alive(): return True
         if check():
             return True
         

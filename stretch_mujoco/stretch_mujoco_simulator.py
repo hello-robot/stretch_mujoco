@@ -7,6 +7,7 @@ import signal
 import sys
 import threading
 import time
+from typing import Callable
 
 import click
 import numpy as np
@@ -14,6 +15,7 @@ from mujoco._structs import MjModel
 
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCamera
+from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
@@ -62,6 +64,7 @@ class StretchMujocoSimulator:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
             headless: bool, whether to run the simulation in headless mode
         """
+        mujoco_server = MujocoServer
         if platform.system() == "Darwin":
             # On a mac, the process needs to be started with mjpython
             mjpython_path = sys.executable.replace("bin/python3", "bin/mjpython").replace(
@@ -69,11 +72,13 @@ class StretchMujocoSimulator:
             )
             print(f"{mjpython_path=}")
             multiprocessing.set_executable(mjpython_path)
+
+            mujoco_server = MujocoServerPassive
             
         multiprocessing.set_start_method("spawn", force=True)
 
         self._server_process = Process(
-            target=MujocoServerPassive.launch_server,
+            target=mujoco_server.launch_server,
             name="MujocoProcess",
             args=(
                 self.scene_xml_path,
@@ -126,7 +131,7 @@ class StretchMujocoSimulator:
         # For example, the main thread or a thread may not be checking `sim.is_running()` and is oblivious that it should stop. Nothing we can do to stop it except sigkill.
         active_threads = threading.enumerate()
         for index, thread in enumerate(active_threads):
-            if thread != threading.main_thread() and not isinstance(thread, threading._DummyThread):
+            if thread != threading.current_thread() and thread != threading.main_thread() and not isinstance(thread, threading._DummyThread):
                 click.secho(
                     f"Stopping thread {index}/{len(active_threads)-1}.",
                     fg="yellow",
@@ -204,6 +209,7 @@ class StretchMujocoSimulator:
             if not wait_and_check(
                 timeout,
                 lambda: np.isclose(actuator.get_position(self.pull_status()), pos, atol=0.05) == True,
+                self.is_running
             ):
                 raise Exception(f"Joint {actuator.name} did not reach {pos}. Actual: {actuator.get_position(self.pull_status())}")
 
