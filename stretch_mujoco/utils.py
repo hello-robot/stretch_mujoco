@@ -339,7 +339,7 @@ def wait_and_check(wait_timeout: float, check: Callable[[], bool], is_alive: Cal
     start_time = time.time()
     
     while time.time() - start_time < wait_timeout:
-        if not is_alive(): return True
+        if not is_alive(): return False
         if check():
             return True
         

@@ -84,8 +84,11 @@ class MujocoServerCameraManagerSync:
     def _create_camera_renderer(self, is_depth: bool):
         renderer = mujoco.Renderer(self.mujoco_server.mjmodel, height=480, width=640)
 
-        if platform.system() == "Darwin" and isinstance(self, MujocoServerCameraManagerAsync):
-            # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering in async mode.
+        print(f"{(threading.current_thread is threading.main_thread())=}")
+
+        from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
+        if platform.system() == "Darwin" and not isinstance(self.mujoco_server, MujocoServerPassive):
+            # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering on the managed viewer (because of mutex locking).
             switch_to_glfw_renderer(self.mujoco_server.mjmodel, renderer)
 
         if is_depth:

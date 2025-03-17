@@ -65,8 +65,9 @@ class StretchMujocoSimulator:
             headless: bool, whether to run the simulation in headless mode
         """
         mujoco_server = MujocoServer
+        
         if platform.system() == "Darwin":
-            # On a mac, the process needs to be started with mjpython
+            # On a mac, the process for MujocoServerPassive needs to be started with mjpython
             mjpython_path = sys.executable.replace("bin/python3", "bin/mjpython").replace(
                 "bin/python", "bin/mjpython"
             )
@@ -181,13 +182,13 @@ class StretchMujocoSimulator:
         self._command["val"] = {"keyframe": {"name": "stow", "trigger": True}}
 
     @require_connection
-    def move_to(self, actuator: Actuators, pos: float, timeout: float | None = 15.0) -> None:
+    def move_to(self, actuator: Actuators, pos: float, timeout: float | None = 15.0) :
         """
         Move the actuator to a specific position
         Args:
             actuator_name: str, name of the actuator
             pos: float, absolute position goal
-            timeout: if not None, then it will wait for the joint to reach that position, or throw.
+            timeout: if not None, then it will wait for the joint to reach that position, or return False
         """
         if actuator in [
             Actuators.left_wheel_vel,
@@ -211,7 +212,10 @@ class StretchMujocoSimulator:
                 lambda: np.isclose(actuator.get_position(self.pull_status()), pos, atol=0.05) == True,
                 self.is_running
             ):
-                raise Exception(f"Joint {actuator.name} did not reach {pos}. Actual: {actuator.get_position(self.pull_status())}")
+                click.secho(f"Joint {actuator.name} did not reach {pos}. Actual: {actuator.get_position(self.pull_status())}", fg="red")
+                return False
+        return True
+            
 
     @require_connection
     def move_by(self, actuator: Actuators, pos: float) -> None:
