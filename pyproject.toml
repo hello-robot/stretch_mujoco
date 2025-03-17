@@ -9,7 +9,7 @@ dependencies = [
     "hello-robot-stretch-urdf>=0.1.0",
     "inputs>=0.5",
     "ipython>=8.31.0",
-    "mujoco>=3.2.7",
+    "mujoco==3.2.7",
     "opencv-python>=4.10.0.84",
     "urchin>=0.0.29",
 ]
