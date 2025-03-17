@@ -69,6 +69,8 @@ class StretchMujocoSimulator:
             )
             print(f"{mjpython_path=}")
             multiprocessing.set_executable(mjpython_path)
+            
+        multiprocessing.set_start_method("spawn", force=True)
 
         self._server_process = Process(
             target=MujocoServerPassive.launch_server,

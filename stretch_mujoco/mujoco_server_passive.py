@@ -77,12 +77,13 @@ class MujocoServerPassive(MujocoServer):
         with mujoco.viewer.launch_passive(
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
         ) as viewer:
+            
             physics_thread = threading.Thread(target=self._do_physics, name="PhysicsThread", args=(viewer,), daemon=True)
             physics_thread.start()
 
             fps = FpsCounter()
             
-            UI_FPS_CAP_RATE = 1/30 #1/Hz.Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()`.
+            UI_FPS_CAP_RATE = self.camera_manager.camera_rate #1/Hz.Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()`.
 
             while viewer.is_running() and not self.stop_event.is_set():
                 fps.tick()
@@ -98,10 +99,10 @@ class MujocoServerPassive(MujocoServer):
                     time.perf_counter() - start_time
                 )
                 if time_until_next_ui_update > 0:
-                    # Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()`.
+                    # Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()` taking up ticks.
                     time.sleep(time_until_next_ui_update)
-                # else:
-                #     click.secho("WARNING: The simulation is running below 30FPS", fg="yellow")
+                else:
+                    click.secho(f"WARNING: The simulation is running below {1/self.camera_manager.camera_rate}FPS", fg="yellow")
 
             # Wait for any active threads to close, otherwise the mujoco window gets stuck:
             active_threads = threading.enumerate()
