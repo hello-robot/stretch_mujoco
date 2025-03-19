@@ -49,16 +49,25 @@ class MujocoServerCameraManagerSync:
         for renderer in self.camera_renderers.values():
             renderer.close()
 
-    def pull_camera_data_at_camera_rate(self):
+    def is_ready_to_pull_camera_data(self, is_sleep_until_ready:bool = False):
+        elapsed = time.perf_counter() - self.time_start
+        if elapsed < self.camera_rate:
+            # If we're not ready to render camera, don't render:
+            if not is_sleep_until_ready:
+                return False
+            # sleep until ready:
+            time.sleep(self.camera_rate - elapsed)
+
+        self.time_start = time.perf_counter()
+        return True
+
+    def pull_camera_data_at_camera_rate(self, is_sleep_until_ready:bool):
         """
         Call this on the UI thread to render camera data.
         """
-        elapsed = time.perf_counter() - self.time_start
-        if elapsed < self.camera_rate:
-            # If we're not ready to render camera, return.
-            return
 
-        self.time_start = time.perf_counter()
+        if not self.is_ready_to_pull_camera_data(is_sleep_until_ready):
+            return
 
         self._pull_camera_data()
 
@@ -208,16 +217,12 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
             self.cameras_thread = threading.Thread(target=self._camera_loop, daemon=True)
             self.cameras_thread.start()
 
-    def pull_camera_data_at_camera_rate(self):
+    def pull_camera_data_at_camera_rate(self, is_sleep_until_ready:bool):
         if self.use_camera_thread:
             raise Exception("This call is not allowed when This update is managed in the _camera_loop.")
         
-        elapsed = time.perf_counter() - self.time_start
-        if elapsed < self.camera_rate:
-            # If we're not ready to render camera, return.
+        if not self.is_ready_to_pull_camera_data(is_sleep_until_ready):
             return
-
-        self.time_start = time.perf_counter()
         
         self._pull_camera_data_async()
 
@@ -230,13 +235,11 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
         while not self.mujoco_server.status["val"] or not self.mujoco_server.status["val"]["time"]:
             # wait for sim to start
             time.sleep(0.1)
-        time_start = time.perf_counter()
+
         while not self.mujoco_server.stop_event.is_set():
-            elapsed = time.perf_counter() - time_start
-            if elapsed < self.camera_rate:
-                # Wait to honor camera render rate requested by the user - or completely miss it if the rendering is slow.
-                time.sleep(self.camera_rate - elapsed)
-                time_start = time.perf_counter()
+            
+            if not self.is_ready_to_pull_camera_data(is_sleep_until_ready=True):
+                return
 
             if self.use_threadpool_executor:
                 self._pull_camera_data_async()

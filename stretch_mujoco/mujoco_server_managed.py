@@ -1,4 +1,5 @@
 import os
+from typing import override
 import mujoco
 import mujoco._functions
 import mujoco._callbacks
@@ -22,6 +23,7 @@ class MujocoServerManaged(MujocoServer):
     https://mujoco.readthedocs.io/en/stable/python.html#managed-viewer
     """
 
+    @override
     def run(
         self,
         show_viewer_ui: bool,
@@ -35,12 +37,7 @@ class MujocoServerManaged(MujocoServer):
 
         self._run_ui_simulation(show_viewer_ui)
 
-    def close(self):
-        """
-        Clean up C++ resources
-        """
-        self.camera_manager.close()
-
+    @override
     def _run_ui_simulation(self, show_viewer_ui: bool) -> None:
         """
         Run the simulation with the viewer
@@ -55,9 +52,6 @@ class MujocoServerManaged(MujocoServer):
     def _managed_viewer_loop(self, model: MjModel, data: MjData):
 
         if self.stop_event.is_set():
-            if isinstance(self.camera_manager, MujocoServerCameraManagerThreaded):
-                self.camera_manager.cameras_thread.join()
-
             self.close()
 
             os.kill(os.getpid(), 9)

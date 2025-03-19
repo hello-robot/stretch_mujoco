@@ -117,6 +117,9 @@ class MujocoServer:
         """
         Clean up C++ resources
         """
+        if isinstance(self.camera_manager, MujocoServerCameraManagerThreaded):
+            self.camera_manager.cameras_thread.join()
+
         self.camera_manager.close()
 
     def _run_ui_simulation(self, show_viewer_ui: bool) -> None:
@@ -124,6 +127,20 @@ class MujocoServer:
         Run the simulation with the viewer
         """
         raise NotImplementedError("This is headless mode. Use MujocoServerPassive or MujocoServerManaged to run the UI simulator.")
+
+    def __headless_physics_loop(self):
+        while not self.stop_event.is_set():
+            start_time = time.perf_counter()
+
+            mujoco._functions.mj_step(self.mjmodel, self.mjdata)
+            self._ctrl_callback(self.mjmodel, self.mjdata)
+
+            time_until_next_step = self.mjmodel.opt.timestep - (
+                time.perf_counter() - start_time
+            )
+            if time_until_next_step > 0:
+                # Sleep to match the timestep.
+                time.sleep(time_until_next_step)
 
 
     def __run_headless_simulation(self,
@@ -136,6 +153,9 @@ class MujocoServer:
         """
         print("Running headless simulation...")
 
+        physics_thread = threading.Thread(target=self.__headless_physics_loop, daemon=True)
+        physics_thread.start()
+
         self.set_camera_manager(
             use_camera_thread=False, 
             use_threadpool_executor=False,
@@ -144,13 +164,10 @@ class MujocoServer:
         )
 
         while not self.stop_event.is_set():
-            start_ts = time.perf_counter()
-            mujoco._functions.mj_step(self.mjmodel, self.mjdata)
-            self._ctrl_callback(self.mjmodel, self.mjdata)
-            self.camera_manager.pull_camera_data_at_camera_rate()
-            elapsed = time.perf_counter() - start_ts
-            if elapsed < self.mjmodel.opt.timestep:
-                time.sleep(self.mjmodel.opt.timestep - elapsed)
+            self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=True)
+
+        physics_thread.join()
+        self.close()
 
 
     def _ctrl_callback(self, model: MjModel, data: MjData) -> None:

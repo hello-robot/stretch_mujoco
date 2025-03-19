@@ -19,7 +19,7 @@ class MujocoServerPassive(MujocoServer):
 
     To render offscreen cameras, please call `set_camera_manager(False,,)` and then `camera_manager.pull_camera_data_at_camera_rate()` in the UI thread.
 
-    On MacOS, this needs to be started with `mjpython`.
+    On MacOS, this needs to be started with `mjpython`. If you're using StretchMujocoSimulator.start(), this is automatically handled.
 
     https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer
     """
@@ -94,7 +94,7 @@ class MujocoServerPassive(MujocoServer):
                 
                 # Using the lock here slows down the physics thread significantly.
                 # with viewer.lock(): 
-                self.camera_manager.pull_camera_data_at_camera_rate()
+                self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=False)
 
                 viewer.sync()
 
