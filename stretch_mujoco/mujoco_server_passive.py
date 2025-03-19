@@ -62,7 +62,7 @@ class MujocoServerPassive(MujocoServer):
             physics_thread = threading.Thread(
                 target=self._physics_loop,
                 name="PhysicsThread",
-                args=(viewer.lock, lambda: viewer.is_running() and not self.stop_event.is_set()),
+                args=(viewer.lock(), lambda: viewer.is_running() and not self.stop_event.is_set()),
                 daemon=True,
             )
             physics_thread.start()
@@ -77,6 +77,8 @@ class MujocoServerPassive(MujocoServer):
                 f"WARNING: Using the Mujoco Passive Viewer. UI thread and camera rendering is capped to {1/UI_FPS_CAP_RATE}Hz to increase performance.",
                 fg="yellow",
             )
+
+            self.camera_manager.camera_lock = viewer.lock() #type: ignore
 
             while viewer.is_running() and not self.stop_event.is_set():
                 fps.tick()
