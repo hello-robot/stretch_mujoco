@@ -200,6 +200,14 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
         if self.use_camera_thread:
             raise Exception("This call is not allowed when This update is managed in the _camera_loop.")
         
+        elapsed = time.perf_counter() - self.time_start
+        if elapsed < self.camera_rate:
+            # If we're not ready to render camera, return.
+            return
+
+        self.time_start = time.perf_counter()
+        
+        self.camera_fps_counter.tick()
         return self._pull_camera_data_async()
 
     def _camera_loop(self):
