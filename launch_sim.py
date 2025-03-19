@@ -2,7 +2,7 @@ import stretch_mujoco
 import click
 import cv2
 
-from stretch_mujoco.enums.stretch_cameras import StretchCamera
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 
 
 @click.command()
@@ -16,7 +16,7 @@ def main(
 ) -> None:
     sim = stretch_mujoco.StretchMujocoSimulator(scene_xml_path)
     sim.start(headless=headless)
-    cameras_to_use = StretchCamera.all() if imagery else StretchCamera.none()
+    cameras_to_use = StretchCameras.all() if imagery else StretchCameras.none()
     try:
         while sim.is_running():
             if imagery: # display camera feeds

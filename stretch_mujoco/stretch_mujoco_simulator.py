@@ -8,13 +8,12 @@ import sys
 import threading
 import time
 
-
 import click
 import numpy as np
 from mujoco._structs import MjModel
 
 from stretch_mujoco.enums.actuators import Actuators
-from stretch_mujoco.enums.stretch_cameras import StretchCamera
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.mujoco_server_managed import MujocoServerManaged
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
@@ -41,7 +40,7 @@ class StretchMujocoSimulator:
         scene_xml_path: str | None = None,
         model: MjModel | None = None,
         camera_hz: float = 30,
-        cameras_to_use: list[StretchCamera] = [],
+        cameras_to_use: list[StretchCameras] = [],
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
@@ -64,6 +63,7 @@ class StretchMujocoSimulator:
         Args:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
             headless: bool, whether to run the simulation in headless mode
+            use_passive_viewer: bool, to use the passive or managed mujoco UI viewer.
         """
         mujoco_server = MujocoServer # Headless
 

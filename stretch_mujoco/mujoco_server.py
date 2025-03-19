@@ -14,7 +14,7 @@ import mujoco.viewer
 import numpy as np
 from mujoco._structs import MjData, MjModel
 
-from stretch_mujoco.enums.stretch_cameras import StretchCamera
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 import stretch_mujoco.config as config
 from stretch_mujoco.mujoco_server_camera_manager import (
     MujocoServerCameraManagerThreaded,
@@ -68,7 +68,7 @@ class MujocoServer:
     def set_camera_manager(
         self,
         camera_hz: float,
-        cameras_to_use: list[StretchCamera],
+        cameras_to_use: list[StretchCameras],
         *,
         use_camera_thread: bool,
         use_threadpool_executor: bool,
@@ -107,7 +107,7 @@ class MujocoServer:
         command: DictProxy,
         status: DictProxy,
         imagery: DictProxy,
-        cameras_to_use: list[StretchCamera],
+        cameras_to_use: list[StretchCameras],
     ):
         server = cls(scene_xml_path, model, stop_event, command, status, imagery)
         server.run(
@@ -120,7 +120,7 @@ class MujocoServer:
         self,
         show_viewer_ui: bool,
         camera_hz: float,
-        cameras_to_use: list[StretchCamera],
+        cameras_to_use: list[StretchCameras],
     ):
         # self.__run_headless_simulation(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
         self.__run_headless_simulation_with_physics_thread(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
@@ -167,7 +167,7 @@ class MujocoServer:
         click.secho("Physics Loop has terminated.", fg="red")
 
     def __run_headless_simulation(
-        self, camera_hz: float, cameras_to_use: list[StretchCamera]
+        self, camera_hz: float, cameras_to_use: list[StretchCameras]
     ) -> None:
         """
         Run the simulation without the viewer headless.
@@ -190,7 +190,7 @@ class MujocoServer:
         self.close()
 
     def __run_headless_simulation_with_physics_thread(
-        self, camera_hz: float, cameras_to_use: list[StretchCamera]
+        self, camera_hz: float, cameras_to_use: list[StretchCameras]
     ) -> None:
         """
         Run the simulation without the viewer headless.

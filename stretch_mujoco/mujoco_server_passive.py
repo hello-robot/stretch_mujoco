@@ -7,7 +7,7 @@ import click
 import mujoco
 import mujoco._functions
 import mujoco.viewer
-from stretch_mujoco.enums.stretch_cameras import StretchCamera
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.utils import FpsCounter
 
@@ -30,7 +30,7 @@ class MujocoServerPassive(MujocoServer):
         self,
         show_viewer_ui: bool,
         camera_hz: float,
-        cameras_to_use: list[StretchCamera],
+        cameras_to_use: list[StretchCameras],
     ):
         # We're using the passive viewer, and have access to the UI thread. We can manage camera rendering on the UI thread:
         self.set_camera_manager(
@@ -78,6 +78,7 @@ class MujocoServerPassive(MujocoServer):
                 fg="yellow",
             )
 
+            # Replace the camera_lock with the viewer lock so that we're not accessing mjdata at the same time as the physics thread.
             self.camera_manager.camera_lock = viewer.lock() #type: ignore
 
             while viewer.is_running() and not self.stop_event.is_set():
@@ -85,8 +86,6 @@ class MujocoServerPassive(MujocoServer):
                 start_time = time.perf_counter()
                 # print(f"UI thread: {fps.fps=}, {self.physics_fps_counter.fps=}, {self.camera_manager.camera_fps_counter.fps=}")
 
-                # Using the lock here slows down the physics thread significantly.
-                # with viewer.lock():
                 self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=False)
 
                 viewer.sync()
@@ -97,7 +96,7 @@ class MujocoServerPassive(MujocoServer):
                     time.sleep(time_until_next_ui_update)
                 else:
                     click.secho(
-                        f"WARNING: Camera rendering is below requested {1/self.camera_manager.camera_rate}FPS",
+                        f"WARNING: Passive viewer and camera rendering is below the requested {1/self.camera_manager.camera_rate}FPS",
                         fg="yellow",
                     )
 

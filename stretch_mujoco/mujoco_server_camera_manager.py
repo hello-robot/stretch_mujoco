@@ -7,7 +7,7 @@ import mujoco
 import numpy as np
 
 from stretch_mujoco import config, utils
-from stretch_mujoco.enums.stretch_cameras import StretchCamera
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.status import StretchCameraStatus
 from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
 
@@ -23,14 +23,14 @@ class MujocoServerCameraManagerSync:
     """
 
     def __init__(
-        self, camera_hz: float, cameras_to_use: list[StretchCamera], mujoco_server: "MujocoServer"
+        self, camera_hz: float, cameras_to_use: list[StretchCameras], mujoco_server: "MujocoServer"
     ) -> None:
 
         self.mujoco_server = mujoco_server
 
         self.camera_rate = 1 / camera_hz  # Hz to seconds
 
-        self.camera_renderers: dict[StretchCamera, mujoco.Renderer] = {}
+        self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
 
         self._set_camera_properties()
 
@@ -43,7 +43,7 @@ class MujocoServerCameraManagerSync:
         self.time_start = time.perf_counter()
 
         self.camera_lock = threading.Lock()
-    
+
     def close(self):
         """
         Clean up renderer resources
@@ -51,7 +51,11 @@ class MujocoServerCameraManagerSync:
         for renderer in self.camera_renderers.values():
             renderer.close()
 
-    def is_ready_to_pull_camera_data(self, is_sleep_until_ready:bool = False):
+    def is_ready_to_pull_camera_data(self, is_sleep_until_ready: bool = False):
+        """
+        Checks to see if a duration of time has passed since the last call
+        to this function to render camera at the specified `self.camera_rate`.
+        """
         elapsed = time.perf_counter() - self.time_start
         if elapsed < self.camera_rate:
             # If we're not ready to render camera, don't render:
@@ -63,7 +67,7 @@ class MujocoServerCameraManagerSync:
         self.time_start = time.perf_counter()
         return True
 
-    def pull_camera_data_at_camera_rate(self, is_sleep_until_ready:bool):
+    def pull_camera_data_at_camera_rate(self, is_sleep_until_ready: bool):
         """
         Call this on the UI thread to render camera data.
         """
@@ -98,7 +102,10 @@ class MujocoServerCameraManagerSync:
         # print(f"{(threading.current_thread is threading.main_thread())=}")
 
         from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
-        if platform.system() == "Darwin" and not isinstance(self.mujoco_server, MujocoServerPassive):
+
+        if platform.system() == "Darwin" and not isinstance(
+            self.mujoco_server, MujocoServerPassive
+        ):
             # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering on the managed viewer (because of mutex locking).
             switch_to_glfw_renderer(self.mujoco_server.mjmodel, renderer)
 
@@ -107,7 +114,7 @@ class MujocoServerCameraManagerSync:
 
         return renderer
 
-    def _render_camera(self, renderer: mujoco.Renderer, camera: StretchCamera):
+    def _render_camera(self, renderer: mujoco.Renderer, camera: StretchCameras):
         """
         This calls update_scene and render() for an offscreen camera buffer.
 
@@ -115,7 +122,9 @@ class MujocoServerCameraManagerSync:
         """
 
         with self.camera_lock:
-            renderer.update_scene(data=self.mujoco_server.mjdata, camera=camera.camera_name_in_scene)
+            renderer.update_scene(
+                data=self.mujoco_server.mjdata, camera=camera.camera_name_in_scene
+            )
 
             render = renderer.render()
 
@@ -125,7 +134,7 @@ class MujocoServerCameraManagerSync:
 
         return (camera, render)
 
-    def _remove_camera_renderer(self, camera: StretchCamera):
+    def _remove_camera_renderer(self, camera: StretchCameras):
         """
         When a camera is not needed, it's removed from self.camera_renderers to save computation costs.
 
@@ -137,7 +146,7 @@ class MujocoServerCameraManagerSync:
 
         raise Exception(f"Camera {camera} was not in {self.camera_renderers=}")
 
-    def _add_camera_renderer(self, camera: StretchCamera):
+    def _add_camera_renderer(self, camera: StretchCameras):
         """
         Creates a renderer and render params for the cameras the user wants to use.
 
@@ -190,20 +199,24 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
     """
 
     def __init__(
-        self, use_camera_thread:bool, use_threadpool_executor:bool, camera_hz: float, cameras_to_use: list[StretchCamera], mujoco_server: "MujocoServer"
+        self,
+        use_camera_thread: bool,
+        use_threadpool_executor: bool,
+        camera_hz: float,
+        cameras_to_use: list[StretchCameras],
+        mujoco_server: "MujocoServer",
     ):
         """
         `use_threadpool_executor` will use a ThreadPoolExecutor to render all cameras. Setting to false will render each one synchronously.
-        
+
         `use_camera_thread` can be set to false to use the ThreadPoolExecutor without the camera thread. `pull_camera_data_at_camera_rate()` must be called on the UI thread if this mode is used.
         """
 
         super().__init__(camera_hz, cameras_to_use, mujoco_server)
 
-
         self.use_camera_thread = use_camera_thread
         self.use_threadpool_executor = use_threadpool_executor
-        
+
         if not use_camera_thread and not use_threadpool_executor:
             raise Exception("use_camera_thread and use_threadpool_executor cannot be both falsey")
 
@@ -215,19 +228,26 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
             else:
                 # Linux is currently struggling with multi-threaded camera rendering:
                 self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=1)
-            
+
         if use_camera_thread:
             self.cameras_thread = threading.Thread(target=self._camera_loop, daemon=True)
             self.cameras_thread.start()
 
-    def pull_camera_data_at_camera_rate(self, is_sleep_until_ready:bool):
+    def pull_camera_data_at_camera_rate(self, is_sleep_until_ready: bool):
+        """
+        Uses the threadpool to pull camera data.
+
+        Call this on the UI thread to render camera data.
+        """
         if self.use_camera_thread:
-            raise Exception("This call is not allowed when This update is managed in the _camera_loop.")
-        
+            raise Exception(
+                "This call is not allowed when This update is managed in the _camera_loop."
+            )
+
         if not self.is_ready_to_pull_camera_data(is_sleep_until_ready):
             return
-        
-        self._pull_camera_data_async()
+
+        self._pull_camera_data_threadpool()
 
         self.camera_fps_counter.tick()
 
@@ -235,24 +255,25 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
         """
         This is the thread loop that handles camera rendering.
         """
-        while not self.mujoco_server.status["val"] or not self.mujoco_server.status["val"]["time"]:
+        while (
+            not self.mujoco_server.status["val"] or not self.mujoco_server.status["val"]["time"]
+        ) and not self.mujoco_server.stop_event.is_set():
             # wait for sim to start
             time.sleep(0.1)
 
         while not self.mujoco_server.stop_event.is_set():
-            
+
             if not self.is_ready_to_pull_camera_data(is_sleep_until_ready=True):
                 return
 
             if self.use_threadpool_executor:
-                self._pull_camera_data_async()
+                self._pull_camera_data_threadpool()
             else:
                 self._pull_camera_data()
 
             self.camera_fps_counter.tick()
 
-
-    def _pull_camera_data_async(self):
+    def _pull_camera_data_threadpool(self):
         """
         Uses a ThreadPoolExecutor to render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
         """

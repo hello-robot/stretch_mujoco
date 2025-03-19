@@ -3,13 +3,13 @@ import threading
 import time
 import cv2
 from stretch_mujoco.enums.actuators import Actuators
-from stretch_mujoco.enums.stretch_cameras import StretchCamera
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
 
 def show_camera_feeds_sync(
     sim: StretchMujocoSimulator, 
-    cameras_to_use: list[StretchCamera],
+    cameras_to_use: list[StretchCameras],
     print_fps: bool
 ):
     """
@@ -36,15 +36,15 @@ def show_camera_feeds_sync(
     cv2.waitKey(1)
 
 
-if __name__ == "__main__":
-    def my_control_loop():
-        while sim.is_running():
-            sim.move_to(Actuators.lift, random.random())
-            time.sleep(3)
+def my_control_loop():
+    while sim.is_running():
+        sim.move_to(Actuators.lift, random.random())
+        time.sleep(3)
 
-    # You can use all the camera's, but it takes longer to render, and may affect overall simulation FPS.
-    # cameras_to_use = StretchCamera.all()
-    cameras_to_use = [StretchCamera.cam_d405_rgb]
+if __name__ == "__main__":
+    # You can use all the camera's, but it takes longer to render, and may affect the overall simulation FPS.
+    # cameras_to_use = StretchCameras.all()
+    cameras_to_use = [StretchCameras.cam_d405_rgb]
 
     sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
 
