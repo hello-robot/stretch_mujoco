@@ -178,7 +178,7 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
     """
 
     def __init__(
-        self, camera_hz: float, cameras_to_use: list[StretchCamera], mujoco_server: "MujocoServer"
+        self, use_camera_thread:bool, camera_hz: float, cameras_to_use: list[StretchCamera], mujoco_server: "MujocoServer"
     ):
 
         super().__init__(camera_hz, cameras_to_use, mujoco_server)
@@ -191,11 +191,16 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
             # Linux is currently struggling with multi-threaded camera rendering:
             self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=1)
 
-        self.cameras_thread = threading.Thread(target=self._camera_loop, daemon=True)
-        self.cameras_thread.start()
+        self.use_camera_thread = use_camera_thread
+        if use_camera_thread:
+            self.cameras_thread = threading.Thread(target=self._camera_loop, daemon=True)
+            self.cameras_thread.start()
 
     def pull_camera_data_at_camera_rate(self):
-        raise Exception("This update is managed in the _camera_loop.")
+        if self.use_camera_thread:
+            raise Exception("This call is not allowed when This update is managed in the _camera_loop.")
+        
+        return self._pull_camera_data_async()
 
     def _camera_loop(self):
         """
@@ -218,7 +223,7 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
 
     def _pull_camera_data_async(self):
         """
-        Render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
+        Uses a ThreadPoolExecutor to render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
         """
         new_imagery = StretchCameraStatus.default()
         new_imagery.time = self.mujoco_server.mjdata.time
