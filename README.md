@@ -91,7 +91,7 @@ Try the code below using `uv run ipython`. For advanced Mujoco users, the class 
 from stretch_mujoco import StretchMujocoSimulator
 
 sim = StretchMujocoSimulator()
-sim.start() # This will open a Mujoco-Viewer window
+sim.start(headless=False) # This will open a Mujoco-Viewer window
 
 # Poses
 sim.stow()
@@ -168,6 +168,12 @@ model, xml = model_generation_wizard(
 sim = StretchMujocoSimulator(model=model)
 sim.start()
 ```
+
+### Docs
+
+Check out the following documentation resources:
+
+- [Using the Mujoco Simulator with Stretch](./docs/using_mujoco_simulator_with_stretch.md)
 
 ### Feature Requests and Bug reporting
 
