@@ -10,8 +10,7 @@ from mujoco._structs import MjData, MjModel
 
 from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.mujoco_server import MujocoServer
-from stretch_mujoco.mujoco_server_camera_manager import (
-    MujocoServerCameraManagerThreaded)
+from stretch_mujoco.mujoco_server_camera_manager import MujocoServerCameraManagerThreaded
 
 
 class MujocoServerManaged(MujocoServer):
@@ -32,7 +31,10 @@ class MujocoServerManaged(MujocoServer):
     ):
         # We're using the managed viewer, and don't have access to the UI thread, so use the camera thread to manage camera rendering:
         self.set_camera_manager(
-            use_camera_thread=True, use_threadpool_executor=False, camera_hz=camera_hz, cameras_to_use=cameras_to_use
+            use_camera_thread=True,
+            use_threadpool_executor=False,
+            camera_hz=camera_hz,
+            cameras_to_use=cameras_to_use,
         )
 
         self._run_ui_simulation(show_viewer_ui)
@@ -57,4 +59,3 @@ class MujocoServerManaged(MujocoServer):
             os.kill(os.getpid(), 9)
 
         self._ctrl_callback(model, data)
-

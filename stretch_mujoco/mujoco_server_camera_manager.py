@@ -41,6 +41,8 @@ class MujocoServerCameraManagerSync:
         self.camera_fps_counter = FpsCounter()
 
         self.time_start = time.perf_counter()
+
+        self.camera_lock = threading.Lock()
     
     def close(self):
         """
@@ -112,9 +114,10 @@ class MujocoServerCameraManagerSync:
         Use this with the _toggle_camera() functionality in this class.
         """
 
-        renderer.update_scene(data=self.mujoco_server.mjdata, camera=camera.camera_name_in_scene)
+        with self.camera_lock:
+            renderer.update_scene(data=self.mujoco_server.mjdata, camera=camera.camera_name_in_scene)
 
-        render = renderer.render()
+            render = renderer.render()
 
         post_render = camera.post_processing_callback
         if post_render:

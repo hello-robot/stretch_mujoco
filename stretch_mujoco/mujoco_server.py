@@ -1,6 +1,8 @@
+import contextlib
 from multiprocessing.managers import DictProxy
 import threading
 import time
+from typing import Callable
 
 import click
 import mujoco
@@ -64,12 +66,17 @@ class MujocoServer:
         self.physics_fps_counter = FpsCounter()
 
     def set_camera_manager(
-        self, use_camera_thread: bool, camera_hz: float, cameras_to_use: list[StretchCamera], *, use_threadpool_executor: bool
+        self,
+        camera_hz: float,
+        cameras_to_use: list[StretchCamera],
+        *,
+        use_camera_thread: bool,
+        use_threadpool_executor: bool,
     ):
         """
         This should be called before trying to render offscreen cameras.
 
-        If `use_camera_thread` is false, `self.camera_manager.pull_camera_data_at_camera_rate()` should be called on a UI thread. 
+        If `use_camera_thread` is false, `self.camera_manager.pull_camera_data_at_camera_rate()` should be called on a UI thread.
         This is the recommended usage.
 
         If `use_camera_thread` is true, a thread will be spawned to call Renderer.render().
@@ -77,8 +84,12 @@ class MujocoServer:
         This mode is mainly used with the Mujoco Managed Viewer, to avoid rendering on the physics thread.
         """
         if use_camera_thread or use_threadpool_executor:
-            self.camera_manager = MujocoServerCameraManagerThreaded(use_camera_thread=use_camera_thread,use_threadpool_executor=use_threadpool_executor,
-                camera_hz=camera_hz, cameras_to_use=cameras_to_use, mujoco_server=self
+            self.camera_manager = MujocoServerCameraManagerThreaded(
+                use_camera_thread=use_camera_thread,
+                use_threadpool_executor=use_threadpool_executor,
+                camera_hz=camera_hz,
+                cameras_to_use=cameras_to_use,
+                mujoco_server=self,
             )
         else:
             self.camera_manager = MujocoServerCameraManagerSync(
@@ -111,7 +122,8 @@ class MujocoServer:
         camera_hz: float,
         cameras_to_use: list[StretchCamera],
     ):
-        self.__run_headless_simulation(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
+        # self.__run_headless_simulation(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
+        self.__run_headless_simulation_with_physics_thread(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
 
     def close(self):
         """
@@ -126,26 +138,37 @@ class MujocoServer:
         """
         Run the simulation with the viewer
         """
-        raise NotImplementedError("This is headless mode. Use MujocoServerPassive or MujocoServerManaged to run the UI simulator.")
+        raise NotImplementedError(
+            "This is headless mode. Use MujocoServerPassive or MujocoServerManaged to run the UI simulator."
+        )
 
-    def __headless_physics_loop(self):
-        while not self.stop_event.is_set():
-            start_time = time.perf_counter()
+    def _physics_step(self, lock: contextlib.AbstractContextManager):
+        """
+        Calls mj_step and _ctrl_callback, and sleeps until the next timestep.
+        """
+        start_time = time.perf_counter()
 
+        with lock:
             mujoco._functions.mj_step(self.mjmodel, self.mjdata)
             self._ctrl_callback(self.mjmodel, self.mjdata)
 
-            time_until_next_step = self.mjmodel.opt.timestep - (
-                time.perf_counter() - start_time
-            )
-            if time_until_next_step > 0:
-                # Sleep to match the timestep.
-                time.sleep(time_until_next_step)
+        time_until_next_step = self.mjmodel.opt.timestep - (time.perf_counter() - start_time)
+        if time_until_next_step > 0:
+            # Sleep to match the timestep.
+            time.sleep(time_until_next_step)
 
+    def _physics_loop(self, lock: contextlib.AbstractContextManager, termination_check:Callable[[],bool]):
+        """
+        A loop to use when starting physics in a thread.
+        """
+        while termination_check():
+            self._physics_step(lock=lock)
 
-    def __run_headless_simulation(self,
-        camera_hz: float,
-        cameras_to_use: list[StretchCamera]) -> None:
+        click.secho("Physics Loop has terminated.", fg="red")
+
+    def __run_headless_simulation(
+        self, camera_hz: float, cameras_to_use: list[StretchCamera]
+    ) -> None:
         """
         Run the simulation without the viewer headless.
 
@@ -153,22 +176,46 @@ class MujocoServer:
         """
         print("Running headless simulation...")
 
-        physics_thread = threading.Thread(target=self.__headless_physics_loop, daemon=True)
-        physics_thread.start()
+        self.set_camera_manager(
+            use_camera_thread=False,
+            use_threadpool_executor=False,
+            camera_hz=camera_hz,
+            cameras_to_use=cameras_to_use,
+        )
+
+        while not self.stop_event.is_set():
+            self._physics_step(contextlib.nullcontext())
+            self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=False)
+
+        self.close()
+
+    def __run_headless_simulation_with_physics_thread(
+        self, camera_hz: float, cameras_to_use: list[StretchCamera]
+    ) -> None:
+        """
+        Run the simulation without the viewer headless.
+
+        Headless mode manages its own `set_camera_manager()` call.
+        """
+        print("Running headless simulation...")
 
         self.set_camera_manager(
-            use_camera_thread=False, 
+            use_camera_thread=False,
             use_threadpool_executor=False,
-            camera_hz=camera_hz, 
-            cameras_to_use=cameras_to_use
+            camera_hz=camera_hz,
+            cameras_to_use=cameras_to_use,
         )
+
+        physics_thread = threading.Thread(
+            target=self._physics_loop, args=(self.camera_manager.camera_lock, lambda: not self.stop_event.is_set()), daemon=True
+        )
+        physics_thread.start()
 
         while not self.stop_event.is_set():
             self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=True)
 
         physics_thread.join()
         self.close()
-
 
     def _ctrl_callback(self, model: MjModel, data: MjData) -> None:
         """
@@ -262,7 +309,9 @@ class MujocoServer:
                     self._stop_base_pos_tracking()
                     time.sleep(1 / 20)
                 if actuator_name == "base_translate":
-                    threading.Thread(target=self._base_translate_by, args=(pos,), daemon=True).start()
+                    threading.Thread(
+                        target=self._base_translate_by, args=(pos,), daemon=True
+                    ).start()
                 else:
                     threading.Thread(target=self._base_rotate_by, args=(pos,), daemon=True).start()
             else:
