@@ -11,7 +11,6 @@ from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.utils import FpsCounter
 
-
 class MujocoServerPassive(MujocoServer):
     """
     A MujocoServer flavor that uses the mujoco passive viewer.
@@ -74,6 +73,7 @@ class MujocoServerPassive(MujocoServer):
 
         signal.signal(signal.SIGTERM, lambda num, h: self.stop_event.set())
         signal.signal(signal.SIGINT, lambda num, h: self.stop_event.set())
+
         with mujoco.viewer.launch_passive(
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
         ) as viewer:
@@ -83,13 +83,17 @@ class MujocoServerPassive(MujocoServer):
 
             fps = FpsCounter()
             
-            UI_FPS_CAP_RATE = self.camera_manager.camera_rate #1/Hz.Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()`.
+            UI_FPS_CAP_RATE = self.camera_manager.camera_rate #1/Hz.Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()` locking physics thread.
+
+            click.secho(f"WARNING: Using the Mujoco Passive Viewer. UI thread and camera rendering is capped to {1/UI_FPS_CAP_RATE}Hz to increase performance.", fg="yellow")
 
             while viewer.is_running() and not self.stop_event.is_set():
                 fps.tick()
                 start_time = time.perf_counter()
                 # print(f"UI thread: {fps.fps=}, {self.physics_fps_counter.fps=}, {self.camera_manager.camera_fps_counter.fps=}")
-
+                
+                # Using the lock here slows down the physics thread significantly.
+                # with viewer.lock(): 
                 self.camera_manager.pull_camera_data_at_camera_rate()
 
                 viewer.sync()
@@ -100,7 +104,9 @@ class MujocoServerPassive(MujocoServer):
                 if time_until_next_ui_update > 0:
                     # Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()` taking up ticks.
                     time.sleep(time_until_next_ui_update)
-                    
+                else:
+                    click.secho(f"WARNING: Camera rendering is below requested {1/self.camera_manager.camera_rate}FPS", fg="yellow")
+
             self.close()
             
             # Wait for any active threads to close, otherwise the mujoco window gets stuck:
@@ -114,4 +120,6 @@ class MujocoServerPassive(MujocoServer):
                     thread.join(timeout=5.0)
 
             click.secho("Mujoco viewer has terminated.", fg="blue")
+
+
 

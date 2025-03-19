@@ -7,7 +7,7 @@ import signal
 import sys
 import threading
 import time
-from typing import Callable
+
 
 import click
 import numpy as np
@@ -56,7 +56,7 @@ class StretchMujocoSimulator:
         self._status = self._manager.dict({"val": StretchStatus.default().to_dict()})
         self._cameras = self._manager.dict({"val": StretchCameraStatus.default().to_dict()})
 
-    def start(self, show_viewer_ui: bool = False, headless: bool = False) -> None:
+    def start(self, show_viewer_ui: bool = False, headless: bool = False, use_passive_viewer: bool = False) -> None:
         """
         Start the simulator
 
@@ -64,17 +64,15 @@ class StretchMujocoSimulator:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
             headless: bool, whether to run the simulation in headless mode
         """
-        mujoco_server = MujocoServerPassive
+        mujoco_server = MujocoServer if use_passive_viewer else MujocoServerPassive
         
-        if platform.system() == "Darwin":
+        if platform.system() == "Darwin" and isinstance(mujoco_server, MujocoServerPassive):
             # On a mac, the process for MujocoServerPassive needs to be started with mjpython
             mjpython_path = sys.executable.replace("bin/python3", "bin/mjpython").replace(
                 "bin/python", "bin/mjpython"
             )
             print(f"{mjpython_path=}")
             multiprocessing.set_executable(mjpython_path)
-
-            mujoco_server = MujocoServerPassive
             
         multiprocessing.set_start_method("spawn", force=True)
 
