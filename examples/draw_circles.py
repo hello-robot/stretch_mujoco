@@ -39,14 +39,14 @@ def _run_draw_circle():
 if __name__ == "__main__":
 
     # You can use all the camera's, but it takes longer to render, and may affect overall simulation FPS.
-    # cameras_to_use = StretchCamera.rgb()
+    # cameras_to_use = StretchCamera.all()
     cameras_to_use = [StretchCamera.cam_d405_rgb]
 
     sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
 
-    sim.start()
+    sim.start(headless=True)
 
-    threading.Thread(target=_run_draw_circle, daemon=True).start()
+    threading.Thread(target=_run_draw_circle, daemon=False).start()
 
     try:
         while sim.is_running():

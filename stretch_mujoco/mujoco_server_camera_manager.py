@@ -95,7 +95,7 @@ class MujocoServerCameraManagerSync:
     def _create_camera_renderer(self, is_depth: bool):
         renderer = mujoco.Renderer(self.mujoco_server.mjmodel, height=480, width=640)
 
-        print(f"{(threading.current_thread is threading.main_thread())=}")
+        # print(f"{(threading.current_thread is threading.main_thread())=}")
 
         from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
         if platform.system() == "Darwin" and not isinstance(self.mujoco_server, MujocoServerPassive):

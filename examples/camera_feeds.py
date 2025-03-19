@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
 
-    sim.start()
+    sim.start(headless=False)
 
     threading.Thread(target=my_control_loop, daemon=True).start()
 
