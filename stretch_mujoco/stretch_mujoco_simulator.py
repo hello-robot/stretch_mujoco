@@ -105,9 +105,12 @@ class StretchMujocoSimulator:
 
         self._running = True
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
-        while (self.pull_status().time == 0) or (self.pull_camera_data().time == 0):
+        while (self.pull_status().time == 0 or self.pull_camera_data().time == 0):
             time.sleep(1)
             click.secho("Still waiting to connect to the Mujoco Simulatior.", fg="yellow")
+
+            if not self.is_running():
+                return
 
         self.home()
 
