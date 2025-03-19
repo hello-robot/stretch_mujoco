@@ -172,26 +172,38 @@ class MujocoServerCameraManagerSync:
             )
 
 
-class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
+class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
     """
     Starts a camera loop on init to pull camera data using threading.
     """
 
     def __init__(
-        self, use_camera_thread:bool, camera_hz: float, cameras_to_use: list[StretchCamera], mujoco_server: "MujocoServer"
+        self, use_camera_thread:bool, use_threadpool_executor:bool, camera_hz: float, cameras_to_use: list[StretchCamera], mujoco_server: "MujocoServer"
     ):
+        """
+        `use_threadpool_executor` will use a ThreadPoolExecutor to render all cameras. Setting to false will render each one synchronously.
+        
+        `use_camera_thread` can be set to false to use the ThreadPoolExecutor without the camera thread. `pull_camera_data_at_camera_rate()` must be called on the UI thread if this mode is used.
+        """
 
         super().__init__(camera_hz, cameras_to_use, mujoco_server)
 
-        if platform.system() == "Darwin":
-            self.cameras_rendering_thread_pool = ThreadPoolExecutor(
-                max_workers=len(cameras_to_use) if cameras_to_use else 1
-            )
-        else:
-            # Linux is currently struggling with multi-threaded camera rendering:
-            self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=1)
 
         self.use_camera_thread = use_camera_thread
+        self.use_threadpool_executor = use_threadpool_executor
+        
+        if not use_camera_thread and not use_threadpool_executor:
+            raise Exception("use_camera_thread and use_threadpool_executor cannot be both falsey")
+
+        if use_threadpool_executor:
+            if platform.system() == "Darwin":
+                self.cameras_rendering_thread_pool = ThreadPoolExecutor(
+                    max_workers=len(cameras_to_use) if cameras_to_use else 1
+                )
+            else:
+                # Linux is currently struggling with multi-threaded camera rendering:
+                self.cameras_rendering_thread_pool = ThreadPoolExecutor(max_workers=1)
+            
         if use_camera_thread:
             self.cameras_thread = threading.Thread(target=self._camera_loop, daemon=True)
             self.cameras_thread.start()
@@ -207,8 +219,9 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
 
         self.time_start = time.perf_counter()
         
+        self._pull_camera_data_async()
+
         self.camera_fps_counter.tick()
-        return self._pull_camera_data_async()
 
     def _camera_loop(self):
         """
@@ -219,15 +232,19 @@ class MujocoServerCameraManagerAsync(MujocoServerCameraManagerSync):
             time.sleep(0.1)
         time_start = time.perf_counter()
         while not self.mujoco_server.stop_event.is_set():
-            self.camera_fps_counter.tick()
-
             elapsed = time.perf_counter() - time_start
             if elapsed < self.camera_rate:
                 # Wait to honor camera render rate requested by the user - or completely miss it if the rendering is slow.
                 time.sleep(self.camera_rate - elapsed)
                 time_start = time.perf_counter()
 
-            self._pull_camera_data_async()
+            if self.use_threadpool_executor:
+                self._pull_camera_data_async()
+            else:
+                self._pull_camera_data()
+
+            self.camera_fps_counter.tick()
+
 
     def _pull_camera_data_async(self):
         """

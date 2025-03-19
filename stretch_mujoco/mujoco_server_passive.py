@@ -28,20 +28,18 @@ class MujocoServerPassive(MujocoServer):
     def run(
         self,
         show_viewer_ui: bool,
-        headless: bool,
         camera_hz: float,
         cameras_to_use: list[StretchCamera],
     ):
+        # We're using the passive viewer, and have access to the UI thread. We can manage camera rendering on the UI thread:
+        self.set_camera_manager(
+            use_camera_thread=False, 
+            use_threadpool_executor=False,
+            camera_hz=camera_hz,
+            cameras_to_use=cameras_to_use
+        )
 
-        if headless:
-            self._run_headless_simulation(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
-        else:
-            # We're using the passive viewer, and have access to the UI thread. We can manage camera rendering on the UI thread:
-            self.set_camera_manager(
-                use_camera_thread=False, camera_hz=camera_hz, cameras_to_use=cameras_to_use
-            )
-
-            self._run_ui_simulation(show_viewer_ui)
+        self._run_ui_simulation(show_viewer_ui)
 
     def _do_physics(self, viewer):
         """

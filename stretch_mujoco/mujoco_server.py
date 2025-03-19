@@ -1,5 +1,4 @@
 from multiprocessing.managers import DictProxy
-import os
 import threading
 import time
 
@@ -16,7 +15,7 @@ from mujoco._structs import MjData, MjModel
 from stretch_mujoco.enums.stretch_cameras import StretchCamera
 import stretch_mujoco.config as config
 from stretch_mujoco.mujoco_server_camera_manager import (
-    MujocoServerCameraManagerAsync,
+    MujocoServerCameraManagerThreaded,
     MujocoServerCameraManagerSync,
 )
 from stretch_mujoco.status import StretchStatus
@@ -26,11 +25,9 @@ from stretch_mujoco.utils import FpsCounter
 
 class MujocoServer:
     """
-    Use `MucocoServer.launch_server()` to start the simulator.
+    Use `MucocoServer.launch_server()` to start the headless simulator.
 
-    This uses the mujoco managed viewer.
-
-    https://mujoco.readthedocs.io/en/stable/python.html#managed-viewer
+    This uses the mujoco simulator in headless mode.
     """
 
     def __init__(
@@ -67,7 +64,7 @@ class MujocoServer:
         self.physics_fps_counter = FpsCounter()
 
     def set_camera_manager(
-        self, use_camera_thread: bool, camera_hz: float, cameras_to_use: list[StretchCamera]
+        self, use_camera_thread: bool, camera_hz: float, cameras_to_use: list[StretchCamera], *, use_threadpool_executor: bool
     ):
         """
         This should be called before trying to render offscreen cameras.
@@ -79,14 +76,14 @@ class MujocoServer:
         This may not work on all platforms since rendering should happen on the main thread.
         This mode is mainly used with the Mujoco Managed Viewer, to avoid rendering on the physics thread.
         """
-        # if use_camera_thread:
-        self.camera_manager = MujocoServerCameraManagerAsync(use_camera_thread=use_camera_thread,
-            camera_hz=camera_hz, cameras_to_use=cameras_to_use, mujoco_server=self
-        )
-        # else:
-        #     self.camera_manager = MujocoServerCameraManagerSync(
-        #         camera_hz=camera_hz, cameras_to_use=cameras_to_use, mujoco_server=self
-        #     )
+        if use_camera_thread or use_threadpool_executor:
+            self.camera_manager = MujocoServerCameraManagerThreaded(use_camera_thread=use_camera_thread,use_threadpool_executor=use_threadpool_executor,
+                camera_hz=camera_hz, cameras_to_use=cameras_to_use, mujoco_server=self
+            )
+        else:
+            self.camera_manager = MujocoServerCameraManagerSync(
+                camera_hz=camera_hz, cameras_to_use=cameras_to_use, mujoco_server=self
+            )
 
     @classmethod
     def launch_server(
@@ -95,7 +92,6 @@ class MujocoServer:
         model: MjModel | None,
         camera_hz: float,
         show_viewer_ui: bool,
-        headless: bool,
         stop_event: threading.Event,
         command: DictProxy,
         status: DictProxy,
@@ -105,7 +101,6 @@ class MujocoServer:
         server = cls(scene_xml_path, model, stop_event, command, status, imagery)
         server.run(
             show_viewer_ui=show_viewer_ui,
-            headless=headless,
             camera_hz=camera_hz,
             cameras_to_use=cameras_to_use,
         )
@@ -113,21 +108,10 @@ class MujocoServer:
     def run(
         self,
         show_viewer_ui: bool,
-        headless: bool,
         camera_hz: float,
         cameras_to_use: list[StretchCamera],
     ):
-
-        if headless:
-            self._run_headless_simulation(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
-        else:
-
-            # We're using the managed viewer, and don't have access to the UI thread, so use the camera thread to manage camera rendering:
-            self.set_camera_manager(
-                use_camera_thread=True, camera_hz=camera_hz, cameras_to_use=cameras_to_use
-            )
-
-            self._run_ui_simulation(show_viewer_ui)
+        self.__run_headless_simulation(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
 
     def close(self):
         """
@@ -139,15 +123,10 @@ class MujocoServer:
         """
         Run the simulation with the viewer
         """
-        mujoco._callbacks.set_mjcb_control(self._managed_viewer_loop)
-        mujoco.viewer.launch(
-            self.mjmodel,
-            show_left_ui=show_viewer_ui,
-            show_right_ui=show_viewer_ui,
-        )
+        raise NotImplementedError("This is headless mode. Use MujocoServerPassive or MujocoServerManaged to run the UI simulator.")
 
 
-    def _run_headless_simulation(self,
+    def __run_headless_simulation(self,
         camera_hz: float,
         cameras_to_use: list[StretchCamera]) -> None:
         """
@@ -158,7 +137,10 @@ class MujocoServer:
         print("Running headless simulation...")
 
         self.set_camera_manager(
-            use_camera_thread=False, camera_hz=camera_hz, cameras_to_use=cameras_to_use
+            use_camera_thread=False, 
+            use_threadpool_executor=False,
+            camera_hz=camera_hz, 
+            cameras_to_use=cameras_to_use
         )
 
         while not self.stop_event.is_set():
@@ -170,18 +152,6 @@ class MujocoServer:
             if elapsed < self.mjmodel.opt.timestep:
                 time.sleep(self.mjmodel.opt.timestep - elapsed)
 
-    def _managed_viewer_loop(self, model: MjModel, data: MjData):
-
-        if self.stop_event.is_set():
-            if isinstance(self.camera_manager, MujocoServerCameraManagerAsync):
-                self.camera_manager.cameras_thread.join()
-            
-            self.close()
-
-            os.kill(os.getpid(), 9)
-
-
-        self._ctrl_callback(model, data)
 
     def _ctrl_callback(self, model: MjModel, data: MjData) -> None:
         """

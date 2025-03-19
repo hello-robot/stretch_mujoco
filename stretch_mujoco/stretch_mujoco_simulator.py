@@ -16,6 +16,7 @@ from mujoco._structs import MjModel
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCamera
 from stretch_mujoco.mujoco_server import MujocoServer
+from stretch_mujoco.mujoco_server_managed import MujocoServerManaged
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.status import StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
@@ -64,7 +65,10 @@ class StretchMujocoSimulator:
             show_viewer_ui: bool, whether to show the Mujoco viewer UI
             headless: bool, whether to run the simulation in headless mode
         """
-        mujoco_server = MujocoServerPassive if use_passive_viewer else MujocoServer
+        mujoco_server = MujocoServer # Headless
+
+        if not headless:
+            mujoco_server = MujocoServerPassive if use_passive_viewer else MujocoServerManaged
         
         if platform.system() == "Darwin" and isinstance(mujoco_server, MujocoServerPassive):
             # On a mac, the process for MujocoServerPassive needs to be started with mjpython
@@ -84,7 +88,6 @@ class StretchMujocoSimulator:
                 self.model,
                 self.camera_hz,
                 show_viewer_ui,
-                headless,
                 self._stop_event,
                 self._command,
                 self._status,
