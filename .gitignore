@@ -22,3 +22,6 @@ MUJOCO_LOG.TXT
 
 # Temp runtime XML 
 stretch_temp_abs.xml
+
+# MJX files
+madrona_mjx/
