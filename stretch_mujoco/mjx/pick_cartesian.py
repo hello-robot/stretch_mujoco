@@ -7,6 +7,8 @@ from ml_collections import config_dict
 from mujoco import mjx
 import numpy as np
 
+from etils import epath
+
 from mujoco._structs import MjModel
 
 from mujoco_playground._src import collision
@@ -80,11 +82,14 @@ class StretchMjxPickCubeCartesian(StretchMjxPickCube):
       self,
       config=default_config(),
       config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
+        *,
+        xml_path: epath.Path|None = None,
   ):
 
     super().__init__(
         config,
         config_overrides,
+        xml_path=xml_path
     )
     self._vision = config.vision
 

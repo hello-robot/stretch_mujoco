@@ -49,11 +49,13 @@ class StretchMjxPickCube(StretchMjxBase):
         config: config_dict.ConfigDict = default_config(),
         config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
         sample_orientation: bool = False,
+        *,
+        xml_path: epath.Path|None = None,
     ):
         models_path = str(importlib.resources.files("stretch_mujoco") / "mjx" / "models")
-        xml_path = epath.Path(models_path + "/scene-mjx.xml")
+        _xml_path = xml_path or epath.Path(models_path + "/scene-mjx.xml")
         super().__init__(
-            xml_path,
+            _xml_path,
             config,
             config_overrides,
         )
@@ -213,5 +215,7 @@ class StretchMjxPickCubeOrientation(StretchMjxPickCube):
         self,
         config: config_dict.ConfigDict = default_config(),
         config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
+        *,
+        xml_path: epath.Path|None = None,
     ):
-        super().__init__(config, config_overrides, sample_orientation=True)
+        super().__init__(config, config_overrides, sample_orientation=True, xml_path=xml_path)
