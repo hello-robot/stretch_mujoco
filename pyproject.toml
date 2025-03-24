@@ -8,7 +8,6 @@ dependencies = [
     "click>=8.1.8",
     "hello-robot-stretch-urdf>=0.1.0",
     "inputs>=0.5",
-    "ipykernel>=6.29.5",
     "ipython>=8.31.0",
     "mujoco==3.3.0",
     "mujoco-mjx>=3.3.0",
