@@ -27,7 +27,7 @@
       <freejoint/>
       <geom type="box" size=".02 .04 .04" mass=".5" rgba=".2 .2 .5 1"/>
     </body>
-    <body mocap="true" name="mocap_target1" pos="-.02 -0.55 .">
+    <body mocap="true" name="mocap_target1">
       <geom type="box" size="0.02 0.02 0.03" rgba="1 0 0 0.2" contype="0" conaffinity="0"/>
     </body>
 
@@ -35,7 +35,7 @@
       <freejoint/>
       <geom mesh="cylinder_object" type="mesh" mass=".5" rgba=".8 .2 .2 1"/>
     </body>
-    <body mocap="true" name="mocap_target2" pos=".08 -0.55 .6">
+    <body mocap="true" name="mocap_target2">
       <geom type="box" size="0.02 0.02 0.03" rgba="1 0 0 0.2" contype="0" conaffinity="0"/>
     </body>
   </worldbody>

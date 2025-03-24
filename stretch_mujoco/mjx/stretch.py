@@ -37,7 +37,8 @@ class StretchMjxBase(mjx_env.MjxEnv):
     super().__init__(config, config_overrides)
 
     self._xml_path = xml_path.as_posix()
-    mj_model = MjModel.from_xml_path(xml_path)
+    print(f"{type(self._xml_path)}")
+    mj_model = MjModel.from_xml_path(filename=str(xml_path))
     mj_model.opt.timestep = self.sim_dt
 
     self._mj_model = mj_model
@@ -45,14 +46,15 @@ class StretchMjxBase(mjx_env.MjxEnv):
     self._action_scale = config.action_scale
 
   def _post_init(self, obj_name: str, keyframe: str):
-    all_joints = [act.name for act in Actuators]
+    arm_joints = ['joint_arm_l0', 'joint_arm_l1', 'joint_arm_l2', 'joint_arm_l3', 'joint_gripper_slide', 'joint_lift', 'joint_wrist_pitch', 'joint_wrist_roll', 'joint_wrist_yaw']
+    finger_joints = ['joint_gripper_finger_left_open', 'joint_gripper_finger_right_open',] #'rubber_left_x', 'rubber_left_y', 'rubber_right_x', 'rubber_right_y']
     self._robot_arm_qposadr = np.array([
-        self._mj_model.jnt_qposadr[self._mj_model.joint(j.name).id]
-        for j in Actuators.get_arm_joints()
+        self._mj_model.jnt_qposadr[self._mj_model.joint(j).id]
+        for j in arm_joints
     ])
     self._robot_qposadr = np.array([
         self._mj_model.jnt_qposadr[self._mj_model.joint(j).id]
-        for j in all_joints
+        for j in arm_joints + finger_joints
     ])
     self._gripper_site = self._mj_model.body("link_grasp_center").id
     self._left_finger_geom = self._mj_model.body("link_gripper_finger_left").id
