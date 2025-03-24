@@ -1,7 +1,7 @@
 import signal
 import threading
 import time
-from typing import override
+from stretch_mujoco.utils import override
 
 import click
 import mujoco

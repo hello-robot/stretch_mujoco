@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional, Union, override
+from typing import Any, Dict, Optional, Union
+
+from stretch_mujoco.utils import override
 
 from etils import epath
 import jax.numpy as jp
