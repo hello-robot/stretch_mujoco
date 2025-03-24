@@ -21,6 +21,16 @@ class Actuators(Enum):
     left_wheel_vel = 10
     right_wheel_vel = 11
 
+    @classmethod
+    def get_arm_joints(cls) -> list["Actuators"]:
+        return [
+            cls.lift,
+            cls.arm,
+            cls.wrist_pitch,
+            cls.wrist_roll,
+            cls.wrist_yaw,
+        ]
+
     def _get_status_attribute(self, is_position: bool, status: StretchStatus) -> float:
         attribute_name = "pos" if is_position else "vel"
         if self == Actuators.arm:
