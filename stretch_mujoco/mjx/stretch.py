@@ -12,9 +12,6 @@ import numpy as np
 from mujoco._structs import MjModel
 from mujoco_playground._src import mjx_env
 
-from stretch_mujoco.enums.actuators import Actuators
-
-
 def default_config() -> config_dict.ConfigDict:
   return config_dict.create(
       ctrl_dt=0.02,

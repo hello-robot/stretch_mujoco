@@ -47,5 +47,9 @@ dev = [
 ]
 mjx = [
     "ipykernel",
-    "ipython"
+    "ipython",
+    "playground", 
+    "brax", 
+    "flax", 
+    "mediapy"
 ]
