@@ -1,5 +1,5 @@
 import os
-from typing import override
+from stretch_mujoco.utils import override
 import mujoco
 import mujoco._functions
 import mujoco._callbacks
