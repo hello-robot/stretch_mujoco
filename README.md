@@ -20,6 +20,8 @@ git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
 cd stretch_mujoco
 ```
 
+> If you've already cloned the repo without `--recurse-submodules`, run `git submodule update --init` to pull the submodule.
+
 Then, install this repo:
 
 ```
