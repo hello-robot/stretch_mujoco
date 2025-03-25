@@ -62,6 +62,7 @@ uv run examples/gamepad_teleop.py
 
 ```
 # Setup
+uv pip install -e .[robocasa]
 uv pip install -e "robocasa@third_party/robocasa"
 uv pip install -e "robosuite@third_party/robosuite"
 uv run third_party/robosuite/robosuite/scripts/setup_macros.py
