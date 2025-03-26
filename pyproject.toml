@@ -50,3 +50,9 @@ robocasa = [
     "numpy==1.23.5",
     "numba==0.59"
 ]
+rlearning = [
+    "ipykernel",
+    "ipython",
+    "dm_control",
+    "matplotlib"
+]
