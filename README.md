@@ -42,6 +42,16 @@ To exit, press `Ctrl+C` in the terminal.
     <img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
 </p>
 
+> On MacOS, if `mjpython` fails to locate `libpython3.10.dylib` and `libz.1.dylib`, run these commands:
+```shell
+# When `libpython3.10.dylib` is missing, run:
+PYTHON_LIB_DIR=$(python3 -c 'from distutils.sysconfig import get_config_var; print(get_config_var("LIBDIR"))')
+ln -s "$PYTHON_LIB_DIR/libpython3.10.dylib" ./.venv/lib/libpython3.10.dylib
+
+# When `libz.1.dylib` is missing, run:
+export DYLD_LIBRARY_PATH=/usr/lib:$DYLD_LIBRARY_PATH
+```
+
 ## Try Example Scripts
 
 [Keyboard teleop](./examples/keyboard_teleop.py)
@@ -62,7 +72,8 @@ uv run examples/gamepad_teleop.py
 
 ```
 # Setup
-uv pip install -e .[robocasa]
+uv venv
+uv pip install -e ".[robocasa]"
 uv pip install -e "robocasa@third_party/robocasa"
 uv pip install -e "robosuite@third_party/robosuite"
 uv run third_party/robosuite/robosuite/scripts/setup_macros.py

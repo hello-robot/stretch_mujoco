@@ -47,5 +47,5 @@ dev = [
 ]
 robocasa = [
     "numpy==1.23.5",
-    "numba==0.58"
+    "numba==0.59"
 ]
