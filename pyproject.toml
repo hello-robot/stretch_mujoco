@@ -3,7 +3,7 @@ name = "stretch_mujoco"
 version = "0.0.1"
 description = "A Stretch simulation in MuJoCo"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.11"
 dependencies = [
     "click>=8.1.8",
     "hello-robot-stretch-urdf>=0.1.0",
