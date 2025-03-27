@@ -16,7 +16,7 @@ MujocoServerPassive.launch_server(
     model=None, 
     camera_hz=30, 
     show_viewer_ui=True,
-    stop_event=event, 
+    stop_mujoco_process_event=event, 
     command=command, 
     status=status, 
     imagery=imagery,

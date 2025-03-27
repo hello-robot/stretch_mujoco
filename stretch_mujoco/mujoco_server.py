@@ -36,7 +36,7 @@ class MujocoServer:
         self,
         scene_xml_path: str | None,
         model: MjModel | None,
-        stop_event: threading.Event,
+        stop_mujoco_process_event: threading.Event,
         command: DictProxy,
         status: DictProxy,
         imagery: DictProxy,
@@ -58,7 +58,7 @@ class MujocoServer:
 
         self._base_in_pos_motion = False
 
-        self.stop_event = stop_event
+        self._stop_mujoco_process_event = stop_mujoco_process_event
         self.command = command
         self.status = status
         self.cameras = imagery
@@ -103,13 +103,13 @@ class MujocoServer:
         model: MjModel | None,
         camera_hz: float,
         show_viewer_ui: bool,
-        stop_event: threading.Event,
+        stop_mujoco_process_event: threading.Event,
         command: DictProxy,
         status: DictProxy,
         imagery: DictProxy,
         cameras_to_use: list[StretchCameras],
     ):
-        server = cls(scene_xml_path, model, stop_event, command, status, imagery)
+        server = cls(scene_xml_path, model, stop_mujoco_process_event, command, status, imagery)
         server.run(
             show_viewer_ui=show_viewer_ui,
             camera_hz=camera_hz,
@@ -124,6 +124,13 @@ class MujocoServer:
     ):
         # self.__run_headless_simulation(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
         self.__run_headless_simulation_with_physics_thread(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
+
+    def _is_requested_to_stop(self):
+        return self._stop_mujoco_process_event.is_set()
+    
+    def request_to_stop(self):
+        self._stop_mujoco_process_event.set()
+
 
     def close(self):
         """
@@ -183,7 +190,7 @@ class MujocoServer:
             cameras_to_use=cameras_to_use,
         )
 
-        while not self.stop_event.is_set():
+        while not self._is_requested_to_stop():
             self._physics_step(contextlib.nullcontext())
             self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=False)
 
@@ -207,11 +214,11 @@ class MujocoServer:
         )
 
         physics_thread = threading.Thread(
-            target=self._physics_loop, args=(self.camera_manager.camera_lock, lambda: not self.stop_event.is_set()), daemon=True
+            target=self._physics_loop, args=(self.camera_manager.camera_lock, lambda: not self._is_requested_to_stop()), daemon=True
         )
         physics_thread.start()
 
-        while not self.stop_event.is_set():
+        while not self._is_requested_to_stop():
             self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=True)
 
         physics_thread.join()

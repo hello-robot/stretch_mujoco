@@ -51,7 +51,7 @@ class StretchMujocoSimulator:
         self._cameras_to_use = cameras_to_use
 
         self._manager = Manager()
-        self._stop_event = self._manager.Event()
+        self._stop_mujoco_process_event = self._manager.Event()
         self._command = self._manager.dict({"val": {}})
         self._status = self._manager.dict({"val": StretchStatus.default().to_dict()})
         self._cameras = self._manager.dict({"val": StretchCameraStatus.default().to_dict()})
@@ -88,7 +88,7 @@ class StretchMujocoSimulator:
                 self.model,
                 self.camera_hz,
                 show_viewer_ui,
-                self._stop_event,
+                self._stop_mujoco_process_event,
                 self._command,
                 self._status,
                 self._cameras,
@@ -141,7 +141,7 @@ class StretchMujocoSimulator:
                     f"Stopping thread {index}/{len(active_threads)-1}.",
                     fg="yellow",
                 )
-                thread.join(timeout=2.0)
+                thread.join(timeout=10.0)
                 if thread.is_alive():
                     click.secho(
                         f"{thread.name} is not terminating. Make sure to check 'sim.is_running()' in threading loops.",
@@ -155,13 +155,20 @@ class StretchMujocoSimulator:
         )  # Calling it directly doesn't always work if the main thread isn't
 
     def stop_mujoco_process(self):
+
+        if self._server_process and not self._server_process.is_alive():
+            click.secho(
+                f"The Mujoco process has already ended.",
+                fg="red",
+            )
+
         click.secho(
             f"Sending signal to stop the Mujoco process...",
             fg="red",
         )
 
         # Wait until the main control loop ends before sending this stop event.
-        self._stop_event.set()
+        self._stop_mujoco_process_event.set()
         if self._server_process:
             # self._server_process.terminate() # ask it nicely.
             self._server_process.join()
@@ -320,7 +327,7 @@ class StretchMujocoSimulator:
         return (
             self._server_process is not None
             and self._server_process.is_alive()
-            and not self._stop_event.is_set()
+            and not self._stop_mujoco_process_event.is_set()
         )
 
     def is_running(self) -> bool:

@@ -53,7 +53,7 @@ class MujocoServerManaged(MujocoServer):
 
     def _managed_viewer_loop(self, model: MjModel, data: MjData):
 
-        if self.stop_event.is_set():
+        if self._is_requested_to_stop():
             self.close()
 
             os.kill(os.getpid(), 9)

@@ -257,11 +257,11 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
         """
         while (
             not self.mujoco_server.status["val"] or not self.mujoco_server.status["val"]["time"]
-        ) and not self.mujoco_server.stop_event.is_set():
+        ) and not self.mujoco_server._is_requested_to_stop():
             # wait for sim to start
             time.sleep(0.1)
 
-        while not self.mujoco_server.stop_event.is_set():
+        while not self.mujoco_server._is_requested_to_stop():
 
             if not self.is_ready_to_pull_camera_data(is_sleep_until_ready=True):
                 return
