@@ -110,7 +110,10 @@ class StretchMujocoSimulator:
             click.secho("Still waiting to connect to the Mujoco Simulatior.", fg="yellow")
 
             if not self.is_running():
+                click.secho("The simulator is not running anymore, quitting..", fg="yellow")
                 return
+            
+        click.secho("The Mujoco Simulatior is connected.", fg="green")
 
         self.home()
 
