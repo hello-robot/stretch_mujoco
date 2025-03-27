@@ -1,6 +1,5 @@
 import atexit
 from multiprocessing import Manager, Process
-import copy
 import multiprocessing
 import platform
 import signal
@@ -14,10 +13,10 @@ from mujoco._structs import MjModel
 
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
-from stretch_mujoco.mujoco_server import MujocoServer
+from stretch_mujoco.mujoco_server import MujocoServer, MujocoServerProxies
 from stretch_mujoco.mujoco_server_managed import MujocoServerManaged
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
-from stretch_mujoco.status import StretchCameraStatus, StretchStatus
+from stretch_mujoco.status import CommandBaseVelocity, CommandKeyframe, CommandMove, CommandStatus, StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection, wait_and_check
 
@@ -48,16 +47,21 @@ class StretchMujocoSimulator:
         self.urdf_model = utils.URDFmodel()
         self._server_process = None
         self._cameras_to_use = cameras_to_use
-        
+
         self.is_stop_called = False
 
         self._manager = Manager()
         self._stop_mujoco_process_event = self._manager.Event()
-        self._command = self._manager.dict({"val": {}})
-        self._status = self._manager.dict({"val": StretchStatus.default().to_dict()})
-        self._cameras = self._manager.dict({"val": StretchCameraStatus.default().to_dict()})
 
-    def start(self, show_viewer_ui: bool = False, headless: bool = False, use_passive_viewer: bool = True) -> None:
+        self.data_proxies = MujocoServerProxies(
+            _command=self._manager.dict({"val": CommandStatus.default()}),
+            _status=self._manager.dict({"val": StretchStatus.default()}),
+            _cameras=self._manager.dict({"val": StretchCameraStatus.default()}),
+        )
+
+    def start(
+        self, show_viewer_ui: bool = False, headless: bool = False, use_passive_viewer: bool = True
+    ) -> None:
         """
         Start the simulator
 
@@ -68,11 +72,11 @@ class StretchMujocoSimulator:
         """
         self.is_stop_called = False
 
-        mujoco_server = MujocoServer # Headless
+        mujoco_server = MujocoServer  # Headless
 
         if not headless:
             mujoco_server = MujocoServerPassive if use_passive_viewer else MujocoServerManaged
-        
+
         if platform.system() == "Darwin" and mujoco_server is MujocoServerPassive:
             # On a mac, the process for MujocoServerPassive needs to be started with mjpython
             mjpython_path = sys.executable.replace("bin/python3", "bin/mjpython").replace(
@@ -80,7 +84,7 @@ class StretchMujocoSimulator:
             )
             print(f"{mjpython_path=}")
             multiprocessing.set_executable(mjpython_path)
-            
+
         multiprocessing.set_start_method("spawn", force=True)
 
         self._server_process = Process(
@@ -92,9 +96,7 @@ class StretchMujocoSimulator:
                 self.camera_hz,
                 show_viewer_ui,
                 self._stop_mujoco_process_event,
-                self._command,
-                self._status,
-                self._cameras,
+                self.data_proxies,
                 self._cameras_to_use,
             ),
             daemon=False,  # We're gonna handle terminating this in stop_mujoco_process()
@@ -105,16 +107,16 @@ class StretchMujocoSimulator:
         signal.signal(signal.SIGTERM, lambda num, sig: self.stop())
         signal.signal(signal.SIGINT, lambda num, sig: self.stop())
         atexit.register(self.stop)
-        
+
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
-        while (self.pull_status().time == 0 or self.pull_camera_data().time == 0):
+        while self.pull_status().time == 0 or self.pull_camera_data().time == 0:
             time.sleep(1)
             click.secho("Still waiting to connect to the Mujoco Simulatior.", fg="yellow")
 
             if not self.is_running():
                 click.secho("The simulator is not running anymore, quitting..", fg="yellow")
                 return
-            
+
         click.secho("The Mujoco Simulatior is connected.", fg="green")
 
         self.home()
@@ -127,11 +129,11 @@ class StretchMujocoSimulator:
         """
         if self.is_stop_called:
             return
-        
+
         self.is_stop_called = True
 
         try:
-            simulation_time_message = self._status["val"]["time"]
+            simulation_time_message = self.data_proxies.get_status().time
             simulation_time_message = f" simulated runtime= {simulation_time_message:.1f}s"
         except:
             simulation_time_message = ""
@@ -147,7 +149,11 @@ class StretchMujocoSimulator:
         # For example, the main thread or a thread may not be checking `sim.is_running()` and is oblivious that it should stop. Nothing we can do to stop it except sigkill.
         active_threads = threading.enumerate()
         for index, thread in enumerate(active_threads):
-            if thread != threading.current_thread() and thread != threading.main_thread() and not isinstance(thread, threading._DummyThread):
+            if (
+                thread != threading.current_thread()
+                and thread != threading.main_thread()
+                and not isinstance(thread, threading._DummyThread)
+            ):
                 click.secho(
                     f"Stopping thread {index}/{len(active_threads)-1}.",
                     fg="yellow",
@@ -194,17 +200,25 @@ class StretchMujocoSimulator:
         """
         Move the robot to home position
         """
-        self._command["val"] = {"keyframe": {"name": "home", "trigger": True}}
+        self.data_proxies.set_command(
+            CommandStatus(
+                keyframe=CommandKeyframe(name="home", trigger=True)
+            )
+        )
 
     @require_connection
     def stow(self) -> None:
         """
         Move the robot to stow position
         """
-        self._command["val"] = {"keyframe": {"name": "stow", "trigger": True}}
+        self.data_proxies.set_command(
+            CommandStatus(
+                keyframe=CommandKeyframe(name="stow", trigger=True)
+            )
+        )
 
     @require_connection
-    def move_to(self, actuator: Actuators, pos: float, timeout: float | None = 15.0) :
+    def move_to(self, actuator: Actuators, pos: float, timeout: float | None = 15.0):
         """
         Move the actuator to a specific position
         Args:
@@ -224,20 +238,25 @@ class StretchMujocoSimulator:
             )
             return
 
-        self._command["val"] = {
-            "move_to": {"actuator_name": actuator.name, "pos": pos, "trigger": True}
-        }
+        self.data_proxies.set_command(
+            CommandStatus(
+                move_to=[CommandMove(actuator_name=actuator.name, pos=pos, trigger=True)]
+            )
+        )
 
         if timeout:
             if not wait_and_check(
                 timeout,
-                lambda: np.isclose(actuator.get_position(self.pull_status()), pos, atol=0.05) == True,
-                self.is_running
+                lambda: np.isclose(actuator.get_position(self.pull_status()), pos, atol=0.05)
+                == True,
+                self.is_running,
             ):
-                click.secho(f"Joint {actuator.name} did not reach {pos}. Actual: {actuator.get_position(self.pull_status())}", fg="red")
+                click.secho(
+                    f"Joint {actuator.name} did not reach {pos}. Actual: {actuator.get_position(self.pull_status())}",
+                    fg="red",
+                )
                 return False
         return True
-            
 
     @require_connection
     def move_by(self, actuator: Actuators, pos: float) -> None:
@@ -255,9 +274,11 @@ class StretchMujocoSimulator:
             )
             return
 
-        self._command["val"] = {
-            "move_by": {"actuator_name": actuator.name, "pos": pos, "trigger": True}
-        }
+        self.data_proxies.set_command(
+            CommandStatus(
+                move_by=[CommandMove(actuator_name=actuator.name, pos=pos, trigger=True)]
+            )
+        )
 
         # if timeout:
         #     if actuator in [Actuators.base_rotate, Actuators.base_translate]:
@@ -266,7 +287,7 @@ class StretchMujocoSimulator:
 
         #         # TODO: implement the check for moving the base
         #         check = lambda: True
-        #     else:   
+        #     else:
         #         initial_position = actuator.get_position(self.pull_status())
 
         #         check = lambda: np.isclose(initial_position-actuator.get_position(self.pull_status()), pos,  atol=0.05) == True
@@ -285,9 +306,13 @@ class StretchMujocoSimulator:
             v_linear: float, linear velocity
             omega: float, angular velocity
         """
-        self._command["val"] = {
-            "set_base_velocity": {"v_linear": v_linear, "omega": omega, "trigger": True}
-        }
+        self.data_proxies.set_command(
+            CommandStatus(
+                set_base_velocity= CommandBaseVelocity(
+                    v_linear=v_linear, omega=omega, trigger=True
+                )
+            )
+        )
 
     @require_connection
     def get_base_pose(self):
@@ -325,14 +350,14 @@ class StretchMujocoSimulator:
         """
         Pull camera data from the simulator and return as a dictionary
         """
-        return StretchCameraStatus(**copy.copy(self._cameras["val"]))
+        return self.data_proxies.get_cameras().copy()
 
     @require_connection
     def pull_status(self) -> StretchStatus:
         """
         Pull robot joint states from the simulator and return as a dictionary
         """
-        return StretchStatus.from_dict(copy.copy(self._status["val"]))
+        return self.data_proxies.get_status().copy()
 
     def is_mujoco_process_dead_or_stopevent_triggered(self):
         return (

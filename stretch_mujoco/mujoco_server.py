@@ -1,4 +1,5 @@
 import contextlib
+from dataclasses import dataclass
 from multiprocessing.managers import DictProxy
 import signal
 import threading
@@ -21,9 +22,40 @@ from stretch_mujoco.mujoco_server_camera_manager import (
     MujocoServerCameraManagerThreaded,
     MujocoServerCameraManagerSync,
 )
-from stretch_mujoco.status import StretchStatus
+from stretch_mujoco.status import CommandStatus, StretchCameraStatus, StretchStatus
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import FpsCounter
+
+
+@dataclass
+class MujocoServerProxies:
+    _command: "DictProxy[str, CommandStatus]"
+    _status: "DictProxy[str, StretchStatus]"
+    _cameras: "DictProxy[str, StretchCameraStatus]"
+
+    def __setattr__(self, name: str, value) -> None:
+        try:
+            super().__setattr__(name, value)
+        except BrokenPipeError:
+            ...
+
+    def get_status(self):
+        return self._status["val"]
+
+    def set_status(self, value: StretchStatus):
+        self._status["val"] = value
+
+    def get_command(self):
+        return self._command["val"]
+
+    def set_command(self, value: CommandStatus):
+        self._command["val"] = value
+
+    def get_cameras(self):
+        return self._cameras["val"]
+
+    def set_cameras(self, value: StretchCameraStatus):
+        self._cameras["val"] = value
 
 
 class MujocoServer:
@@ -38,9 +70,7 @@ class MujocoServer:
         scene_xml_path: str | None,
         model: MjModel | None,
         stop_mujoco_process_event: threading.Event,
-        command: DictProxy,
-        status: DictProxy,
-        imagery: DictProxy,
+        data_proxies: MujocoServerProxies,
     ):
         """
         Initialize the Simulator handle with a scene
@@ -60,12 +90,10 @@ class MujocoServer:
         self._base_in_pos_motion = False
 
         self._stop_mujoco_process_event = stop_mujoco_process_event
-        self.command = command
-        self.status = status
-        self.cameras = imagery
+
+        self.data_proxies = data_proxies
 
         self.physics_fps_counter = FpsCounter()
-
 
         signal.signal(signal.SIGTERM, lambda num, h: self.request_to_stop())
         signal.signal(signal.SIGINT, lambda num, h: self.request_to_stop())
@@ -109,12 +137,10 @@ class MujocoServer:
         camera_hz: float,
         show_viewer_ui: bool,
         stop_mujoco_process_event: threading.Event,
-        command: DictProxy,
-        status: DictProxy,
-        imagery: DictProxy,
+        data_proxies: MujocoServerProxies,
         cameras_to_use: list[StretchCameras],
     ):
-        server = cls(scene_xml_path, model, stop_mujoco_process_event, command, status, imagery)
+        server = cls(scene_xml_path, model, stop_mujoco_process_event, data_proxies)
         server.run(
             show_viewer_ui=show_viewer_ui,
             camera_hz=camera_hz,
@@ -128,22 +154,23 @@ class MujocoServer:
         cameras_to_use: list[StretchCameras],
     ):
         # self.__run_headless_simulation(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
-        self.__run_headless_simulation_with_physics_thread(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
+        self.__run_headless_simulation_with_physics_thread(
+            camera_hz=camera_hz, cameras_to_use=cameras_to_use
+        )
 
     def _is_requested_to_stop(self):
         try:
             return self._stop_mujoco_process_event.is_set()
-        except:
+        except (EOFError, BrokenPipeError):
             # We likely lost connection to the main process if we've hit this.
             return True
-    
+
     def request_to_stop(self):
         try:
             self._stop_mujoco_process_event.set()
-        except:
+        except (EOFError, BrokenPipeError):
             # We likely lost connection to the main process if we've hit this.
             ...
-
 
     def close(self):
         """
@@ -177,7 +204,9 @@ class MujocoServer:
             # Sleep to match the timestep.
             time.sleep(time_until_next_step)
 
-    def _physics_loop(self, lock: contextlib.AbstractContextManager, termination_check:Callable[[],bool]):
+    def _physics_loop(
+        self, lock: contextlib.AbstractContextManager, termination_check: Callable[[], bool]
+    ):
         """
         A loop to use when starting physics in a thread.
         """
@@ -227,7 +256,9 @@ class MujocoServer:
         )
 
         physics_thread = threading.Thread(
-            target=self._physics_loop, args=(self.camera_manager.camera_lock, lambda: not self._is_requested_to_stop()), daemon=True
+            target=self._physics_loop,
+            args=(self.camera_manager.camera_lock, lambda: not self._is_requested_to_stop()),
+            daemon=True,
         )
         physics_thread.start()
 
@@ -307,7 +338,7 @@ class MujocoServer:
             new_status.base.theta,
         ) = self.get_base_pose()
 
-        self.status["val"] = new_status.to_dict()
+        self.data_proxies.set_status(new_status)
 
     def _to_real_gripper_range(self, pos: float) -> float:
         """
@@ -320,57 +351,60 @@ class MujocoServer:
         )
 
     def push_command(self):
+        command_status = self.data_proxies.get_command()
         # move_by
-        if "move_by" in self.command["val"] and self.command["val"]["move_by"]["trigger"]:
-            actuator_name = self.command["val"]["move_by"]["actuator_name"]
-            pos = self.command["val"]["move_by"]["pos"]
-            if actuator_name in ["base_translate", "base_rotate"]:
-                if self._base_in_pos_motion:
-                    self._stop_base_pos_tracking()
-                    time.sleep(1 / 20)
-                if actuator_name == "base_translate":
-                    threading.Thread(
-                        target=self._base_translate_by, args=(pos,), daemon=True
-                    ).start()
-                else:
-                    threading.Thread(target=self._base_rotate_by, args=(pos,), daemon=True).start()
-            else:
-                if actuator_name == "gripper":
-                    self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
-                        self.status["val"][actuator_name]["pos"] + pos
-                    )
-                else:
-                    self.mjdata.actuator(actuator_name).ctrl = (
-                        self.status["val"][actuator_name]["pos"] + pos
-                    )
-            self.command["val"] = {}
+        if command_status.move_by is not None:
+            for command in command_status.move_by:
+                if command.trigger:
+                    actuator_name = command.actuator_name
+                    pos = command.pos
+                    if actuator_name in ["base_translate", "base_rotate"]:
+                        if self._base_in_pos_motion:
+                            self._stop_base_pos_tracking()
+                            time.sleep(1 / 20)
+                        if actuator_name == "base_translate":
+                            threading.Thread(
+                                target=self._base_translate_by, args=(pos,), daemon=True
+                            ).start()
+                        else:
+                            threading.Thread(
+                                target=self._base_rotate_by, args=(pos,), daemon=True
+                            ).start()
+                    else:
+                        current_value = self.data_proxies.get_status()[actuator_name].pos
+                        if actuator_name == "gripper":
+                            self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
+                                current_value + pos
+                            )
+                        else:
+                            self.mjdata.actuator(actuator_name).ctrl = current_value + pos
 
         # move_to
-        if "move_to" in self.command["val"] and self.command["val"]["move_to"]["trigger"]:
-            actuator_name = self.command["val"]["move_to"]["actuator_name"]
-            pos = self.command["val"]["move_to"]["pos"]
-            if actuator_name == "gripper":
-                self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
-            else:
-                self.mjdata.actuator(actuator_name).ctrl = pos
-            self.command["val"] = {}
+        if command_status.move_to is not None:
+            for command in command_status.move_to:
+                if command.trigger:
+                    actuator_name = command.actuator_name
+                    pos = command.pos
+                    if actuator_name == "gripper":
+                        self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
+                    else:
+                        self.mjdata.actuator(actuator_name).ctrl = pos
 
         # set_base_velocity
         if (
-            "set_base_velocity" in self.command["val"]
-            and self.command["val"]["set_base_velocity"]["trigger"]
+            command_status.set_base_velocity is not None
+            and command_status.set_base_velocity.trigger
         ):
             self.set_base_velocity(
-                self.command["val"]["set_base_velocity"]["v_linear"],
-                self.command["val"]["set_base_velocity"]["omega"],
+                command_status.set_base_velocity.v_linear,
+                command_status.set_base_velocity.omega,
             )
-            self.command["val"] = {}
 
         # keyframe
-        if "keyframe" in self.command["val"] and self.command["val"]["keyframe"]["trigger"]:
-            name = self.command["val"]["keyframe"]["name"]
-            self.mjdata.ctrl = self.mjmodel.keyframe(name).ctrl
-            self.command["val"] = {}
+        if command_status.keyframe is not None and command_status.keyframe.trigger:
+            self.mjdata.ctrl = self.mjmodel.keyframe(command_status.keyframe.name).ctrl
+
+        self.data_proxies.set_command(CommandStatus.default())
 
     def _base_translate_by(self, x_inc: float) -> None:
         """

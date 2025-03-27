@@ -94,7 +94,7 @@ class MujocoServerCameraManagerSync:
         new_imagery.cam_d405_K = self.get_camera_params("d405_rgb")
         new_imagery.cam_d435i_K = self.get_camera_params("d435i_camera_rgb")
 
-        self.mujoco_server.cameras["val"] = new_imagery.to_dict()
+        self.mujoco_server.data_proxies.set_cameras(new_imagery)
 
     def _create_camera_renderer(self, is_depth: bool):
         renderer = mujoco.Renderer(self.mujoco_server.mjmodel, height=480, width=640)
@@ -255,8 +255,9 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
         """
         This is the thread loop that handles camera rendering.
         """
+
         while (
-            not self.mujoco_server.status["val"] or not self.mujoco_server.status["val"]["time"]
+            self.mujoco_server.data_proxies.get_status().time == 0
         ) and not self.mujoco_server._is_requested_to_stop():
             # wait for sim to start
             time.sleep(0.1)
@@ -299,4 +300,5 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
         new_imagery.cam_d405_K = self.get_camera_params("d405_rgb")
         new_imagery.cam_d435i_K = self.get_camera_params("d435i_camera_rgb")
 
-        self.mujoco_server.cameras["val"] = new_imagery.to_dict()
+
+        self.mujoco_server.data_proxies.set_cameras(new_imagery)

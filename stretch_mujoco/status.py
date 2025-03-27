@@ -1,3 +1,4 @@
+import copy
 from dataclasses import asdict, dataclass
 import numpy as np
 
@@ -62,6 +63,9 @@ class StretchStatus:
     def to_dict(self):
         return asdict(self)
     
+    def copy(self):
+        return StretchStatus.from_dict(copy.copy(self.to_dict()))
+    
     @staticmethod
     def from_dict(dict_data:dict)-> "StretchStatus": 
         return dataclass_from_dict(StretchStatus, dict_data) #type: ignore
@@ -81,6 +85,13 @@ class StretchCameraStatus:
 
     def to_dict(self):
         return asdict(self)
+    
+    def copy(self):
+        return StretchCameraStatus.from_dict(copy.copy(self.to_dict()))
+    
+    @staticmethod
+    def from_dict(dict_data:dict)-> "StretchCameraStatus": 
+        return dataclass_from_dict(StretchCameraStatus, dict_data) #type: ignore
     
     def set_camera_data(self, camera:StretchCameras, data:np.ndarray):
         if camera == StretchCameras.cam_d405_rgb:
@@ -121,5 +132,35 @@ class StretchCameraStatus:
     
     @staticmethod
     def default():
-        return StretchCameraStatus(0, 0)
+        return StretchCameraStatus(time=0, fps=0)
     
+
+@dataclass
+class CommandMove:
+    actuator_name: str
+    trigger:bool
+    pos: float
+
+
+@dataclass
+class CommandBaseVelocity:
+    v_linear: float
+    omega: float
+    trigger:bool
+
+@dataclass
+class CommandKeyframe:
+    name: str
+    trigger: bool
+
+@dataclass
+class CommandStatus:
+    move_to:list[CommandMove]|None = None
+    move_by:list[CommandMove]|None = None
+    set_base_velocity:CommandBaseVelocity|None = None
+    keyframe:CommandKeyframe|None = None
+
+
+    @staticmethod
+    def default():
+        return CommandStatus()
