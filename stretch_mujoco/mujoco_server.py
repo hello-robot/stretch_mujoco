@@ -1,5 +1,6 @@
 import contextlib
 from multiprocessing.managers import DictProxy
+import signal
 import threading
 import time
 from typing import Callable
@@ -64,6 +65,10 @@ class MujocoServer:
         self.cameras = imagery
 
         self.physics_fps_counter = FpsCounter()
+
+
+        signal.signal(signal.SIGTERM, lambda num, h: self.request_to_stop())
+        signal.signal(signal.SIGINT, lambda num, h: self.request_to_stop())
 
     def set_camera_manager(
         self,

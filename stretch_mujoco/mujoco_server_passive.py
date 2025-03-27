@@ -1,4 +1,3 @@
-import signal
 import threading
 import time
 from stretch_mujoco.utils import override
@@ -51,9 +50,6 @@ class MujocoServerPassive(MujocoServer):
 
         https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer
         """
-
-        signal.signal(signal.SIGTERM, lambda num, h: self.request_to_stop())
-        signal.signal(signal.SIGINT, lambda num, h: self.request_to_stop())
 
         with mujoco.viewer.launch_passive(
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
