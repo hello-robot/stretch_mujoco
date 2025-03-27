@@ -5,7 +5,7 @@ from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 
 class Actuators(Enum):
     """
-    An enum for the joints defined in the URDF.
+    An enum for the joints defined in the MJCF (stretch.xml).
     """
 
     arm = 0
@@ -24,12 +24,33 @@ class Actuators(Enum):
     @classmethod
     def get_arm_joints(cls) -> list["Actuators"]:
         return [
-            cls.lift,
             cls.arm,
             cls.wrist_pitch,
             cls.wrist_roll,
             cls.wrist_yaw,
         ]
+    
+    @classmethod
+    def get_actuated_joints(cls) -> list["Actuators"]:
+        return [actuator for actuator in cls if actuator != cls.base_rotate and actuator!= cls.base_translate]
+    
+    def get_joint_names_in_mjcf(self):
+        """
+        An actuator may have multiple joints. Return their names here.
+        """
+        if self == Actuators.left_wheel_vel: return [ "joint_left_wheel"]
+        if self == Actuators.right_wheel_vel: return  ["joint_right_wheel"]
+        if self == Actuators.lift: return  ["joint_lift"]
+        if self == Actuators.arm: return ['joint_arm_l0', 'joint_arm_l1', 'joint_arm_l2', 'joint_arm_l3']
+        if self == Actuators.wrist_yaw: return  ["joint_wrist_yaw"]
+        if self == Actuators.wrist_pitch: return [ "joint_wrist_pitch"]
+        if self == Actuators.wrist_roll: return  ["joint_wrist_roll"]
+        if self == Actuators.gripper: return  ["joint_gripper_slide"]
+        if self == Actuators.head_pan: return [ "joint_head_pan"]
+        if self == Actuators.head_tilt: return  ["joint_head_tilt"]
+
+        raise NotImplementedError(f"Joint names for {self} are not defined.")
+
     def _get_status_attribute(self, is_position: bool, status: StatusStretchJoints) -> float:
         attribute_name = "pos" if is_position else "vel"
         if self == Actuators.arm:
