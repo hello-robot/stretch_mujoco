@@ -379,9 +379,13 @@ def switch_to_glfw_renderer(mjmodel: MjModel, renderer: mujoco.Renderer):
     renderer._mjr_context.readDepthMap = mujoco._enums.mjtDepthMap.mjDEPTH_ZEROFAR
 
 
-# Only Python >12 has override.
-override = (
-    __import__("typing").override
-    if hasattr(__import__("typing"), "override")
-    else lambda func: wraps(func)(lambda *args, **kwargs: func(*args, **kwargs))
-)
+try:
+    # Only Python >12 has override.
+    override = __import__("typing").override
+except:  # noqa
+    def override(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
