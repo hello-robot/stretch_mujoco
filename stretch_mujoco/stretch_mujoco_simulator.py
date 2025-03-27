@@ -47,8 +47,9 @@ class StretchMujocoSimulator:
         self.camera_hz = camera_hz
         self.urdf_model = utils.URDFmodel()
         self._server_process = None
-        self._running = False
         self._cameras_to_use = cameras_to_use
+        
+        self.is_stop_called = False
 
         self._manager = Manager()
         self._stop_mujoco_process_event = self._manager.Event()
@@ -65,6 +66,8 @@ class StretchMujocoSimulator:
             headless: bool, whether to run the simulation in headless mode
             use_passive_viewer: bool, to use the passive or managed mujoco UI viewer.
         """
+        self.is_stop_called = False
+
         mujoco_server = MujocoServer # Headless
 
         if not headless:
@@ -102,8 +105,7 @@ class StretchMujocoSimulator:
         signal.signal(signal.SIGTERM, lambda num, sig: self.stop())
         signal.signal(signal.SIGINT, lambda num, sig: self.stop())
         atexit.register(self.stop)
-
-        self._running = True
+        
         click.secho("Starting Stretch Mujoco Simulator...", fg="green")
         while (self.pull_status().time == 0 or self.pull_camera_data().time == 0):
             time.sleep(1)
@@ -123,17 +125,23 @@ class StretchMujocoSimulator:
 
         Fingers-crossed we get a SIGTERM, and not a SIGKILL..
         """
-        if not self._running:
+        if self.is_stop_called:
             return
+        
+        self.is_stop_called = True
 
-        simulation_time = self._status["val"]["time"]
+        try:
+            simulation_time_message = self._status["val"]["time"]
+            simulation_time_message = f" simulated runtime= {simulation_time_message:.1f}s"
+        except:
+            simulation_time_message = ""
 
         click.secho(
-            f"Stopping Stretch Mujoco Simulator... simulated runtime={simulation_time:.1f}s",
+            f"Stopping Stretch Mujoco Simulator...{simulation_time_message}",
             fg="red",
         )
 
-        self._running = False
+        self.stop_mujoco_process()
 
         # We're going to try to wait for threads to end. They might not gracefully stop before hitting an exception. Race conditions are rampant.
         # For example, the main thread or a thread may not be checking `sim.is_running()` and is oblivious that it should stop. Nothing we can do to stop it except sigkill.
@@ -151,19 +159,19 @@ class StretchMujocoSimulator:
                         fg="red",
                     )
 
-        time.sleep(1)  # Not great, but wait for main thread to really settle.
-
-        atexit.register(
-            self.stop_mujoco_process
-        )  # Calling it directly doesn't always work if the main thread isn't
+        click.secho(
+            f"The Stretch Mujoco Simulator has ended. Good-bye!",
+            fg="red",
+        )
 
     def stop_mujoco_process(self):
 
         if self._server_process and not self._server_process.is_alive():
             click.secho(
-                f"The Mujoco process has already ended.",
+                f"The Mujoco process has already terminated.",
                 fg="red",
             )
+            return
 
         click.secho(
             f"Sending signal to stop the Mujoco process...",
@@ -177,7 +185,7 @@ class StretchMujocoSimulator:
             self._server_process.join()
 
         click.secho(
-            f"The Mujoco process has ended. Good-bye!",
+            f"The Mujoco process has ended.",
             fg="red",
         )
 
@@ -326,11 +334,11 @@ class StretchMujocoSimulator:
         """
         return StretchStatus.from_dict(copy.copy(self._status["val"]))
 
-    def is_server_alive_or_stopevent_untriggered(self):
+    def is_mujoco_process_dead_or_stopevent_triggered(self):
         return (
-            self._server_process is not None
-            and self._server_process.is_alive()
-            and not self._stop_mujoco_process_event.is_set()
+            self._server_process is None
+            or not self._server_process.is_alive()
+            or self._stop_mujoco_process_event.is_set()
         )
 
     def is_running(self) -> bool:
@@ -339,9 +347,9 @@ class StretchMujocoSimulator:
 
         Side-effect here is that if the mujoco process is terminated or the stopevent is triggered, `self.stop()` is called.
         """
-        if not self.is_server_alive_or_stopevent_untriggered():
+        if self.is_mujoco_process_dead_or_stopevent_triggered():
             # Send the signal to stop the program:
             self.stop()
             return False
 
-        return self._running
+        return not self.is_stop_called

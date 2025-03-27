@@ -3,7 +3,7 @@ import math
 import re
 import time
 import xml.etree.ElementTree as ET
-from typing import Callable, Tuple
+from typing import TYPE_CHECKING, Callable, Tuple
 
 import cv2
 import numpy as np
@@ -25,6 +25,9 @@ from mujoco.glfw import GLContext as GlFwContext
 
 import stretch_mujoco.config as config
 
+if TYPE_CHECKING:
+    from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
+
 
 models_path = str(importlib.resources.files("stretch_mujoco") / "models")
 default_scene_xml_path = models_path + "/scene.xml"
@@ -40,12 +43,11 @@ mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
 def require_connection(function):
     """Wraps class methods that need self"""
 
-    def wrapper_function(self, *args, **kwargs):
-        if not self._running:
+    def wrapper_function(self:"StretchMujocoSimulator", *args, **kwargs):
+        if not self.is_running():
             raise ConnectionError(
                 "The Stretch Mujoco Simulator is not running. Use the start() method to start it."
             )
-            # click.secho("The Stretch Mujoco Simulator is not running. Use the start() method to start it.", fg="red")
         return function(self, *args, **kwargs)
 
     return wrapper_function

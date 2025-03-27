@@ -126,10 +126,18 @@ class MujocoServer:
         self.__run_headless_simulation_with_physics_thread(camera_hz=camera_hz, cameras_to_use=cameras_to_use)
 
     def _is_requested_to_stop(self):
-        return self._stop_mujoco_process_event.is_set()
+        try:
+            return self._stop_mujoco_process_event.is_set()
+        except:
+            # We likely lost connection to the main process if we've hit this.
+            return True
     
     def request_to_stop(self):
-        self._stop_mujoco_process_event.set()
+        try:
+            self._stop_mujoco_process_event.set()
+        except:
+            # We likely lost connection to the main process if we've hit this.
+            ...
 
 
     def close(self):
