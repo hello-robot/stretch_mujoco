@@ -13,6 +13,7 @@ from mujoco._structs import MjModel
 
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
+from stretch_mujoco.datamodels.status_stretch_sensors import StatusStretchSensors
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer, MujocoServerProxies
@@ -55,11 +56,7 @@ class StretchMujocoSimulator:
         self._manager = Manager()
         self._stop_mujoco_process_event = self._manager.Event()
 
-        self.data_proxies = MujocoServerProxies(
-            _command=self._manager.dict({"val": StatusCommand.default()}),
-            _status=self._manager.dict({"val": StatusStretchJoints.default()}),
-            _cameras=self._manager.dict({"val": StatusStretchCameras.default()}),
-        )
+        self.data_proxies = MujocoServerProxies.default(self._manager)
 
     def start(
         self, show_viewer_ui: bool = False, headless: bool = False, use_passive_viewer: bool = True
@@ -350,16 +347,23 @@ class StretchMujocoSimulator:
     @require_connection
     def pull_camera_data(self) -> StatusStretchCameras:
         """
-        Pull camera data from the simulator and return as a dictionary
+        Pull camera data from the simulator and return as a StatusStretchCameras
         """
-        return self.data_proxies.get_cameras().copy()
+        return self.data_proxies.get_cameras()
+    
+    @require_connection
+    def pull_sensor_data(self) -> StatusStretchSensors:
+        """
+        Pull sensor data from the simulator and return as a StatusStretchSensors
+        """
+        return self.data_proxies.get_sensors()
 
     @require_connection
     def pull_status(self) -> StatusStretchJoints:
         """
-        Pull robot joint states from the simulator and return as a dictionary
+        Pull robot joint states from the simulator and return as a StatusStretchJoints
         """
-        return self.data_proxies.get_status().copy()
+        return self.data_proxies.get_status()
 
     def is_mujoco_process_dead_or_stopevent_triggered(self):
         return (

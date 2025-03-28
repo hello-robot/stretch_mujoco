@@ -10,12 +10,7 @@ from stretch_mujoco.mujoco_server import MujocoServerProxies
 from stretch_mujoco.datamodels.status_command import StatusCommand
 
 _manager = Manager()
-data_proxies = MujocoServerProxies(
-            _command=_manager.dict({"val": StatusCommand.default()}),
-            _status=_manager.dict({"val": StatusStretchJoints.default()}),
-            _cameras=_manager.dict({"val": StatusStretchCameras.default()}),
-        )
-
+data_proxies = MujocoServerProxies.default(_manager)
 
 event = threading.Event()
 signal.signal(signal.SIGTERM, lambda num, frame: event.set())

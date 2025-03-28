@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from multiprocessing.managers import DictProxy
+from multiprocessing.managers import DictProxy, SyncManager
 import signal
 import threading
 import time
@@ -18,13 +18,16 @@ from mujoco._structs import MjData, MjModel
 
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
+from stretch_mujoco.datamodels.status_stretch_sensors import StatusStretchSensors
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 import stretch_mujoco.config as config
+from stretch_mujoco.enums.stretch_sensors import StretchSensors
 from stretch_mujoco.mujoco_server_camera_manager import (
     MujocoServerCameraManagerThreaded,
     MujocoServerCameraManagerSync,
 )
 from stretch_mujoco.datamodels.status_command import StatusCommand
+from stretch_mujoco.mujoco_server_sensor_manager import MujocoServerSensorManagerThreaded
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import FpsCounter
 
@@ -34,6 +37,7 @@ class MujocoServerProxies:
     _command: "DictProxy[str, StatusCommand]"
     _status: "DictProxy[str, StatusStretchJoints]"
     _cameras: "DictProxy[str, StatusStretchCameras]"
+    _sensors: "DictProxy[str, StatusStretchSensors]"
 
     def __setattr__(self, name: str, value) -> None:
         try:
@@ -41,23 +45,38 @@ class MujocoServerProxies:
         except BrokenPipeError:
             ...
 
-    def get_status(self):
+    def get_status(self) -> StatusStretchJoints:
         return self._status["val"]
 
     def set_status(self, value: StatusStretchJoints):
         self._status["val"] = value
 
-    def get_command(self):
+    def get_command(self) -> StatusCommand:
         return self._command["val"]
 
     def set_command(self, value: StatusCommand):
         self._command["val"] = value
 
-    def get_cameras(self):
+    def get_cameras(self) -> StatusStretchCameras:
         return self._cameras["val"]
 
     def set_cameras(self, value: StatusStretchCameras):
         self._cameras["val"] = value
+
+    def get_sensors(self) -> StatusStretchSensors:
+        return self._sensors["val"]
+
+    def set_sensors(self, value: StatusStretchSensors):
+        self._sensors["val"] = value
+
+    @staticmethod
+    def default(manager: SyncManager) -> "MujocoServerProxies":
+        return MujocoServerProxies(
+            _command=manager.dict({"val": StatusCommand.default()}),
+            _status=manager.dict({"val": StatusStretchJoints.default()}),
+            _cameras=manager.dict({"val": StatusStretchCameras.default()}),
+            _sensors = manager.dict({"val": StatusStretchSensors.default()})
+        )
 
 
 class MujocoServer:
@@ -96,6 +115,12 @@ class MujocoServer:
         self.data_proxies = data_proxies
 
         self.physics_fps_counter = FpsCounter()
+
+        self.sensor_manager = MujocoServerSensorManagerThreaded(
+            sensor_hz=15,
+            sensors_to_use=StretchSensors.all(),
+            mujoco_server=self
+        )
 
         signal.signal(signal.SIGTERM, lambda num, h: self.request_to_stop())
         signal.signal(signal.SIGINT, lambda num, h: self.request_to_stop())
@@ -180,6 +205,9 @@ class MujocoServer:
         """
         if isinstance(self.camera_manager, MujocoServerCameraManagerThreaded):
             self.camera_manager.cameras_thread.join()
+
+        if isinstance(self.sensor_manager, MujocoServerSensorManagerThreaded):
+            self.sensor_manager.sensors_thread.join()
 
         self.camera_manager.close()
 

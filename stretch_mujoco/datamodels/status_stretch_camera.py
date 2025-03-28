@@ -1,5 +1,5 @@
 import copy
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass
 import numpy as np
 
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
@@ -27,6 +27,8 @@ class StatusStretchCameras:
     def get_all(self)-> list[tuple[str, np.ndarray]]:
         """Returns the camera `(name, pixels)` that are available (not None).
 
+        A note to nip confusion - this get the values inside this dataclass, it does not poll from the simulator.
+        
         Note: Alternatively, use `get_camera_data()` to get a specific camera's data.
         """
         return [(name, data) for name, data in self.to_dict().items() if isinstance(data, np.ndarray) and "_K" not in name ]
@@ -34,17 +36,19 @@ class StatusStretchCameras:
     def get_camera_data(self, camera:StretchCameras) -> np.ndarray:
         """
         Use this to match a StretchCameras enum instance with its property in StatusStretchCameras dataclass, to get the camera data property.
+
+        A note to nip confusion - this get the values inside this dataclass, it does not poll from the simulator.
         """
         data:np.ndarray|None = None
         if camera == StretchCameras.cam_d405_rgb:
             data = self.cam_d405_rgb
-        if camera == StretchCameras.cam_d405_depth:
+        elif camera == StretchCameras.cam_d405_depth:
             data = self.cam_d405_depth
-        if camera == StretchCameras.cam_d435i_rgb:
+        elif camera == StretchCameras.cam_d435i_rgb:
             data = self.cam_d435i_rgb
-        if camera == StretchCameras.cam_d435i_depth:
+        elif camera == StretchCameras.cam_d435i_depth:
             data = self.cam_d435i_depth
-        if camera == StretchCameras.cam_nav_rgb:
+        elif camera == StretchCameras.cam_nav_rgb:
             data = self.cam_nav_rgb
 
         if data is None:
@@ -54,7 +58,9 @@ class StatusStretchCameras:
     
     def set_camera_data(self, camera:StretchCameras, data:np.ndarray):
         """
-        Use this to match a StretchCameras enum instance with its property in StatusStretchCameras dataclass, to set the camera data property.
+        Use this to match a StretchCameras enum instance with its property in StatusStretchCameras dataclass, to set the camera data property within this dataclass.
+
+        A note to nip confusion - this sets the values inside this dataclass, it does not send data to the simulator.
         """
         if camera == StretchCameras.cam_d405_rgb:
             self.cam_d405_rgb = data

@@ -274,6 +274,11 @@
       <body name="laser" pos="0.004 0 0.1664" quat="0 0 0 1">
         <geom material="Laser_Black" mesh="laser" class="visual" mass="0.24"/>
         <geom mesh="laser" class="collision"/>
+
+        <replicate count="360" euler="0 0 1">   
+            <site name="lidar" zaxis="1 0 0"/>
+        </replicate>
+
       </body>
       <body name="link_right_wheel" pos="0 -0.17035 0.0508" quat="1 -1 0 0">
         <joint name="joint_right_wheel" class="wheel"/>
@@ -532,6 +537,7 @@
   <sensor>
     <gyro name="base_gyro" site="base_imu"/>
     <accelerometer name="base_accel" site="base_imu"/>
+    <rangefinder name="base_lidar" site="lidar" cutoff="10.0"/>
   </sensor>
 
   <keyframe>
