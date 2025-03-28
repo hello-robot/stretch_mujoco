@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     try:
         while sim.is_running():
-            show_camera_feeds_sync(sim, cameras_to_use, True)
+            show_camera_feeds_sync(sim, True)
 
     except KeyboardInterrupt:
         sim.stop()

@@ -9,7 +9,6 @@ from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
 def show_camera_feeds_sync(
     sim: StretchMujocoSimulator, 
-    cameras_to_use: list[StretchCameras],
     print_fps: bool
 ):
     """
@@ -22,16 +21,10 @@ def show_camera_feeds_sync(
 
     if print_fps:
         print(f"Physics fps: {sim.pull_status().fps}. Camera FPS: {camera_data.fps}.")
-
-    if not cameras_to_use and not print_fps:
-        print(
-            "show_camera_feeds: The cameras_to_use array is empty. Did you mean to use StretchCameras.all()?"
-        )
-        return
     
-    for camera in cameras_to_use:
-        image = cv2.cvtColor(camera_data.get_camera_data(camera), cv2.COLOR_RGB2BGR)
-        cv2.imshow(camera.name, image)
+    for camera_name, pixels in camera_data.get_all():
+        image = cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR)
+        cv2.imshow(camera_name, image)
 
     cv2.waitKey(1)
 
@@ -54,7 +47,7 @@ if __name__ == "__main__":
 
     try:
         while sim.is_running():
-            show_camera_feeds_sync(sim, cameras_to_use, True)
+            show_camera_feeds_sync(sim, True)
 
     except KeyboardInterrupt:
         sim.stop()

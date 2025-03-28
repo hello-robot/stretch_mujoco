@@ -29,7 +29,7 @@ def main(task: str, layout: int, style: int, write_to_file):
     # display camera feeds
     try:
         while sim.is_running():
-            show_camera_feeds_sync(sim, cameras_to_use, True)
+            show_camera_feeds_sync(sim, True)
     except KeyboardInterrupt:
         sim.stop()
         cv2.destroyAllWindows()
