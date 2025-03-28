@@ -8,7 +8,7 @@ import numpy as np
 
 from stretch_mujoco import config, utils
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
-from stretch_mujoco.status import StretchCameraStatus
+from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
 
 if TYPE_CHECKING:
@@ -83,7 +83,7 @@ class MujocoServerCameraManagerSync:
         """
         Render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
         """
-        new_imagery = StretchCameraStatus.default()
+        new_imagery = StatusStretchCameras.default()
         new_imagery.time = self.mujoco_server.mjdata.time
         new_imagery.fps = self.camera_fps_counter.fps
 
@@ -278,7 +278,7 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
         """
         Uses a ThreadPoolExecutor to render a scene at each camera using the simulator and populate the imagery dictionary with the raw image pixels and camera params.
         """
-        new_imagery = StretchCameraStatus.default()
+        new_imagery = StatusStretchCameras.default()
         new_imagery.time = self.mujoco_server.mjdata.time
         new_imagery.fps = self.camera_fps_counter.fps
 

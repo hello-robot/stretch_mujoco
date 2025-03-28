@@ -11,12 +11,14 @@ import click
 import numpy as np
 from mujoco._structs import MjModel
 
+from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
+from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer, MujocoServerProxies
 from stretch_mujoco.mujoco_server_managed import MujocoServerManaged
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
-from stretch_mujoco.status import CommandBaseVelocity, CommandKeyframe, CommandMove, CommandStatus, StretchCameraStatus, StretchStatus
+from stretch_mujoco.datamodels.status_command import CommandBaseVelocity, CommandKeyframe, CommandMove, StatusCommand
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import require_connection, wait_and_check
 
@@ -54,9 +56,9 @@ class StretchMujocoSimulator:
         self._stop_mujoco_process_event = self._manager.Event()
 
         self.data_proxies = MujocoServerProxies(
-            _command=self._manager.dict({"val": CommandStatus.default()}),
-            _status=self._manager.dict({"val": StretchStatus.default()}),
-            _cameras=self._manager.dict({"val": StretchCameraStatus.default()}),
+            _command=self._manager.dict({"val": StatusCommand.default()}),
+            _status=self._manager.dict({"val": StatusStretchJoints.default()}),
+            _cameras=self._manager.dict({"val": StatusStretchCameras.default()}),
         )
 
     def start(
@@ -201,7 +203,7 @@ class StretchMujocoSimulator:
         Move the robot to home position
         """
         self.data_proxies.set_command(
-            CommandStatus(
+            StatusCommand(
                 keyframe=CommandKeyframe(name="home", trigger=True)
             )
         )
@@ -212,7 +214,7 @@ class StretchMujocoSimulator:
         Move the robot to stow position
         """
         self.data_proxies.set_command(
-            CommandStatus(
+            StatusCommand(
                 keyframe=CommandKeyframe(name="stow", trigger=True)
             )
         )
@@ -239,7 +241,7 @@ class StretchMujocoSimulator:
             return
 
         self.data_proxies.set_command(
-            CommandStatus(
+            StatusCommand(
                 move_to=[CommandMove(actuator_name=actuator.name, pos=pos, trigger=True)]
             )
         )
@@ -275,7 +277,7 @@ class StretchMujocoSimulator:
             return
 
         self.data_proxies.set_command(
-            CommandStatus(
+            StatusCommand(
                 move_by=[CommandMove(actuator_name=actuator.name, pos=pos, trigger=True)]
             )
         )
@@ -307,7 +309,7 @@ class StretchMujocoSimulator:
             omega: float, angular velocity
         """
         self.data_proxies.set_command(
-            CommandStatus(
+            StatusCommand(
                 set_base_velocity= CommandBaseVelocity(
                     v_linear=v_linear, omega=omega, trigger=True
                 )
@@ -346,14 +348,14 @@ class StretchMujocoSimulator:
         return world_coord
 
     @require_connection
-    def pull_camera_data(self) -> StretchCameraStatus:
+    def pull_camera_data(self) -> StatusStretchCameras:
         """
         Pull camera data from the simulator and return as a dictionary
         """
         return self.data_proxies.get_cameras().copy()
 
     @require_connection
-    def pull_status(self) -> StretchStatus:
+    def pull_status(self) -> StatusStretchJoints:
         """
         Pull robot joint states from the simulator and return as a dictionary
         """

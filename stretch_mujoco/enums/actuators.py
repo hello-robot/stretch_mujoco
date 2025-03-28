@@ -1,6 +1,6 @@
 from enum import Enum
 
-from stretch_mujoco.status import StretchStatus
+from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 
 
 class Actuators(Enum):
@@ -21,7 +21,7 @@ class Actuators(Enum):
     left_wheel_vel = 10
     right_wheel_vel = 11
 
-    def _get_status_attribute(self, is_position: bool, status: StretchStatus) -> float:
+    def _get_status_attribute(self, is_position: bool, status: StatusStretchJoints) -> float:
         attribute_name = "pos" if is_position else "vel"
         if self == Actuators.arm:
             return getattr(status.arm, attribute_name)
@@ -45,7 +45,7 @@ class Actuators(Enum):
         )
 
     def _get_base_status_attribute(
-        self, is_position: bool, status: StretchStatus
+        self, is_position: bool, status: StatusStretchJoints
     ) -> tuple[float, float, float]:
         x = "x" if is_position else "x_vel"
         y = "y" if is_position else "y_vel"
@@ -61,22 +61,22 @@ class Actuators(Enum):
             f"Get {'Position' if is_position else 'Velocity'}  for {self.name} is not implemented."
         )
 
-    def get_position(self, status: StretchStatus) -> float:
+    def get_position(self, status: StatusStretchJoints) -> float:
         if self in [Actuators.base_rotate, Actuators.base_translate]:
             raise Exception(f"Please use `get_position_relative()` for {self.name}")
         return self._get_status_attribute(True, status)
 
-    def get_position_relative(self, status: StretchStatus) -> tuple[float, float, float]:
+    def get_position_relative(self, status: StatusStretchJoints) -> tuple[float, float, float]:
         if self not in [Actuators.base_rotate, Actuators.base_translate]:
             raise Exception(f"Please use `get_position()` for {self.name}")
         return self._get_base_status_attribute(True, status)
 
-    def get_velocity(self, status: StretchStatus) -> float:
+    def get_velocity(self, status: StatusStretchJoints) -> float:
         if self in [Actuators.base_rotate, Actuators.base_translate]:
             raise Exception(f"Please use `get_velocity_relative()` for {self.name}")
         return self._get_status_attribute(False, status)
 
-    def get_velocity_relative(self, status: StretchStatus) -> tuple[float, float, float]:
+    def get_velocity_relative(self, status: StatusStretchJoints) -> tuple[float, float, float]:
         if self not in [Actuators.base_rotate, Actuators.base_translate]:
             raise Exception(f"Please use `get_velocity()` for {self.name}")
         return self._get_base_status_attribute(False, status)

@@ -57,7 +57,7 @@ There are two methods for pulling data from the simulation: `sim.pull_status()` 
 
 Use `sim.pull_status()` to fetch the joint states of the robot.
 
-This method returns a `StretchStatus` [dataclass](../stretch_mujoco/status.py) with the names of all the joints populated.
+This method returns a `StatusStretchJoints` [dataclass](../stretch_mujoco/datamodels/status_stretch_joints.py) with the names of all the joints populated.
 
 The statuses of all the joints are fetched at the same time.
 
@@ -65,7 +65,7 @@ The statuses of all the joints are fetched at the same time.
 
 Use `sim.pull_camera_data()` to fetch the pixel values from Stretch's cameras.
 
-This method returns a `StretchCameraStatus` [dataclass](../stretch_mujoco/status.py) with the names of all the cameras populated.
+This method returns a `StatusStretchCameras` [dataclass](../stretch_mujoco/datamodels/status_stretch_camera.py) with the names of all the cameras populated.
 
 The pixel values of all the renderings of the cameras are fetched at the same time.
 

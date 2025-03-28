@@ -2,17 +2,18 @@ from multiprocessing import Manager
 import signal
 import threading
 
+from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
+from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 from stretch_mujoco.mujoco_server import MujocoServer
 
 from stretch_mujoco.mujoco_server import MujocoServerProxies
-from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
-from stretch_mujoco.status import CommandStatus, StretchCameraStatus, StretchStatus
+from stretch_mujoco.datamodels.status_command import StatusCommand
 
 _manager = Manager()
 data_proxies = MujocoServerProxies(
-            _command=_manager.dict({"val": CommandStatus.default()}),
-            _status=_manager.dict({"val": StretchStatus.default()}),
-            _cameras=_manager.dict({"val": StretchCameraStatus.default()}),
+            _command=_manager.dict({"val": StatusCommand.default()}),
+            _status=_manager.dict({"val": StatusStretchJoints.default()}),
+            _cameras=_manager.dict({"val": StatusStretchCameras.default()}),
         )
 
 

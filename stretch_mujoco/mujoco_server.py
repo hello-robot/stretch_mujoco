@@ -16,22 +16,24 @@ import mujoco.viewer
 import numpy as np
 from mujoco._structs import MjData, MjModel
 
+from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
+from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 import stretch_mujoco.config as config
 from stretch_mujoco.mujoco_server_camera_manager import (
     MujocoServerCameraManagerThreaded,
     MujocoServerCameraManagerSync,
 )
-from stretch_mujoco.status import CommandStatus, StretchCameraStatus, StretchStatus
+from stretch_mujoco.datamodels.status_command import StatusCommand
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import FpsCounter
 
 
 @dataclass
 class MujocoServerProxies:
-    _command: "DictProxy[str, CommandStatus]"
-    _status: "DictProxy[str, StretchStatus]"
-    _cameras: "DictProxy[str, StretchCameraStatus]"
+    _command: "DictProxy[str, StatusCommand]"
+    _status: "DictProxy[str, StatusStretchJoints]"
+    _cameras: "DictProxy[str, StatusStretchCameras]"
 
     def __setattr__(self, name: str, value) -> None:
         try:
@@ -42,19 +44,19 @@ class MujocoServerProxies:
     def get_status(self):
         return self._status["val"]
 
-    def set_status(self, value: StretchStatus):
+    def set_status(self, value: StatusStretchJoints):
         self._status["val"] = value
 
     def get_command(self):
         return self._command["val"]
 
-    def set_command(self, value: CommandStatus):
+    def set_command(self, value: StatusCommand):
         self._command["val"] = value
 
     def get_cameras(self):
         return self._cameras["val"]
 
-    def set_cameras(self, value: StretchCameraStatus):
+    def set_cameras(self, value: StatusStretchCameras):
         self._cameras["val"] = value
 
 
@@ -291,7 +293,7 @@ class MujocoServer:
         Pull joints status of the robot from the simulator
         """
 
-        new_status = StretchStatus.default()
+        new_status = StatusStretchJoints.default()
         new_status.fps = self.physics_fps_counter.fps
 
         if not self.mjdata or not self.mjdata.time:
@@ -404,7 +406,7 @@ class MujocoServer:
         if command_status.keyframe is not None and command_status.keyframe.trigger:
             self.mjdata.ctrl = self.mjmodel.keyframe(command_status.keyframe.name).ctrl
 
-        self.data_proxies.set_command(CommandStatus.default())
+        self.data_proxies.set_command(StatusCommand.default())
 
     def _base_translate_by(self, x_inc: float) -> None:
         """
