@@ -70,8 +70,8 @@ class MujocoServerPassive(MujocoServer):
             )  # 1/Hz.Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()` locking physics thread.
 
             click.secho(
-                f"WARNING: Using the Mujoco Passive Viewer. UI thread and camera rendering is capped to {1/UI_FPS_CAP_RATE}Hz to increase performance.",
-                fg="yellow",
+                f"Using the Mujoco Passive Viewer. Note: UI thread and camera rendering is capped to {1/UI_FPS_CAP_RATE}Hz to increase performance. You can set this rate using the `camera_rate` arugment.",
+                fg="green",
             )
 
             # Replace the camera_lock with the viewer lock so that we're not accessing mjdata at the same time as the physics thread.
@@ -92,7 +92,7 @@ class MujocoServerPassive(MujocoServer):
                     time.sleep(time_until_next_ui_update)
                 else:
                     click.secho(
-                        f"WARNING: Passive viewer and camera rendering is below the requested {1/self.camera_manager.camera_rate}FPS",
+                        f"WARNING: Passive viewer and camera rendering is below the requested {1/self.camera_manager.camera_rate}FPS on the last render.",
                         fg="yellow",
                     )
 
