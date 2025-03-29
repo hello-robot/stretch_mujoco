@@ -118,7 +118,7 @@ class MujocoServer:
 
         self.sensor_manager = MujocoServerSensorManagerThreaded(
             sensor_hz=15,
-            sensors_to_use=StretchSensors.all(),
+            sensors_to_use=StretchSensors.from_mjmodel(self.mjmodel),
             mujoco_server=self
         )
 
