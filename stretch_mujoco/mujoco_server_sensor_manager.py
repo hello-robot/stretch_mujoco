@@ -26,7 +26,7 @@ class MujocoServerSensorManagerSync:
 
         self.sensor_rate = 1 / sensor_hz  # Hz to seconds
 
-        self.sensors_to_use= sensors_to_use
+        self.sensors_to_use = sensors_to_use
 
         self.sensor_fps_counter = FpsCounter()
 
@@ -71,23 +71,22 @@ class MujocoServerSensorManagerSync:
         sensor_status.fps = self.sensor_fps_counter.fps
 
         for sensor in self.sensors_to_use:
-            data:np.ndarray
+            data: np.ndarray
             if sensor == StretchSensors.base_lidar:
                 # Note: the resolution here should match the resolution defined in stretch.xml. TODO: dynamically pull this value from the MJCF.
-                data = np.array([data for lidar_name in StretchSensors.lidar_names(resolution=360) for data in self.mujoco_server.mjdata.sensor(lidar_name).data])
+                data = np.array(
+                    [
+                        data
+                        for lidar_name in StretchSensors.lidar_names(resolution=360)
+                        for data in self.mujoco_server.mjdata.sensor(lidar_name).data
+                    ]
+                )
             else:
                 data = self.mujoco_server.mjdata.sensor(sensor.name).data
 
-            sensor_status.set_data(
-                sensor,
-                data
-            )
+            sensor_status.set_data(sensor, data)
 
         self.mujoco_server.data_proxies.set_sensors(sensor_status)
-
-
-
-
 
 
 class MujocoServerSensorManagerThreaded(MujocoServerSensorManagerSync):

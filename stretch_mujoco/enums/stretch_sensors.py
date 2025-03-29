@@ -56,7 +56,7 @@ class StretchSensors(Enum):
                     if sensor.name in name:
                         sensors.add(sensor)
                         remaining_sensors.remove(sensor)
-                        
+
                 if len(remaining_sensors) == 0:
                     break
 

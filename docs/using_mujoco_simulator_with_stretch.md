@@ -11,6 +11,7 @@ When using Mujoco to simulate Stretch, you can command [joints](../stretch_mujoc
 3. Check out the headless examples, such as:
 - [draw_circles.py](../examples/draw_circles.py)
 - [camera_feeds.py](../examples/camera_feeds.py)
+4. Check out the sensor example: [laser_sca.py](../examples/laser_scan.py)
 
 ### Terminology
 
@@ -60,6 +61,27 @@ Use `sim.pull_status()` to fetch the joint states of the robot.
 This method returns a `StatusStretchJoints` [dataclass](../stretch_mujoco/datamodels/status_stretch_joints.py) with the names of all the joints populated.
 
 The statuses of all the joints are fetched at the same time.
+
+#### Stretch Sensors
+
+Use `sim.pull_sensor_data()` to fetch data from sensors on Stretch.
+
+This methods returns a `StatusStretchSensors` [dataclass](../stretch_mujoco/datamodels/status_stretch_sensors.py)
+
+The statuses of all the sensors are fetched at the same time.
+
+All the sensors defined in [`stretch.xml`](../stretch_mujoco/models/scene.xml) are fetched:
+
+```
+  <sensor>
+    <gyro name="base_gyro" site="base_imu"/>
+    <accelerometer name="base_accel" site="base_imu"/>
+    <rangefinder name="base_lidar" site="lidar" cutoff="10.0"/>
+  </sensor>
+```
+
+> Note: The Lidar sensor (implemented as `<rangefinder/>`) is compute intensive. Comment it out in the XML, if you are not using it. 
+
 
 #### Stretch Cameras
 
