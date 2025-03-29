@@ -86,6 +86,25 @@ class MujocoServer:
     This uses the mujoco simulator in headless mode.
     """
 
+    @classmethod
+    def launch_server(
+        cls,
+        scene_xml_path: str | None,
+        model: MjModel | None,
+        camera_hz: float,
+        show_viewer_ui: bool,
+        stop_mujoco_process_event: threading.Event,
+        data_proxies: MujocoServerProxies,
+        cameras_to_use: list[StretchCameras],
+    ):
+        server = cls(scene_xml_path, model, stop_mujoco_process_event, data_proxies)
+        server.run(
+            show_viewer_ui=show_viewer_ui,
+            camera_hz=camera_hz,
+            cameras_to_use=cameras_to_use,
+        )
+
+
     def __init__(
         self,
         scene_xml_path: str | None,
@@ -156,24 +175,6 @@ class MujocoServer:
                 camera_hz=camera_hz, cameras_to_use=cameras_to_use, mujoco_server=self
             )
 
-    @classmethod
-    def launch_server(
-        cls,
-        scene_xml_path: str | None,
-        model: MjModel | None,
-        camera_hz: float,
-        show_viewer_ui: bool,
-        stop_mujoco_process_event: threading.Event,
-        data_proxies: MujocoServerProxies,
-        cameras_to_use: list[StretchCameras],
-    ):
-        server = cls(scene_xml_path, model, stop_mujoco_process_event, data_proxies)
-        server.run(
-            show_viewer_ui=show_viewer_ui,
-            camera_hz=camera_hz,
-            cameras_to_use=cameras_to_use,
-        )
-
     def run(
         self,
         show_viewer_ui: bool,
@@ -203,6 +204,8 @@ class MujocoServer:
         """
         Clean up C++ resources
         """
+        self.request_to_stop()
+        
         if isinstance(self.camera_manager, MujocoServerCameraManagerThreaded):
             self.camera_manager.cameras_thread.join()
 
@@ -210,6 +213,7 @@ class MujocoServer:
             self.sensor_manager.sensors_thread.join()
 
         self.camera_manager.close()
+
 
     def _run_ui_simulation(self, show_viewer_ui: bool) -> None:
         """
