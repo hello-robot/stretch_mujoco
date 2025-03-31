@@ -46,6 +46,8 @@ To exit, press `Ctrl+C` in the terminal.
 ```shell
 # Before proceeding, please reload your terminal and/or IDE window, to make sure the correct UV environment variables are loaded.
 
+source .venv/bin/activate
+
 # When `libpython3.10.dylib` is missing, run:
 PYTHON_LIB_DIR=$(python3 -c 'from distutils.sysconfig import get_config_var; print(get_config_var("LIBDIR"))')
 ln -s "$PYTHON_LIB_DIR/libpython3.10.dylib" ./.venv/lib/libpython3.10.dylib
