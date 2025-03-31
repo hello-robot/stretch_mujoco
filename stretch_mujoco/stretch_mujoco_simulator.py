@@ -217,14 +217,17 @@ class StretchMujocoSimulator:
         )
 
     @require_connection
-    def move_to(self, actuator: Actuators, pos: float, timeout: float | None = 15.0):
+    def move_to(self, actuator: str|Actuators, pos: float, timeout: float | None = 15.0):
         """
         Move the actuator to a specific position
         Args:
-            actuator_name: str, name of the actuator
+            actuator: string name of the actuator or Actuator enum instance
             pos: float, absolute position goal
             timeout: if not None, then it will wait for the joint to reach that position, or return False
         """
+        if isinstance(actuator, str):
+            actuator = Actuators[actuator]
+
         if actuator in [
             Actuators.left_wheel_vel,
             Actuators.right_wheel_vel,
@@ -258,14 +261,17 @@ class StretchMujocoSimulator:
         return True
 
     @require_connection
-    def move_by(self, actuator: Actuators, pos: float) -> None:
+    def move_by(self, actuator: str|Actuators, pos: float) -> None:
         """
         Move the actuator by a specific amount
         Args:
-            actuator_name: Actuators, name of the actuator
+            actuator: string name of the actuator or Actuator enum instance
             pos: float, position to increment by
             timeout: if not None, then it will wait for the joint to reach that position, or throw.
         """
+        if isinstance(actuator, str):
+            actuator = Actuators[actuator]
+
         if actuator in [Actuators.left_wheel_vel, Actuators.right_wheel_vel]:
             click.secho(
                 f"Cannot set a position for a velocity joint {actuator.name}",
