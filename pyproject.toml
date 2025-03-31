@@ -9,9 +9,10 @@ dependencies = [
     "hello-robot-stretch-urdf>=0.1.0",
     "inputs>=0.5",
     "ipython>=8.31.0",
+    "matplotlib>=3.10.1",
     "mujoco==3.2.6",
     "opencv-python==4.8.0.76",
-    "urchin>=0.0.29"
+    "urchin>=0.0.29",
 ]
 authors = [
     {name = "Binit Shah", email = "bshah@hello-robot.com"},
