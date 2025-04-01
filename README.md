@@ -6,97 +6,125 @@
 
 <img src="./docs/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
 
-Stretch in Kitchen scenes from [Robocasa](https://github.com/robocasa/robocasa)
-
 This library provides the simulation stack for Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
-Currently only Stretch 3 version is fully supported with position control interface for all robot joints and velocity control for base. Camera data with depth perception and camera parameters are provided. The library supports simuation with GUI and also headless mode. Stretch can be spawned in any Robocasa provided kitchen environments.
+Currently only Stretch 3 is fully supported with a position control interface for all arm/head/gripper joints and velocity control for base. Camera data with depth perception and camera parameters are provided. The library supports simuation with GUI or headless mode. Also, Stretch can be spawned in any Robocasa-provided kitchen environment.
 
 ## Getting Started
 
-Install Mujoco (v3.0>), older versions might work but not tested.
+First, install [`uv`](https://docs.astral.sh/uv/#getting-started). Uv is a package manager that we'll use to run this project.
+
+Then, clone this repo:
 
 ```
-git clone https://github.com/hello-robot/stretch_mujoco
+git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
 cd stretch_mujoco
-pip install -e .
 ```
 
-Note: For conda environments `conda install mujoco` is recommended.
+> If you've already cloned the repo without `--recurse-submodules`, run `git submodule update --init` to pull the submodule.
 
-Spawn Stretch in default scene and see the camera frames
+Then, install this repo:
 
 ```
-python3 -m stretch_mujoco.stretch_mujoco
+uv venv
+uv pip install -e .
 ```
+
+Lastly, run the simulation:
+
+```
+uv run launch_sim.py
+```
+
+To exit, press `Ctrl+C` in the terminal.
 
 <p>
     <img src="./docs/camera_streams.png" title="Camera Streams" height="250px">
     <img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
 </p>
 
-#### Install [Robocasa](https://github.com/robocasa/robocasa)
+> On MacOS, if `mjpython` fails to locate `libpython3.10.dylib` and `libz.1.dylib`, run these commands:
+```shell
+# Before proceeding, please reload your terminal and/or IDE window, to make sure the correct UV environment variables are loaded.
 
-```
-git clone https://github.com/ARISE-Initiative/robosuite -b robocasa_v0.1
-cd robosuite
-pip install -e .
-cd ../
-git clone https://github.com/robocasa/robocasa
-cd robocasa
-pip install -e .
-conda install -c numba numba -y
-python robocasa/scripts/download_kitchen_assets.py  
-python robocasa/scripts/setup_macros.py   
-```
+source .venv/bin/activate
 
-## Try Examples Scripts
+# When `libpython3.10.dylib` is missing, run:
+PYTHON_LIB_DIR=$(python3 -c 'from distutils.sysconfig import get_config_var; print(get_config_var("LIBDIR"))')
+ln -s "$PYTHON_LIB_DIR/libpython3.10.dylib" ./.venv/lib/libpython3.10.dylib
 
-[Keyboard teleop](https://github.com/hello-robot/stretch_mujoco/blob/main/examples/keyboard_teleop.py)
-
-```
-cd examples/
-python3 -m keyboard_teleop.py
+# When `libz.1.dylib` is missing, run:
+export DYLD_LIBRARY_PATH=/usr/lib:$DYLD_LIBRARY_PATH
 ```
 
-[Gamepad teleop](https://github.com/hello-robot/stretch_mujoco/blob/main/examples/gamepad_teleop.py)
+## Try Example Scripts
+
+[Keyboard teleop](./examples/keyboard_teleop.py)
+
+```
+uv run examples/keyboard_teleop.py
+```
+
+[Gamepad teleop](./examples/gamepad_teleop.py)
 
 Control Stretch in simulation using any xbox type gamepad (uses xinput)
 
 ```
-cd examples/
-python3 stretch_mujoco_gamepad.py
+uv run examples/gamepad_teleop.py
 ```
 
-[Robocasa environments](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco/robocasa_gen.py#L73)
+[Robocasa environments](./examples/robocasa_environment.py)
 
-Spawn Stretch in any robocasa kitchen scenes using the [robocasa_gen.model_generation_wizard](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco/robocasa_gen.py#L73) API.
+```
+# Setup
+uv pip install -e ".[robocasa]"
+uv pip install -e "robocasa@third_party/robocasa"
+uv pip install -e "robosuite@third_party/robosuite"
+uv run third_party/robosuite/robosuite/scripts/setup_macros.py
+uv run third_party/robocasa/robocasa/scripts/setup_macros.py
+uv run third_party/robocasa/robocasa/scripts/download_kitchen_assets.py
+
+# Run sim
+uv run examples/robocasa_environment.py
+```
+
+Ignore any warnings.
 
 <img src="./docs/robocasa_scene_1.png" title="Camera Streams" width="300px">
 <img src="./docs/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
 
 ## Try Writing Code
 
-Use the [StretchMujocoSimulator](https://github.com/hello-robot/stretch_mujoco/blob/main/stretch_mujoco.py) class implementation which provides the control interface for starting the Simulation, position control the robot, read joint status and read all the camera streams. You can try the below lines simply from Ipython terminal. The class also has `mjModel` and `mjData` elements which Advanced users take advantage with [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
+Use the [StretchMujocoSimulator](./stretch_mujoco/stretch_mujoco.py) class to:
+
+ * start the simulation
+ * position control the robot's ranged joints
+ * velocity control the robot's mobile base
+ * read joint states
+ * read camera imagery
+
+Try the code below using `uv run ipython`. For advanced Mujoco users, the class also exposes the `mjModel` and `mjData`. See the [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
 
 ```python
 from stretch_mujoco import StretchMujocoSimulator
 
-robot_sim = StretchMujocoSimulator('./scene.xml')
-robot_sim.start() # This will start the simulation and open Mujoco-Viewer window
+sim = StretchMujocoSimulator()
+sim.start(headless=False) # This will open a Mujoco-Viewer window
 
 # Poses
-robot_sim.home()
-robot_sim.stow()
+sim.stow()
+sim.home()
 
 # Position Control 
-robot_sim.move_to('lift',0.6)
-robot_sim.move_by('head_pan',0.1)
+sim.move_to('lift', 1.0)
+sim.move_by('head_pan', -1.1)
+sim.move_by('base_translate', 0.1)
 
 # Base Velocity control
-robot_sim.set_base_velocity(0.3,-0.1)
+sim.set_base_velocity(0.3, -0.1)
 
-# Get Joint Status (updated continuously in simulation callback mjcb_control)
-print(robot_sim.status)
+# Get Joint Status
+from pprint import pprint
+pprint(sim.pull_status())
 """
 Output:
 {'time': 6.421999999999515,
@@ -112,8 +140,8 @@ Output:
 """
 
 # Get Camera Frames
-camera_data = robot_sim.pull_camera_data()
-print(camera_data)
+camera_data = sim.pull_camera_data()
+pprint(camera_data)
 """
 Output:
 {'time': 80.89999999999286,
@@ -127,12 +155,12 @@ Output:
 """
 
 # Kills simulation process
-robot_sim.stop()
+sim.stop()
 ```
 
 ### Loading Robocasa Kitchen Scenes
 
-`robocasa_gen.model_generation_wizard()` API
+The `stretch_mujoco.robocasa_gen.model_generation_wizard()` method gives you:
 
 - Wizard/API to generate a kitchen model for a given task, layout, and style.
 - If layout and style are not provided, it will take you through a wizard to choose them in the terminal.
@@ -142,15 +170,27 @@ robot_sim.stop()
 ```python
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.robocasa_gen import model_generation_wizard
+
+# Use the wizard:
+model, xml, objects_info = model_generation_wizard()
+
+# Or, launch a specific task/layout/style
 model, xml = model_generation_wizard(
-    task=task_name,
-    layout=layout_id,
-    style=style_id,
-    wrtie_to_file=filename,
+    task=<task_name>,
+    layout=<layout_id>,
+    style=<style_id>,
+    wrtie_to_file=<filename>,
 )
-robot_sim = StretchMujocoSimulator(model=model)
-robot_sim.start()
+
+sim = StretchMujocoSimulator(model=model)
+sim.start()
 ```
+
+### Docs
+
+Check out the following documentation resources:
+
+- [Using the Mujoco Simulator with Stretch](./docs/using_mujoco_simulator_with_stretch.md)
 
 ### Feature Requests and Bug reporting
 

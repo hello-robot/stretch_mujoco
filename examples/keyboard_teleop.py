@@ -6,6 +6,7 @@ import tty
 import click
 
 from stretch_mujoco import StretchMujocoSimulator
+from stretch_mujoco.enums.actuators import Actuators
 
 
 def getch():
@@ -27,37 +28,53 @@ def print_keyboard_options():
     click.secho("=====================================", fg="yellow")
     print("W / A /S / D : Move BASE")
     print("U / J / H / K : Move LIFT & ARM")
+    print("O / P: Move WRIST YAW")
+    print("C / V: Move WRIST PITCH")
+    print("T / Y: Move WRIST ROLL")
     print("N / M : Open & Close GRIPPER")
     print("Q : Stop")
     click.secho("=====================================", fg="yellow")
 
 
-def keyboard_control(robot_sim):
-    while True:
+def keyboard_control(sim: StretchMujocoSimulator):
+    while sim.is_running():
         print_keyboard_options()
         key = getch().lower()
-        if key == "w" and not robot_sim._base_in_pos_motion:
-            robot_sim.move_by("base_translate", 0.07)
-        elif key == "s" and not robot_sim._base_in_pos_motion:
-            robot_sim.move_by("base_translate", -0.07)
-        elif key == "a" and not robot_sim._base_in_pos_motion:
-            robot_sim.move_by("base_rotate", 0.15)
-        elif key == "d" and not robot_sim._base_in_pos_motion:
-            robot_sim.move_by("base_rotate", -0.15)
+        if key == "w":
+            sim.move_by(Actuators.base_translate, 0.07)
+        elif key == "s":
+            sim.move_by(Actuators.base_translate, -0.07)
+        elif key == "a":
+            sim.move_by(Actuators.base_rotate, 0.15)
+        elif key == "d":
+            sim.move_by(Actuators.base_rotate, -0.15)
         elif key == "u":
-            robot_sim.move_by("lift", 0.1)
+            sim.move_by(Actuators.lift, 0.1)
         elif key == "j":
-            robot_sim.move_by("lift", -0.1)
+            sim.move_by(Actuators.lift, -0.1)
         elif key == "h":
-            robot_sim.move_by("arm", -0.05)
+            sim.move_by(Actuators.arm, -0.05)
         elif key == "k":
-            robot_sim.move_by("arm", 0.05)
+            sim.move_by(Actuators.arm, 0.05)
+        elif key == "o":
+            sim.move_by(Actuators.wrist_yaw, 0.2)
+        elif key == "p":
+            sim.move_by(Actuators.wrist_yaw, -0.2)
+        elif key == "c":
+            sim.move_by(Actuators.wrist_pitch, 0.2)
+        elif key == "v":
+            sim.move_by(Actuators.wrist_pitch, -0.2)
+        elif key == "t":
+            sim.move_by(Actuators.wrist_roll, 0.2)
+        elif key == "y":
+            sim.move_by(Actuators.wrist_roll, -0.2)
         elif key == "n":
-            robot_sim.move_by("gripper", 0.007)
+            sim.move_by(Actuators.gripper, 0.07)
         elif key == "m":
-            robot_sim.move_by("gripper", -0.007)
+            sim.move_by(Actuators.gripper, -0.07)
         elif key == "q":
-            robot_sim.stop()
+            sim.stop()
+            exit()
         time.sleep(0.1)
 
 
@@ -70,13 +87,18 @@ def main(scene_xml_path: str, robocasa_env: bool):
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
         model, xml, objects_info = model_generation_wizard()
-        robot_sim = StretchMujocoSimulator(model=model)
+        sim = StretchMujocoSimulator(model=model)
     elif scene_xml_path:
-        robot_sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path)
+        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path)
     else:
-        robot_sim = StretchMujocoSimulator()
-    robot_sim.start()
-    keyboard_control(robot_sim)
+        sim = StretchMujocoSimulator()
+
+    try:
+        sim.start()
+
+        keyboard_control(sim)
+    except KeyboardInterrupt:
+        sim.stop()
 
 
 if __name__ == "__main__":

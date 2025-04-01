@@ -1,2 +1,52 @@
+[project]
+name = "stretch_mujoco"
+version = "0.0.1"
+description = "A Stretch simulation in MuJoCo"
+readme = "README.md"
+requires-python = ">=3.10, <3.11"
+dependencies = [
+    "click>=8.1.8",
+    "hello-robot-stretch-urdf>=0.1.0",
+    "inputs>=0.5",
+    "ipython>=8.31.0",
+    "matplotlib>=3.10.1",
+    "mujoco==3.2.6",
+    "opencv-python==4.8.0.76",
+    "urchin>=0.0.29",
+]
+authors = [
+    {name = "Binit Shah", email = "bshah@hello-robot.com"},
+    {name = "Atharva Pusalkar", email = "atharva@hello-robot.com"},
+    {name = "Mohamed Fazil", email = "mfazil@hello-robot.com"},
+]
+license = { file = "LICENSE"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["third_party*", "tests*"]
+
+[project.urls]
+Source = "https://github.com/hello-robot/stretch_mujoco"
+Tracker = "https://github.com/hello-robot/stretch_mujoco/issues"
+
 [tool.black]
 line-length = 100
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "pytest",
+    "flake8",
+    "black",
+    "mypy",
+]
+robocasa = [
+    "numpy==1.23.5",
+    "numba==0.59"
+]

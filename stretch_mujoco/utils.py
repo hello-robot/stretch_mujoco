@@ -1,23 +1,56 @@
-import importlib.resources as importlib_resources
+import dataclasses
 import math
 import re
+import time
 import xml.etree.ElementTree as ET
-from typing import Tuple
+from typing import TYPE_CHECKING, Callable, Tuple
 
 import cv2
 import numpy as np
-import pkg_resources
+import importlib.resources
 import urchin as urdf_loader
 
-models_path = pkg_resources.resource_filename("stretch_mujoco", "models")
+
+from functools import wraps
+
+import mujoco
+import mujoco._functions
+import mujoco._callbacks
+import mujoco._render
+import mujoco._enums
+import mujoco.viewer
+import numpy as np
+from mujoco._structs import MjModel
+from mujoco.glfw import GLContext as GlFwContext
+
+import stretch_mujoco.config as config
+
+if TYPE_CHECKING:
+    from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
+
+
+models_path = str(importlib.resources.files("stretch_mujoco") / "models")
 default_scene_xml_path = models_path + "/scene.xml"
 default_robot_xml_path = models_path + "/stretch.xml"
 
-pkg_path = str(importlib_resources.files("stretch_urdf"))
+pkg_path = str(importlib.resources.files("stretch_urdf"))
 model_name = "SE3"  # RE1V0, RE2V0, SE3
 tool_name = "eoa_wrist_dw3_tool_sg3"  # eoa_wrist_dw3_tool_sg3, tool_stretch_gripper, etc
 urdf_file_path = pkg_path + f"/{model_name}/stretch_description_{model_name}_{tool_name}.urdf"
 mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
+
+
+def require_connection(function):
+    """Wraps class methods that need self"""
+
+    def wrapper_function(self:"StretchMujocoSimulator", *args, **kwargs):
+        if not self.is_running():
+            raise ConnectionError(
+                "The Stretch Mujoco Simulator is not running. Use the start() method to start it."
+            )
+        return function(self, *args, **kwargs)
+
+    return wrapper_function
 
 
 def compute_K(fovy: float, width: int, height: int) -> np.ndarray:
@@ -42,6 +75,67 @@ def limit_depth_distance(depth_image_meters: np.ndarray, max_depth: float) -> np
     Limit depth distance
     """
     return np.where(depth_image_meters > max_depth, 0, depth_image_meters)
+
+
+def diff_drive_fwd_kinematics(w_left: float, w_right: float) -> tuple:
+    """
+    Calculate the linear and angular velocity of a differential drive robot.
+    """
+    wheel_diameter = config.robot_settings["wheel_diameter"]
+    wheel_separation = config.robot_settings["wheel_separation"]
+    R = wheel_diameter / 2
+    L = wheel_separation
+    if R <= 0:
+        raise ValueError("Radius must be greater than zero.")
+    if L <= 0:
+        raise ValueError("Distance between wheels must be greater than zero.")
+
+    # Linear velocity (V) is the average of the linear velocities of the two wheels
+    V = R * (w_left + w_right) / 2.0
+
+    # Angular velocity (omega) is the difference in linear velocities divided by the distance
+    # between the wheels
+    omega = R * (w_right - w_left) / L
+
+    return (V, omega)
+
+
+def diff_drive_inv_kinematics(V: float, omega: float) -> tuple:
+    """
+    Calculate the rotational velocities of the left and right wheels for a
+    differential drive robot.
+    """
+    wheel_diameter = config.robot_settings["wheel_diameter"]
+    wheel_separation = config.robot_settings["wheel_separation"]
+    R = wheel_diameter / 2
+    L = wheel_separation
+    if R <= 0:
+        raise ValueError("Radius must be greater than zero.")
+    if L <= 0:
+        raise ValueError("Distance between wheels must be greater than zero.")
+
+    # Calculate the rotational velocities of the wheels
+    w_left = (V - (omega * L / 2)) / R
+    w_right = (V + (omega * L / 2)) / R
+
+    return (w_left, w_right)
+
+
+class FpsCounter:
+    def __init__(self):
+        self.fps_counter = 0
+        self.fps_start_time = time.perf_counter()
+        self.fps = 0
+
+    def tick(self):
+        self.fps_counter += 1
+
+        elapsed = time.perf_counter() - self.fps_start_time
+        # When one second has passed, count:
+        if elapsed > 1.0:
+            self.fps = self.fps_counter / elapsed
+            self.fps_start_time = time.perf_counter()
+            self.fps_counter = 0
 
 
 class URDFmodel:
@@ -83,7 +177,7 @@ class URDFmodel:
         if "gripper" in cfg.keys():
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
-        return self.urdf.link_fk(lk_cfg, link=link_name)
+        return self.urdf.link_fk(lk_cfg, link=link_name)  # type: ignore
 
 
 def replace_xml_tag_value(xml_str: str, tag: str, attribute: str, pattern: str, value: str) -> str:
@@ -122,7 +216,7 @@ def xml_remove_subelement(xml_str: str, subelement: str) -> str:
     return ET.tostring(root, encoding="unicode")
 
 
-def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, dict]:
+def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, dict | None]:
     """
     Remove a subelement from an XML string with a specified tag and name attribute
     """
@@ -175,7 +269,7 @@ def insert_line_after_mujoco_tag(xml_string: str, line_to_insert: str) -> str:
     return modified_xml
 
 
-def get_absolute_path_stretch_xml(robot_pose_attrib: dict = None) -> str:
+def get_absolute_path_stretch_xml(robot_pose_attrib: dict | None = None) -> str:
     """
     Generates Robot XML with absolute path to mesh files
     Args:
@@ -238,3 +332,62 @@ def get_depth_color_map(depth_image, clor_map=cv2.COLORMAP_JET):
     depth_8bit = ((1 - normalized_depth) * 255).astype(np.uint8)
     depth_8bit = cv2.applyColorMap(depth_8bit, clor_map)
     return depth_8bit
+
+
+def dataclass_from_dict(klass, dict_data: dict):
+    # references https://stackoverflow.com/a/54769644
+    try:
+        fieldtypes = {f.name: f.type for f in dataclasses.fields(klass)}
+        return klass(**{f: dataclass_from_dict(fieldtypes[f], dict_data[f]) for f in dict_data})
+    except:
+        return dict_data  # Not a dataclass field
+
+
+def wait_and_check(
+    wait_timeout: float, check: Callable[[], bool], is_alive: Callable[[], bool]
+) -> bool:
+    start_time = time.time()
+
+    while time.time() - start_time < wait_timeout:
+        if not is_alive():
+            return False
+        if check():
+            return True
+
+    return False
+
+
+def switch_to_glfw_renderer(mjmodel: MjModel, renderer: mujoco.Renderer):
+    """
+    On Darwin, the default renderer in `mujoco/gl_context.py` is CGL, which is not compatible with offscreen rendering.
+
+    This function frees the initial display context and creates a new one with GLFW.
+    """
+    if renderer._gl_context:
+        renderer._gl_context.free()
+    if renderer._mjr_context:
+        renderer._mjr_context.free()
+
+    renderer._gl_context = GlFwContext(480, 640)
+
+    renderer._gl_context.make_current()
+
+    renderer._mjr_context = mujoco._render.MjrContext(
+        mjmodel, mujoco._enums.mjtFontScale.mjFONTSCALE_150.value
+    )
+    mujoco._render.mjr_setBuffer(
+        mujoco._enums.mjtFramebuffer.mjFB_OFFSCREEN.value, renderer._mjr_context
+    )
+    renderer._mjr_context.readDepthMap = mujoco._enums.mjtDepthMap.mjDEPTH_ZEROFAR
+
+
+try:
+    # Only Python >12 has override.
+    override = __import__("typing").override
+except:  # noqa
+    def override(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
