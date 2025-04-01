@@ -76,7 +76,6 @@ uv run examples/gamepad_teleop.py
 
 ```
 # Setup
-uv venv
 uv pip install -e ".[robocasa]"
 uv pip install -e "robocasa@third_party/robocasa"
 uv pip install -e "robosuite@third_party/robosuite"
