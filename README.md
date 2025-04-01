@@ -94,6 +94,11 @@ Ignore any warnings.
 
 ## Try Writing Code
 
+```
+# setup
+uv pip install -e ".[dev]"
+```
+
 Use the [StretchMujocoSimulator](./stretch_mujoco/stretch_mujoco.py) class to:
 
  * start the simulation
