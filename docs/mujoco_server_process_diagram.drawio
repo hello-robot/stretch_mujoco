@@ -1,0 +1,93 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36" version="26.1.1">
+  <diagram name="Page-1" id="KNofP-kgfHDYzjM7IxkU">
+    <mxGraphModel dx="2036" dy="690" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="PJ_8Bype43evgwTMe44a-1" value="&lt;b&gt;Physics Thread&lt;/b&gt; runs on a &lt;b&gt;spawned thread.&lt;/b&gt;&lt;div&gt;Runs at time-step speed&lt;br&gt;(aka mjmodel.ops.timestep)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="320" y="459" width="230" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="2PS42XW2qniGK-swCCNY-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;sketch=1;curveFitting=1;jiggle=2;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="1" source="PJ_8Bype43evgwTMe44a-2" target="PJ_8Bype43evgwTMe44a-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="PJ_8Bype43evgwTMe44a-2" value="&lt;div&gt;A new &lt;b&gt;Spawned&lt;/b&gt;&amp;nbsp;&lt;b&gt;Process&lt;/b&gt; is started to run the Mujoco Simulator&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="445" y="290" width="230" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="1" source="lYVrMtkjZ5k91I_wGoCh-2" target="lYVrMtkjZ5k91I_wGoCh-3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-2" value="The User executes their controls script.&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;e.g. `uv run draw_circles.py`&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="-120" y="130" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-6" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="1" source="lYVrMtkjZ5k91I_wGoCh-3" target="lYVrMtkjZ5k91I_wGoCh-5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-14" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="1" source="lYVrMtkjZ5k91I_wGoCh-3" target="lYVrMtkjZ5k91I_wGoCh-13" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-3" value="Is cv2 visualization needed?" style="rhombus;whiteSpace=wrap;html=1;rounded=0;fillColor=#fff2cc;strokeColor=#d6b656;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="140" y="110" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="1" source="lYVrMtkjZ5k91I_wGoCh-5" target="PJ_8Bype43evgwTMe44a-2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-5" value="The User&#39;s control script is started on a &lt;b&gt;spawned thread&lt;/b&gt;&amp;nbsp;since it does not need UI.&lt;br&gt;The Visualization loop is started on the &lt;b&gt;main thread&lt;/b&gt;." style="whiteSpace=wrap;html=1;rounded=0;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="460" y="120" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="2PS42XW2qniGK-swCCNY-4" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;sketch=1;curveFitting=1;jiggle=2;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="1" source="lYVrMtkjZ5k91I_wGoCh-7" target="2PS42XW2qniGK-swCCNY-5">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="500" y="680" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-7" value="Is running &lt;br&gt;Headless?" style="rhombus;whiteSpace=wrap;html=1;rounded=0;fillColor=#fff2cc;strokeColor=#d6b656;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="625" y="620" width="120" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="1" source="lYVrMtkjZ5k91I_wGoCh-13" target="PJ_8Bype43evgwTMe44a-2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-13" value="The User&#39;s control script is executed on the &lt;b&gt;main thread&lt;/b&gt;." style="whiteSpace=wrap;html=1;rounded=0;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="100" y="295" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-23" value="" style="group" parent="1" vertex="1" connectable="0">
+          <mxGeometry x="-94" y="275" width="154" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-16" value="" style="whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;sketch=1;curveFitting=1;jiggle=2;" parent="lYVrMtkjZ5k91I_wGoCh-23" vertex="1">
+          <mxGeometry y="35" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-17" value="" style="whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;sketch=1;curveFitting=1;jiggle=2;" parent="lYVrMtkjZ5k91I_wGoCh-23" vertex="1">
+          <mxGeometry y="65" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-18" value="" style="whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;sketch=1;curveFitting=1;jiggle=2;" parent="lYVrMtkjZ5k91I_wGoCh-23" vertex="1">
+          <mxGeometry y="95" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-19" value="User Controls Script" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="lYVrMtkjZ5k91I_wGoCh-23" vertex="1">
+          <mxGeometry x="24" y="30" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-20" value="Mujoco-related" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="lYVrMtkjZ5k91I_wGoCh-23" vertex="1">
+          <mxGeometry x="24" y="60" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-21" value="Decisions" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="lYVrMtkjZ5k91I_wGoCh-23" vertex="1">
+          <mxGeometry x="24" y="90" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-22" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="lYVrMtkjZ5k91I_wGoCh-23" vertex="1">
+          <mxGeometry width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-27" value="&lt;b&gt;Terminology&lt;/b&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;Spawned Process:&lt;/b&gt;&amp;nbsp;An instance of a program with a unique OS PID.&lt;/div&gt;&lt;div&gt;We use a process to start the Mujoco UI and physics threads so that they are not affected by load on the user&#39;s control process.&lt;br&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;b&gt;Spawned Thread:&amp;nbsp;&lt;/b&gt;Using python&#39;s multithreading library to create an async thread that does not block other threads.&lt;/div&gt;&lt;div&gt;We are using threads to avoid blocking operations slowing down physics step timings, that may lead to inaccuracies.&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;Main Thread: &lt;/b&gt;The thread spawned when the process is created. This is where all UI and rendering should happen.&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;sketch=1;curveFitting=1;jiggle=2;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="-120" y="459" width="300" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="lYVrMtkjZ5k91I_wGoCh-29" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;Cameras&lt;/b&gt; are rendered at specified camera rate on the &lt;b&gt;main thread.&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;sketch=1;curveFitting=1;jiggle=2;" parent="1" vertex="1">
+          <mxGeometry x="570" y="459" width="230" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="2PS42XW2qniGK-swCCNY-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;sketch=1;curveFitting=1;jiggle=2;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="1" source="PJ_8Bype43evgwTMe44a-2" target="lYVrMtkjZ5k91I_wGoCh-29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2PS42XW2qniGK-swCCNY-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.506;entryY=0.051;entryDx=0;entryDy=0;entryPerimeter=0;sketch=1;curveFitting=1;jiggle=2;fillColor=#e1d5e7;strokeColor=#9673a6;" edge="1" parent="1" source="lYVrMtkjZ5k91I_wGoCh-29" target="lYVrMtkjZ5k91I_wGoCh-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2PS42XW2qniGK-swCCNY-5" value="&lt;b&gt;Mujoco Passive UI&lt;/b&gt; runs &lt;br&gt;on the &lt;b&gt;main thread &lt;br&gt;&lt;/b&gt;capped at camera refresh rate&lt;b&gt;.&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;sketch=1;curveFitting=1;jiggle=2;" vertex="1" parent="1">
+          <mxGeometry x="350" y="635" width="180" height="90" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

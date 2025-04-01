@@ -6,10 +6,12 @@ import cv2
 from gamepad_controller import GamePadController
 
 from stretch_mujoco import StretchMujocoSimulator
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
+from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.utils import get_depth_color_map
 
-sim = None
-gamepad = None
+sim:StretchMujocoSimulator
+gamepad:GamePadController
 
 
 def display_camera_feeds():
@@ -17,23 +19,29 @@ def display_camera_feeds():
     # display camera feeds
     while True:
         camera_data = sim.pull_camera_data()
-        cv2.imshow("cam_d405_rgb", cv2.cvtColor(camera_data["cam_d405_rgb"], cv2.COLOR_RGB2BGR))
-        cv2.imshow("cam_d405_depth", get_depth_color_map(camera_data["cam_d405_depth"]))
-        cv2.imshow(
+        if camera_data.cam_d405_rgb:
+            cv2.imshow("cam_d405_rgb", cv2.cvtColor(camera_data.cam_d405_rgb, cv2.COLOR_RGB2BGR))
+        if camera_data.cam_d405_depth:
+            cv2.imshow("cam_d405_depth", get_depth_color_map(camera_data.cam_d405_depth))
+        if camera_data.cam_d435i_rgb:
+            cv2.imshow(
             "cam_d435i_rgb",
             cv2.rotate(
-                cv2.cvtColor(camera_data["cam_d435i_rgb"], cv2.COLOR_RGB2BGR),
+                cv2.cvtColor(camera_data.cam_d435i_rgb, cv2.COLOR_RGB2BGR),
                 cv2.ROTATE_90_CLOCKWISE,
-            ),
-        )
+                ),
+            )
 
-        cv2.imshow(
+        if camera_data.cam_d435i_depth:
+            cv2.imshow(
             "cam_d435i_depth",
             cv2.rotate(
-                get_depth_color_map(camera_data["cam_d435i_depth"]), cv2.ROTATE_90_CLOCKWISE
+                get_depth_color_map(camera_data.cam_d435i_depth), cv2.ROTATE_90_CLOCKWISE
             ),
         )
-        cv2.imshow("cam_nav_rgb", cv2.cvtColor(camera_data["cam_nav_rgb"], cv2.COLOR_RGB2BGR))
+        if camera_data.cam_nav_rgb:
+            cv2.imshow("cam_nav_rgb", cv2.cvtColor(camera_data.cam_nav_rgb, cv2.COLOR_RGB2BGR))
+
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
@@ -67,7 +75,7 @@ def gamepad_loop():
     global sim, gamepad
     dex_switch = False
     status = sim.pull_status()
-    gripper_val = status["gripper"]["pos"]
+    gripper_val = status.gripper.pos
     while True:
         time.sleep(1 / 15)
         gamepad_state = gamepad.get_state()
@@ -84,7 +92,7 @@ def gamepad_loop():
                         gripper_val = gripper_val + dir * k
                         gripper_val = max(min(gripper_val, 0.56), -0.376)
                         print(f"Moving {actuator_name} to {gripper_val}")
-                        sim.move_to(actuator_name, gripper_val)
+                        sim.move_to(Actuators[actuator_name], gripper_val)
 
                 except Exception:
                     pass
@@ -133,21 +141,22 @@ def gamepad_loop():
 @click.option("--headless", is_flag=True, help="Run in headless mode")
 def main(scene_xml_path: str, robocasa_env: bool, headless: bool):
     global sim, gamepad
+    cameras_to_use = StretchCameras.all()
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
         model, xml, objects_info = model_generation_wizard()
         # breakpoint()
-        sim = StretchMujocoSimulator(model=model)
+        sim = StretchMujocoSimulator(model=model, cameras_to_use=cameras_to_use)
     elif scene_xml_path:
-        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path)
+        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path, cameras_to_use=cameras_to_use)
     else:
-        sim = StretchMujocoSimulator()
+        sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
     gamepad = GamePadController()
     try:
         sim.start(headless=headless)
         gamepad.start()
-        threading.Thread(target=gamepad_loop).start()
+        threading.Thread(target=gamepad_loop, daemon=True).start()
         display_camera_feeds()
     except KeyboardInterrupt:
         sim.stop()

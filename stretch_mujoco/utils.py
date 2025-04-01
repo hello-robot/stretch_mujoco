@@ -1,17 +1,35 @@
+import dataclasses
 import math
 import re
+import time
 import xml.etree.ElementTree as ET
-from typing import Tuple
+from typing import TYPE_CHECKING, Callable, Tuple
 
 import cv2
 import numpy as np
 import importlib.resources
 import urchin as urdf_loader
 
+
+from functools import wraps
+
+import mujoco
+import mujoco._functions
+import mujoco._callbacks
+import mujoco._render
+import mujoco._enums
+import mujoco.viewer
+import numpy as np
+from mujoco._structs import MjModel
+from mujoco.glfw import GLContext as GlFwContext
+
 import stretch_mujoco.config as config
 
+if TYPE_CHECKING:
+    from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
-models_path = str(importlib.resources.files('stretch_mujoco') / 'models')
+
+models_path = str(importlib.resources.files("stretch_mujoco") / "models")
 default_scene_xml_path = models_path + "/scene.xml"
 default_robot_xml_path = models_path + "/stretch.xml"
 
@@ -23,11 +41,13 @@ mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
 
 
 def require_connection(function):
-    """Wraps class methods that need self
-    """
-    def wrapper_function(self, *args, **kwargs):
-        if not self._running:
-            raise ConnectionError("use the start() method")
+    """Wraps class methods that need self"""
+
+    def wrapper_function(self:"StretchMujocoSimulator", *args, **kwargs):
+        if not self.is_running():
+            raise ConnectionError(
+                "The Stretch Mujoco Simulator is not running. Use the start() method to start it."
+            )
         return function(self, *args, **kwargs)
 
     return wrapper_function
@@ -101,6 +121,23 @@ def diff_drive_inv_kinematics(V: float, omega: float) -> tuple:
     return (w_left, w_right)
 
 
+class FpsCounter:
+    def __init__(self):
+        self.fps_counter = 0
+        self.fps_start_time = time.perf_counter()
+        self.fps = 0
+
+    def tick(self):
+        self.fps_counter += 1
+
+        elapsed = time.perf_counter() - self.fps_start_time
+        # When one second has passed, count:
+        if elapsed > 1.0:
+            self.fps = self.fps_counter / elapsed
+            self.fps_start_time = time.perf_counter()
+            self.fps_counter = 0
+
+
 class URDFmodel:
     def __init__(self) -> None:
         """
@@ -140,7 +177,7 @@ class URDFmodel:
         if "gripper" in cfg.keys():
             lk_cfg["joint_gripper_finger_left"] = cfg["gripper"]
             lk_cfg["joint_gripper_finger_right"] = cfg["gripper"]
-        return self.urdf.link_fk(lk_cfg, link=link_name)
+        return self.urdf.link_fk(lk_cfg, link=link_name)  # type: ignore
 
 
 def replace_xml_tag_value(xml_str: str, tag: str, attribute: str, pattern: str, value: str) -> str:
@@ -179,7 +216,7 @@ def xml_remove_subelement(xml_str: str, subelement: str) -> str:
     return ET.tostring(root, encoding="unicode")
 
 
-def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, dict]:
+def xml_remove_tag_by_name(xml_string: str, tag: str, name: str) -> Tuple[str, dict | None]:
     """
     Remove a subelement from an XML string with a specified tag and name attribute
     """
@@ -232,7 +269,7 @@ def insert_line_after_mujoco_tag(xml_string: str, line_to_insert: str) -> str:
     return modified_xml
 
 
-def get_absolute_path_stretch_xml(robot_pose_attrib: dict = None) -> str:
+def get_absolute_path_stretch_xml(robot_pose_attrib: dict | None = None) -> str:
     """
     Generates Robot XML with absolute path to mesh files
     Args:
@@ -295,3 +332,62 @@ def get_depth_color_map(depth_image, clor_map=cv2.COLORMAP_JET):
     depth_8bit = ((1 - normalized_depth) * 255).astype(np.uint8)
     depth_8bit = cv2.applyColorMap(depth_8bit, clor_map)
     return depth_8bit
+
+
+def dataclass_from_dict(klass, dict_data: dict):
+    # references https://stackoverflow.com/a/54769644
+    try:
+        fieldtypes = {f.name: f.type for f in dataclasses.fields(klass)}
+        return klass(**{f: dataclass_from_dict(fieldtypes[f], dict_data[f]) for f in dict_data})
+    except:
+        return dict_data  # Not a dataclass field
+
+
+def wait_and_check(
+    wait_timeout: float, check: Callable[[], bool], is_alive: Callable[[], bool]
+) -> bool:
+    start_time = time.time()
+
+    while time.time() - start_time < wait_timeout:
+        if not is_alive():
+            return False
+        if check():
+            return True
+
+    return False
+
+
+def switch_to_glfw_renderer(mjmodel: MjModel, renderer: mujoco.Renderer):
+    """
+    On Darwin, the default renderer in `mujoco/gl_context.py` is CGL, which is not compatible with offscreen rendering.
+
+    This function frees the initial display context and creates a new one with GLFW.
+    """
+    if renderer._gl_context:
+        renderer._gl_context.free()
+    if renderer._mjr_context:
+        renderer._mjr_context.free()
+
+    renderer._gl_context = GlFwContext(480, 640)
+
+    renderer._gl_context.make_current()
+
+    renderer._mjr_context = mujoco._render.MjrContext(
+        mjmodel, mujoco._enums.mjtFontScale.mjFONTSCALE_150.value
+    )
+    mujoco._render.mjr_setBuffer(
+        mujoco._enums.mjtFramebuffer.mjFB_OFFSCREEN.value, renderer._mjr_context
+    )
+    renderer._mjr_context.readDepthMap = mujoco._enums.mjtDepthMap.mjDEPTH_ZEROFAR
+
+
+try:
+    # Only Python >12 has override.
+    override = __import__("typing").override
+except:  # noqa
+    def override(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper

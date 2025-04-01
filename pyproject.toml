@@ -3,14 +3,15 @@ name = "stretch_mujoco"
 version = "0.0.1"
 description = "A Stretch simulation in MuJoCo"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.11"
 dependencies = [
     "click>=8.1.8",
     "hello-robot-stretch-urdf>=0.1.0",
     "inputs>=0.5",
     "ipython>=8.31.0",
-    "mujoco>=3.2.7",
-    "opencv-python>=4.10.0.84",
+    "matplotlib>=3.10.1",
+    "mujoco==3.2.6",
+    "opencv-python==4.8.0.76",
     "urchin>=0.0.29",
 ]
 authors = [
@@ -44,4 +45,8 @@ dev = [
     "flake8",
     "black",
     "mypy",
+]
+robocasa = [
+    "numpy==1.23.5",
+    "numba==0.59"
 ]

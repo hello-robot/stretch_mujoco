@@ -20,9 +20,12 @@ git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
 cd stretch_mujoco
 ```
 
+> If you've already cloned the repo without `--recurse-submodules`, run `git submodule update --init` to pull the submodule.
+
 Then, install this repo:
 
 ```
+uv venv
 uv pip install -e .
 ```
 
@@ -38,6 +41,20 @@ To exit, press `Ctrl+C` in the terminal.
     <img src="./docs/camera_streams.png" title="Camera Streams" height="250px">
     <img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
 </p>
+
+> On MacOS, if `mjpython` fails to locate `libpython3.10.dylib` and `libz.1.dylib`, run these commands:
+```shell
+# Before proceeding, please reload your terminal and/or IDE window, to make sure the correct UV environment variables are loaded.
+
+source .venv/bin/activate
+
+# When `libpython3.10.dylib` is missing, run:
+PYTHON_LIB_DIR=$(python3 -c 'from distutils.sysconfig import get_config_var; print(get_config_var("LIBDIR"))')
+ln -s "$PYTHON_LIB_DIR/libpython3.10.dylib" ./.venv/lib/libpython3.10.dylib
+
+# When `libz.1.dylib` is missing, run:
+export DYLD_LIBRARY_PATH=/usr/lib:$DYLD_LIBRARY_PATH
+```
 
 ## Try Example Scripts
 
@@ -59,6 +76,7 @@ uv run examples/gamepad_teleop.py
 
 ```
 # Setup
+uv pip install -e ".[robocasa]"
 uv pip install -e "robocasa@third_party/robocasa"
 uv pip install -e "robosuite@third_party/robosuite"
 uv run third_party/robosuite/robosuite/scripts/setup_macros.py
@@ -90,7 +108,7 @@ Try the code below using `uv run ipython`. For advanced Mujoco users, the class 
 from stretch_mujoco import StretchMujocoSimulator
 
 sim = StretchMujocoSimulator()
-sim.start() # This will open a Mujoco-Viewer window
+sim.start(headless=False) # This will open a Mujoco-Viewer window
 
 # Poses
 sim.stow()
@@ -167,6 +185,12 @@ model, xml = model_generation_wizard(
 sim = StretchMujocoSimulator(model=model)
 sim.start()
 ```
+
+### Docs
+
+Check out the following documentation resources:
+
+- [Using the Mujoco Simulator with Stretch](./docs/using_mujoco_simulator_with_stretch.md)
 
 ### Feature Requests and Bug reporting
 
