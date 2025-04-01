@@ -10,7 +10,7 @@ dependencies = [
     "inputs>=0.5",
     "matplotlib>=3.10.1",
     "mujoco==3.2.6",
-    "opencv-python==4.8.0.76",
+    "opencv-python",
     "urchin>=0.0.29",
 ]
 authors = [
