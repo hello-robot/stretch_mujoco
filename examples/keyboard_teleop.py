@@ -80,11 +80,8 @@ def main(scene_xml_path: str, robocasa_env: bool):
 
         while sim.is_running():
             with keyboard.Events() as events:
-                # Block at most one second
-                event = events.get(1.0)
-                if event is None:
-                    time.sleep(0.1)
-                else:
+                event = events.get(1.0) # Blocks
+                if event is not None:
                     key = event.key
                     if isinstance(key, keyboard.KeyCode):
                         keyboard_control(key.char, sim)
