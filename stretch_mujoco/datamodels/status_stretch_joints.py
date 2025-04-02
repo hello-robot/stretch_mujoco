@@ -9,7 +9,7 @@ class PositionVelocity:
 
     @staticmethod
     def default():
-        return PositionVelocity(0, 0)
+        return PositionVelocity(0.0, 0.0)
 
 @dataclass
 class BaseStatus:
@@ -17,11 +17,12 @@ class BaseStatus:
     y:float
     theta:float
     x_vel:float
+    y_vel:float
     theta_vel:float
 
     @staticmethod
     def default():
-        return BaseStatus(0, 0, 0,0,0)
+        return BaseStatus(0.0, 0.0, 0.0,0.0,0.0, 0.0)
 
 @dataclass
 class StatusStretchJoints:
