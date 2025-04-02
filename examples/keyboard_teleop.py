@@ -1,5 +1,4 @@
 from pynput import keyboard
-import time
 
 import click
 
@@ -78,8 +77,8 @@ def main(scene_xml_path: str, robocasa_env: bool):
 
         print_keyboard_options()
 
-        while sim.is_running():
-            with keyboard.Events() as events:
+        with keyboard.Events() as events:
+            while sim.is_running():
                 event = events.get(1.0) # Blocks
                 if event is not None:
                     key = event.key
