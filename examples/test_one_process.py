@@ -8,6 +8,7 @@ from stretch_mujoco.mujoco_server import MujocoServer
 
 from stretch_mujoco.mujoco_server import MujocoServerProxies
 from stretch_mujoco.datamodels.status_command import StatusCommand
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 
 _manager = Manager()
 data_proxies = MujocoServerProxies.default(_manager)
@@ -23,5 +24,5 @@ MujocoServer.launch_server(
     show_viewer_ui=True,
     stop_mujoco_process_event=event, 
     data_proxies=data_proxies,
-    cameras_to_use=[]
+    cameras_to_use=StretchCameras.all()
 )

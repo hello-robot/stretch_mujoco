@@ -6,6 +6,10 @@ dist/
 wheels/
 *.egg-info
 
+# cpp files
+*.so
+*.a
+
 # Virtual environments
 .venv
 
@@ -16,9 +20,9 @@ wheels/
 
 # Other
 .mypy_cache/
-.vscode/
 .idea/
 MUJOCO_LOG.TXT
+test
 
 # Temp runtime XML 
 stretch_temp_abs.xml

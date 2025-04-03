@@ -1,0 +1,90 @@
+<!-- Copyright 2022 DeepMind Technologies Limited
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+         http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+
+<mujoco model="Fixation">
+  <option timestep="0.005"/>
+
+  <size njmax="50" nconmax="10" nstack="2000"/>
+
+  <visual>
+    <global  offwidth="1280" offheight="720"/>
+    <rgba haze=".3 .3 .3 1"/>
+  </visual>
+
+  <default>
+    <joint type="hinge" pos="0 0 0" axis="0 0 1" damping="0.1"/>
+    <motor ctrllimited="true" ctrlrange="-6 6"/>
+  </default>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.6 0.6 0.6" rgb2="0 0 0" width="512" height="512"/>
+
+    <texture name="texplane" type="2d" builtin="checker" rgb1=".25 .25 .25" rgb2=".3 .3 .3" width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>
+
+    <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="1 1" texuniform="true"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" pos="0 0 -0.5" size="0 0 1" type="plane" material="matplane"/>
+
+    <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
+
+    <body pos="0 0 0" quat="0 0 0 1">
+      <geom name="upper arm" type="capsule" size="0.045" fromto="0 0 0  0.2 0 0" rgba=".5 .1 .1 1"/>
+      <joint name="shoulder"/>
+      <geom name="shoulder" type="cylinder" pos="0 0 0" size=".1 .05" rgba=".5 .1 .8 .5" mass="0" group="1"/>
+
+      <body pos="0.2 0 0" quat = "0.707 0.707 0 0">
+        <geom name="forearm" type="capsule" size="0.035" fromto="-0.2 0 0  0.2 0 0" rgba=".5 .1 .1 1"/>
+        <joint name="elbow"/>
+        <geom name="elbow" type="cylinder" pos="0 0 0" size=".08 .05" rgba=".5 .1 .8 .5" mass="0" group="1"/>
+
+        <body pos="0.22 0 0" quat="0.707 0 -0.707 0" name="fixater">
+          <geom type="sphere" size="0.05" pos="0 0 0" rgba=".5 .1 .8 .5" mass="0"/>
+          <camera name="fixater" mode="fixed" fovy="45"/>
+        </body>
+      </body>
+    </body>
+
+    <body pos="-5 0 -0.5" quat="0 0 0 1">
+      <geom name="windmillbase" type="cylinder" size=".1" fromto="0 0 0 0 0 2" rgba=".5 .1 .1 1"/>
+
+      <body pos="0 0 2" quat="0 0 0 1">
+        <geom name="windmillnacel" type="capsule" size="0.1" fromto="0 0 0 0.25 0 0" rgba=".5 .1 .1 1"/>
+
+        <body pos="0.25 0 0">
+          <joint name="windmillrotor" pos="0 0 0" axis="1 0 0" damping="0.1"/>
+          <geom name="windmillrotor" type="cylinder" size=".2" fromto="0 0 0 0.25 0 0" rgba=".5 .1 .8 .5" mass="0" group="1"/>
+
+          <body pos="0.25 0 0">
+            <geom name="windmillblade" type="capsule" size="0.05" fromto="0 -1 0 0 1 0" rgba=".5 .1 .1 1"/>
+
+            <body pos="0 -1 0">
+              <geom name="windmilltarget1" type="sphere" size="0.1" pos="0 0 0" rgba="0 0 1 1"/>
+            </body>
+            <body pos="0  1 0">
+              <geom name="windmilltarget2" type="sphere" size="0.1" pos="0 0 0" rgba="0 1 0 1"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <velocity name="shoulderv" joint="shoulder" kv="2"/>
+    <velocity name="elbowv" joint="elbow"/>
+  </actuator>
+</mujoco>

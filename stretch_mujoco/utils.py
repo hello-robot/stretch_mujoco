@@ -28,8 +28,9 @@ import stretch_mujoco.config as config
 if TYPE_CHECKING:
     from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
-
-models_path = str(importlib.resources.files("stretch_mujoco") / "models")
+root = importlib.resources.files("stretch_mujoco")
+lib_path = str(root / "libstretch_mujoco.so")
+models_path = str(root / "models")
 default_scene_xml_path = models_path + "/scene.xml"
 default_robot_xml_path = models_path + "/stretch.xml"
 

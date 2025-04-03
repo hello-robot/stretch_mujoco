@@ -4,3 +4,6 @@
 [submodule "third_party/robosuite"]
 	path = third_party/robosuite
 	url = https://github.com/hello-binit/robosuite.git
+[submodule "third_party/readerwriterqueue"]
+	path = third_party/readerwriterqueue
+	url = https://github.com/cameron314/readerwriterqueue.git
