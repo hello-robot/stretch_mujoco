@@ -124,7 +124,7 @@ def diff_drive_inv_kinematics(V: float, omega: float) -> tuple:
 class FpsCounter:
     def __init__(self):
         self._fps_counter = 0
-        self._fps_start_time = time.perf_counter()
+        self._wall_time = time.perf_counter()
 
         self.fps = 0
         """The actual fps count"""
@@ -132,7 +132,6 @@ class FpsCounter:
         self.sim_to_real_ratio:float|None = None
         """Sim time compared with real time"""
 
-        self._last_wall_time = time.time()
         self._last_sim_time = 0
 
 
@@ -144,18 +143,19 @@ class FpsCounter:
         """
         self._fps_counter += 1
 
-        elapsed = time.perf_counter() - self._fps_start_time
+        elapsed = time.perf_counter() - self._wall_time
         # When one second has passed, count:
         if elapsed >= 1.0:
+            new_wall_time = time.perf_counter()
+            
+            if sim_time:
+                self.sim_to_real_ratio = (sim_time - self._last_sim_time)/(new_wall_time - self._wall_time)
+                self._last_sim_time = sim_time
+
             self.fps = self._fps_counter / elapsed
-            self._fps_start_time = time.perf_counter()
+            self._wall_time = new_wall_time
             self._fps_counter = 0
 
-            if sim_time:
-                wall_time = time.time()
-                self.sim_to_real_ratio = (sim_time - self._last_sim_time)/(wall_time - self._last_wall_time)
-                self._last_sim_time = sim_time
-                self._last_wall_time = wall_time
         
     @property
     def sim_to_real_time_ratio_msg(self): 
