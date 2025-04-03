@@ -32,7 +32,7 @@ class MujocoServerCameraManagerSync:
 
         self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
 
-        self._set_camera_properties()
+        self._set_initial_camera_properties(cameras_to_use)
 
         for camera in cameras_to_use:
             # Add this camera for the cameras_rendering_thread_pool to do rendering on
@@ -91,8 +91,8 @@ class MujocoServerCameraManagerSync:
             (_, data) = self._render_camera(renderer, camera)
             new_imagery.set_camera_data(camera, data)
 
-        new_imagery.cam_d405_K = self.get_camera_params("d405_rgb")
-        new_imagery.cam_d435i_K = self.get_camera_params("d435i_camera_rgb")
+        new_imagery.cam_d405_K = self.get_camera_params(StretchCameras.cam_d405_rgb)
+        new_imagery.cam_d435i_K = self.get_camera_params(StretchCameras.cam_d435i_rgb)
 
         self.mujoco_server.data_proxies.set_cameras(new_imagery)
 
@@ -123,7 +123,7 @@ class MujocoServerCameraManagerSync:
 
         with self.camera_lock:
             renderer.update_scene(
-                data=self.mujoco_server.mjdata, camera=camera.camera_name_in_scene
+                data=self.mujoco_server.mjdata, camera=camera.camera_name_in_mjcf
             )
 
             render = renderer.render()
@@ -157,21 +157,22 @@ class MujocoServerCameraManagerSync:
 
         self.camera_renderers[camera] = self._create_camera_renderer(is_depth=camera.is_depth)
 
-    def get_camera_params(self, camera_name: str) -> np.ndarray:
+    def get_camera_params(self, camera: StretchCameras) -> np.ndarray:
         """
         Get camera parameters
         """
-        cam = self.mujoco_server.mjmodel.camera(camera_name)
+        cam = self.mujoco_server.mjmodel.camera(camera.camera_name_in_mjcf)
         d = {
             "fovy": cam.fovy,
             "f": self.mujoco_server.mjmodel.cam_intrinsic[cam.id][:2],
             "p": self.mujoco_server.mjmodel.cam_intrinsic[cam.id][2:],
             "res": self.mujoco_server.mjmodel.cam_resolution[cam.id],
         }
+        
         camera_k = utils.compute_K(d["fovy"][0], d["res"][0], d["res"][1])
         return camera_k
 
-    def set_camera_params(self, camera_name: str, fovy: float, res: tuple) -> None:
+    def set_camera_params(self, camera: StretchCameras, fovy: float, res: tuple) -> None:
         """
         Set camera parameters
         Args:
@@ -179,17 +180,21 @@ class MujocoServerCameraManagerSync:
             fovy: float, vertical field of view in degrees
             res: tuple, size of the camera Image
         """
-        cam = self.mujoco_server.mjmodel.camera(camera_name)
+        cam = self.mujoco_server.mjmodel.camera(camera.camera_name_in_mjcf)
         self.mujoco_server.mjmodel.cam_fovy[cam.id] = fovy
         self.mujoco_server.mjmodel.cam_resolution[cam.id] = res
 
-    def _set_camera_properties(self):
+    def _set_initial_camera_properties(self, cameras_to_use: list[StretchCameras]):
         """
         Set the camera properties
         """
-        for camera_name, settings in config.camera_settings.items():
+        for camera in cameras_to_use:
+            if camera == StretchCameras.cam_nav_rgb:
+                continue # No default settings for this one
+
+            settings = camera.initial_camera_settings
             self.set_camera_params(
-                camera_name, settings["fovy"], (settings["width"], settings["height"])
+                camera, settings.fovy, (settings.width, settings.height)
             )
 
 
@@ -297,8 +302,8 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
             (camera, render) = future.result()
             new_imagery.set_camera_data(camera, render)
 
-        new_imagery.cam_d405_K = self.get_camera_params("d405_rgb")
-        new_imagery.cam_d435i_K = self.get_camera_params("d435i_camera_rgb")
+        new_imagery.cam_d405_K = self.get_camera_params(StretchCameras.cam_d405_rgb)
+        new_imagery.cam_d435i_K = self.get_camera_params(StretchCameras.cam_d435i_rgb)
 
 
         self.mujoco_server.data_proxies.set_cameras(new_imagery)
