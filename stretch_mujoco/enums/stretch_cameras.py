@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
 
@@ -5,6 +6,11 @@ import numpy as np
 
 from stretch_mujoco import config, utils
 
+@dataclass
+class CameraSettings:
+    fovy: int
+    width: int
+    height: int
 
 class StretchCameras(Enum):
     """
@@ -20,7 +26,7 @@ class StretchCameras(Enum):
     cam_nav_rgb = 4
 
     def get_render_params(self):
-        return (self.camera_name_in_scene, self.name, self.post_processing_callback)
+        return (self.camera_name_in_mjcf, self.name, self.post_processing_callback)
 
     @staticmethod
     def all() -> list["StretchCameras"]:
@@ -57,15 +63,19 @@ class StretchCameras(Enum):
         ]
 
     @property
-    def camera_name_in_scene(self) -> str:
-        if self == StretchCameras.cam_d405_depth or self == StretchCameras.cam_d405_rgb:
+    def camera_name_in_mjcf(self) -> str:
+        if self == StretchCameras.cam_d405_rgb:
             return "d405_rgb"
-        if self == StretchCameras.cam_d435i_depth or self == StretchCameras.cam_d435i_rgb:
+        if self == StretchCameras.cam_d405_depth:
+            return "d405_depth"
+        if self == StretchCameras.cam_d435i_rgb:
             return "d435i_camera_rgb"
+        if self == StretchCameras.cam_d435i_depth:
+            return "d435i_camera_depth"
         if self == StretchCameras.cam_nav_rgb:
             return "nav_camera_rgb"
 
-        raise NotImplementedError(f"Camera {self} camera_name_in_scene is not implemented")
+        raise NotImplementedError(f"Camera {self} camera_name_in_mjcf is not implemented")
 
     @property
     def is_depth(self) -> bool:
@@ -97,3 +107,26 @@ class StretchCameras(Enum):
             return None
 
         raise NotImplementedError(f"Camera {self} post_processing_callback is not implemented")
+    
+    @property
+    def initial_camera_settings(self):
+
+        if self == StretchCameras.cam_d405_rgb:
+            return CameraSettings(**{"fovy": 50, "width": 640, "height": 480})
+        if self == StretchCameras.cam_d405_depth:
+            return CameraSettings(**{"fovy": 50, "width": 640, "height": 480})
+
+        if self == StretchCameras.cam_d435i_rgb:
+            return CameraSettings(**{"fovy": 62, "width": 640, "height": 480})
+        
+        if self == StretchCameras.cam_d435i_depth:
+            return CameraSettings(**{"fovy": 62, "width": 640, "height": 480})
+        
+        if self == StretchCameras.cam_nav_rgb:
+            return CameraSettings(
+                fovy=69,
+                width=640,
+                height=480
+            )
+
+        raise NotImplementedError(f"Camera {self} initial settings are not implemented")
