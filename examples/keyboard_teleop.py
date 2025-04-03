@@ -1,26 +1,9 @@
-import sys
-import termios
-import time
-import tty
+from pynput import keyboard
 
 import click
 
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.actuators import Actuators
-
-
-def getch():
-    """
-    Get a single character from the terminal
-    """
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setraw(sys.stdin.fileno())
-        ch = sys.stdin.read(1)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    return ch
 
 
 def print_keyboard_options():
@@ -36,46 +19,42 @@ def print_keyboard_options():
     click.secho("=====================================", fg="yellow")
 
 
-def keyboard_control(sim: StretchMujocoSimulator):
-    while sim.is_running():
-        print_keyboard_options()
-        key = getch().lower()
-        if key == "w":
-            sim.move_by(Actuators.base_translate, 0.07)
-        elif key == "s":
-            sim.move_by(Actuators.base_translate, -0.07)
-        elif key == "a":
-            sim.move_by(Actuators.base_rotate, 0.15)
-        elif key == "d":
-            sim.move_by(Actuators.base_rotate, -0.15)
-        elif key == "u":
-            sim.move_by(Actuators.lift, 0.1)
-        elif key == "j":
-            sim.move_by(Actuators.lift, -0.1)
-        elif key == "h":
-            sim.move_by(Actuators.arm, -0.05)
-        elif key == "k":
-            sim.move_by(Actuators.arm, 0.05)
-        elif key == "o":
-            sim.move_by(Actuators.wrist_yaw, 0.2)
-        elif key == "p":
-            sim.move_by(Actuators.wrist_yaw, -0.2)
-        elif key == "c":
-            sim.move_by(Actuators.wrist_pitch, 0.2)
-        elif key == "v":
-            sim.move_by(Actuators.wrist_pitch, -0.2)
-        elif key == "t":
-            sim.move_by(Actuators.wrist_roll, 0.2)
-        elif key == "y":
-            sim.move_by(Actuators.wrist_roll, -0.2)
-        elif key == "n":
-            sim.move_by(Actuators.gripper, 0.07)
-        elif key == "m":
-            sim.move_by(Actuators.gripper, -0.07)
-        elif key == "q":
-            sim.stop()
-            exit()
-        time.sleep(0.1)
+def keyboard_control(key: str|None, sim: StretchMujocoSimulator):
+    if key == "w":
+        sim.move_by(Actuators.base_translate, 0.07)
+    elif key == "s":
+        sim.move_by(Actuators.base_translate, -0.07)
+    elif key == "a":
+        sim.move_by(Actuators.base_rotate, 0.15)
+    elif key == "d":
+        sim.move_by(Actuators.base_rotate, -0.15)
+    elif key == "u":
+        sim.move_by(Actuators.lift, 0.1)
+    elif key == "j":
+        sim.move_by(Actuators.lift, -0.1)
+    elif key == "h":
+        sim.move_by(Actuators.arm, -0.05)
+    elif key == "k":
+        sim.move_by(Actuators.arm, 0.05)
+    elif key == "o":
+        sim.move_by(Actuators.wrist_yaw, 0.2)
+    elif key == "p":
+        sim.move_by(Actuators.wrist_yaw, -0.2)
+    elif key == "c":
+        sim.move_by(Actuators.wrist_pitch, 0.2)
+    elif key == "v":
+        sim.move_by(Actuators.wrist_pitch, -0.2)
+    elif key == "t":
+        sim.move_by(Actuators.wrist_roll, 0.2)
+    elif key == "y":
+        sim.move_by(Actuators.wrist_roll, -0.2)
+    elif key == "n":
+        sim.move_by(Actuators.gripper, 0.07)
+    elif key == "m":
+        sim.move_by(Actuators.gripper, -0.07)
+    elif key == "q":
+        sim.stop()
+        exit()
 
 
 @click.command()
@@ -96,7 +75,18 @@ def main(scene_xml_path: str, robocasa_env: bool):
     try:
         sim.start()
 
-        keyboard_control(sim)
+        print_keyboard_options()
+
+        with keyboard.Events() as events:
+            while sim.is_running():
+                event = events.get(1.0) # Blocks
+                if event is not None:
+                    key = event.key
+                    if isinstance(key, keyboard.KeyCode):
+                        keyboard_control(key.char, sim)
+                    
+                    print_keyboard_options()
+
     except KeyboardInterrupt:
         sim.stop()
 
