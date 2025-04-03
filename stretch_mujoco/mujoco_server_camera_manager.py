@@ -94,8 +94,6 @@ class MujocoServerCameraManagerSync:
         new_imagery.cam_d405_K = self.get_camera_params(StretchCameras.cam_d405_rgb)
         new_imagery.cam_d435i_K = self.get_camera_params(StretchCameras.cam_d435i_rgb)
 
-        self.get_camera_params(StretchCameras.cam_nav_rgb)
-
         self.mujoco_server.data_proxies.set_cameras(new_imagery)
 
     def _create_camera_renderer(self, is_depth: bool):
@@ -170,7 +168,7 @@ class MujocoServerCameraManagerSync:
             "p": self.mujoco_server.mjmodel.cam_intrinsic[cam.id][2:],
             "res": self.mujoco_server.mjmodel.cam_resolution[cam.id],
         }
-        print(f"camera {camera.name}", d)
+        
         camera_k = utils.compute_K(d["fovy"][0], d["res"][0], d["res"][1])
         return camera_k
 
