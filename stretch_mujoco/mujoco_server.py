@@ -309,10 +309,14 @@ class MujocoServer:
         """
         Callback function that gets executed with mj_step
         """
-        self.physics_fps_counter.tick()
-
         self.mjdata = data
         self.mjmodel = model
+
+        if not self.mjdata or not self.mjdata.time:
+            print("WARNING: no mujoco data to report")
+            return
+        
+        self.physics_fps_counter.tick(sim_time=data.time)
         self.pull_status()
         self.push_command()
 
@@ -331,11 +335,8 @@ class MujocoServer:
         new_status = StatusStretchJoints.default()
         new_status.fps = self.physics_fps_counter.fps
 
-        if not self.mjdata or not self.mjdata.time:
-            print("WARNING: no mujoco data to report")
-            return
-
         new_status.time = self.mjdata.time
+        new_status.sim_to_real_time_ratio_msg = self.physics_fps_counter.sim_to_real_time_ratio_msg
         new_status.lift.pos = self.mjdata.actuator("lift").length[0]
         new_status.lift.vel = self.mjdata.actuator("lift").velocity[0]
 
