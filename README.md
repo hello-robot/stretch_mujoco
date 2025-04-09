@@ -55,39 +55,45 @@ Currently only Stretch 3 is fully supported with a position control interface fo
 
 ## Try Example Scripts
 
-[Keyboard teleop](./examples/keyboard_teleop.py)
+ - [Keyboard teleop](./examples/keyboard_teleop.py)
 
-```
-uv run examples/keyboard_teleop.py
-```
+    ```
+    uv run examples/keyboard_teleop.py
+    ```
 
-[Gamepad teleop](./examples/gamepad_teleop.py)
+ - [Gamepad teleop](./examples/gamepad_teleop.py)
 
-Control Stretch in simulation using any xbox type gamepad (uses xinput)
+    Control Stretch in simulation using any xbox controller (uses xinput, only works on Linux)
 
-```
-uv run examples/gamepad_teleop.py
-```
+    ```
+    uv run examples/gamepad_teleop.py
+    ```
 
-[Robocasa environments](./examples/robocasa_environment.py)
+ - [Laser scan](./examples/laser_scan.py)
 
-```
-# Setup
-uv pip install -e ".[robocasa]"
-uv pip install -e "robocasa@third_party/robocasa"
-uv pip install -e "robosuite@third_party/robosuite"
-uv run third_party/robosuite/robosuite/scripts/setup_macros.py
-uv run third_party/robocasa/robocasa/scripts/setup_macros.py
-uv run third_party/robocasa/robocasa/scripts/download_kitchen_assets.py
+    ```
+    uv run examples/laser_scan.py
+    ```
 
-# Run sim
-uv run examples/robocasa_environment.py
-```
+ - [Robocasa environments](./examples/robocasa_environment.py)
 
-Ignore any warnings.
-
-<img src="./docs/robocasa_scene_1.png" title="Camera Streams" width="300px">
-<img src="./docs/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
+    ```
+    # Setup
+    uv pip install -e ".[robocasa]"
+    uv pip install -e "robocasa@third_party/robocasa"
+    uv pip install -e "robosuite@third_party/robosuite"
+    uv run third_party/robosuite/robosuite/scripts/setup_macros.py
+    uv run third_party/robocasa/robocasa/scripts/setup_macros.py
+    uv run third_party/robocasa/robocasa/scripts/download_kitchen_assets.py
+    
+    # Run sim
+    uv run examples/robocasa_environment.py
+    ```
+    
+    Ignore any warnings.
+    
+    <img src="./docs/robocasa_scene_1.png" title="Camera Streams" width="300px">
+    <img src="./docs/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
 
 ## Try Writing Code
 
