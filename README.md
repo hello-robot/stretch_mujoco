@@ -11,33 +11,33 @@ Currently only Stretch 3 is fully supported with a position control interface fo
 
 ## Getting Started
 
-First, install [`uv`](https://docs.astral.sh/uv/#getting-started). Uv is a package manager that we'll use to run this project.
+ 1. Install [`uv`](https://docs.astral.sh/uv/#getting-started). Uv is a package manager that we'll use to run this project.
 
-Then, clone this repo:
+ 2. Clone this repo:
 
-```
-git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
-cd stretch_mujoco
-```
+    ```
+    git clone https://github.com/hello-robot/stretch_mujoco --recurse-submodules
+    cd stretch_mujoco
+    ```
 
-> If you've already cloned the repo without `--recurse-submodules`, run `git submodule update --init` to pull the submodule.
+    > If you've already cloned the repo without `--recurse-submodules`, run `git submodule update --init` to pull the submodule.
 
-Then, install this repo:
+3. Install this repo:
 
-```
-uv venv
-uv pip install -e .
-```
+    ```
+    uv venv
+    uv pip install -e .
+    ```
 
-Lastly, run the simulation:
+ 4. Run the simulation:
 
-<img src="./docs/stretch3_in_mujoco.png" title="Mujoco Viewer" height="250px">
+    <img src="./docs/stretch3_in_mujoco.png" title="Mujoco Viewer" height="250px">
 
-```
-uv run launch_sim.py
-```
+    ```
+    uv run launch_sim.py
+    ```
 
-To exit, press `Ctrl+C` in the terminal.
+    To exit, press `Ctrl+C` in the terminal.
 
 > [!NOTE]
 > On MacOS, if `mjpython` fails to locate `libpython3.10.dylib` or `libz.1.dylib`, run these commands:
