@@ -75,6 +75,8 @@ Currently only Stretch 3 is fully supported with a position control interface fo
     uv run examples/laser_scan.py
     ```
 
+    <img src="./docs/laserscan.gif" title="Plotting Scans" width="300px">
+
  - [Robocasa environments](./examples/robocasa_environment.py)
 
     ```
