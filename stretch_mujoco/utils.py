@@ -123,20 +123,45 @@ def diff_drive_inv_kinematics(V: float, omega: float) -> tuple:
 
 class FpsCounter:
     def __init__(self):
-        self.fps_counter = 0
-        self.fps_start_time = time.perf_counter()
+        self._fps_counter = 0
+        self._wall_time = time.perf_counter()
+
         self.fps = 0
+        """The actual fps count"""
 
-    def tick(self):
-        self.fps_counter += 1
+        self.sim_to_real_ratio:float|None = None
+        """Sim time compared with real time"""
 
-        elapsed = time.perf_counter() - self.fps_start_time
+        self._last_sim_time = 0
+
+
+    def tick(self, sim_time:float|None = None):
+        """
+        Call this during step() to update the fps counter. 
+
+        Pass sim_time to calculate sim-to-real time.
+        """
+        self._fps_counter += 1
+
+        elapsed = time.perf_counter() - self._wall_time
         # When one second has passed, count:
-        if elapsed > 1.0:
-            self.fps = self.fps_counter / elapsed
-            self.fps_start_time = time.perf_counter()
-            self.fps_counter = 0
+        if elapsed >= 1.0:
+            new_wall_time = time.perf_counter()
+            
+            if sim_time:
+                self.sim_to_real_ratio = (sim_time - self._last_sim_time)/(new_wall_time - self._wall_time)
+                self._last_sim_time = sim_time
 
+            self.fps = self._fps_counter / elapsed
+            self._wall_time = new_wall_time
+            self._fps_counter = 0
+
+        
+    @property
+    def sim_to_real_time_ratio_msg(self): 
+        if self.sim_to_real_ratio is None:
+            return "sim_to_real_ratio is not set. Call `tick(sim_time=)` with the sim_time to calculate it."
+        return f"Sim is running {self.sim_to_real_ratio:.3f}x as fast as realtime"
 
 class URDFmodel:
     def __init__(self) -> None:
