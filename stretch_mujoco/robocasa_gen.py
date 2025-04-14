@@ -98,13 +98,26 @@ def choose_option(options, option_name, show_keys=False, default=None, default_m
     return choice
 
 def choose_layout():
-    return choose_option(
+    layout = choose_option(
             layouts, "kitchen layout", default=-1, default_message="random layouts"
         )
+    
+    if layout == -1:
+        layout = np.random.choice(range(10))
+        print(colored(f"Randomly choosing layout... id: {layout}", "yellow"))
+    
+    return layout
 
 def choose_style():
     styles = get_styles()
-    return choose_option(styles, "kitchen style", default=-1, default_message="random styles")
+    style = choose_option(styles, "kitchen style", default=-1, default_message="random styles")
+
+    if style == -1:
+        style = np.random.choice(range(11))
+        print(colored(f"Randomly choosing style... id: {style}", "yellow"))
+    
+    return style
+
 
 def model_generation_wizard(
     task: str = "PnPCounterToCab",
@@ -140,13 +153,6 @@ def model_generation_wizard(
         style = choose_style()
     else:
         style = style
-
-    if layout == -1:
-        layout = np.random.choice(range(10))
-        print(colored(f"Randomly choosing layout... id: {layout}", "yellow"))
-    if style == -1:
-        style = np.random.choice(range(11))
-        print(colored(f"Randomly choosing style... id: {style}", "yellow"))
 
     # Create argument configuration
     # TODO: Figure how to get an env without robot arg
