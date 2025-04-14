@@ -118,6 +118,13 @@ def choose_style():
     
     return style
 
+def layout_from_str(layout:str) -> int:
+    """Returns the index of the layout in the orderedDict"""
+    return list(layouts.values()).index(layout)
+
+def style_from_str(style:str) -> int:
+    """Returns the index of the style in the orderedDict"""
+    return list(get_styles().values()).index(style)
 
 def model_generation_wizard(
     task: str = "PnPCounterToCab",
