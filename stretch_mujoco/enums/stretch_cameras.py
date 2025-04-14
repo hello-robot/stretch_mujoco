@@ -122,11 +122,11 @@ class StretchCameras(Enum):
         if self == StretchCameras.cam_d435i_depth:
             return CameraSettings(**{"fovy": 62, "width": 640, "height": 480})
         
-        # if self == StretchCameras.cam_nav_rgb:
-        #     return CameraSettings(
-        #         fovy=69,
-        #         width=640,
-        #         height=480
-        #     )
+        if self == StretchCameras.cam_nav_rgb:
+            return CameraSettings(
+                fovy=70, # Arducam B0385
+                width=640,
+                height=480
+            )
 
         raise NotImplementedError(f"Camera {self} initial settings are not implemented")
