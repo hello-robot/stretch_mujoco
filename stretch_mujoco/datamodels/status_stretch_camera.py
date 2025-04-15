@@ -51,9 +51,9 @@ class StatusStretchCameras:
         elif camera == StretchCameras.cam_d405_depth:
             data = self.cam_d405_depth
         elif camera == StretchCameras.cam_d435i_rgb and self.cam_d435i_rgb is not None:
-            data = np.rot90(self.cam_d435i_rgb, 3)
+            data = np.rot90(self.cam_d435i_rgb, -1)
         elif camera == StretchCameras.cam_d435i_depth and self.cam_d435i_depth is not None:
-            data = np.rot90(self.cam_d435i_depth, 3)
+            data = np.rot90(self.cam_d435i_depth, -1)
         elif camera == StretchCameras.cam_nav_rgb:
             data = self.cam_nav_rgb
 
