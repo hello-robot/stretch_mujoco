@@ -32,6 +32,21 @@ def get_styles() -> OrderedDict:
     return styles
 
 
+layouts = OrderedDict(
+    [
+        (0, "One wall"),
+        (1, "One wall w/ island"),
+        (2, "L-shaped"),
+        (3, "L-shaped w/ island"),
+        (4, "Galley"),
+        (5, "U-shaped"),
+        (6, "U-shaped w/ island"),
+        (7, "G-shaped"),
+        (8, "G-shaped (large)"),
+        (9, "Wraparound"),
+    ]
+)
+
 """
 Modified version of robocasa's kitchen scene generation script
 https://github.com/robocasa/robocasa/blob/main/robocasa/demos/demo_kitchen_scenes.py
@@ -82,6 +97,34 @@ def choose_option(options, option_name, show_keys=False, default=None, default_m
     # Return the chosen environment name
     return choice
 
+def choose_layout():
+    layout = choose_option(
+            layouts, "kitchen layout", default=-1, default_message="random layouts"
+        )
+    
+    if layout == -1:
+        layout = np.random.choice(range(10))
+        print(colored(f"Randomly choosing layout... id: {layout}", "yellow"))
+    
+    return layout
+
+def choose_style():
+    styles = get_styles()
+    style = choose_option(styles, "kitchen style", default=-1, default_message="random styles")
+
+    if style == -1:
+        style = np.random.choice(range(11))
+        print(colored(f"Randomly choosing style... id: {style}", "yellow"))
+    
+    return style
+
+def layout_from_str(layout:str) -> int:
+    """Returns the index of the layout in the orderedDict"""
+    return list(layouts.values()).index(layout)
+
+def style_from_str(style:str) -> int:
+    """Returns the index of the style in the orderedDict"""
+    return list(get_styles().values()).index(style)
 
 def model_generation_wizard(
     task: str = "PnPCounterToCab",
@@ -106,40 +149,17 @@ def model_generation_wizard(
     Returns:
         Tuple[mujoco.MjModel, str, Dict]: model, xml string and Object placements info
     """
-    layouts = OrderedDict(
-        [
-            (0, "One wall"),
-            (1, "One wall w/ island"),
-            (2, "L-shaped"),
-            (3, "L-shaped w/ island"),
-            (4, "Galley"),
-            (5, "U-shaped"),
-            (6, "U-shaped w/ island"),
-            (7, "G-shaped"),
-            (8, "G-shaped (large)"),
-            (9, "Wraparound"),
-        ]
-    )
 
-    styles = get_styles()
     if layout is None:
-        layout = choose_option(
-            layouts, "kitchen layout", default=-1, default_message="random layouts"
-        )
+        layout = choose_layout()
     else:
         layout = layout
 
+    styles = get_styles()
     if style is None:
-        style = choose_option(styles, "kitchen style", default=-1, default_message="random styles")
+        style = choose_style()
     else:
         style = style
-
-    if layout == -1:
-        layout = np.random.choice(range(10))
-        print(colored(f"Randomly choosing layout... id: {layout}", "yellow"))
-    if style == -1:
-        style = np.random.choice(range(11))
-        print(colored(f"Randomly choosing style... id: {style}", "yellow"))
 
     # Create argument configuration
     # TODO: Figure how to get an env without robot arg
