@@ -31,8 +31,14 @@ class StatusStretchCameras:
         
         Note: Alternatively, use `get_camera_data()` to get a specific camera's data.
         """
-        return [(name, data) for name, data in self.to_dict().items() if isinstance(data, np.ndarray) and "_K" not in name ]
+        data = []
+        for camera in StretchCameras.all():
+            try:
+                data.append((camera.name, self.get_camera_data(camera)))
+            except: ...
 
+        return data
+    
     def get_camera_data(self, camera:StretchCameras) -> np.ndarray:
         """
         Use this to match a StretchCameras enum instance with its property in StatusStretchCameras dataclass, to get the camera data property.
@@ -44,15 +50,15 @@ class StatusStretchCameras:
             data = self.cam_d405_rgb
         elif camera == StretchCameras.cam_d405_depth:
             data = self.cam_d405_depth
-        elif camera == StretchCameras.cam_d435i_rgb:
-            data = self.cam_d435i_rgb
-        elif camera == StretchCameras.cam_d435i_depth:
-            data = self.cam_d435i_depth
+        elif camera == StretchCameras.cam_d435i_rgb and self.cam_d435i_rgb is not None:
+            data = np.rot90(self.cam_d435i_rgb, 3)
+        elif camera == StretchCameras.cam_d435i_depth and self.cam_d435i_depth is not None:
+            data = np.rot90(self.cam_d435i_depth, 3)
         elif camera == StretchCameras.cam_nav_rgb:
             data = self.cam_nav_rgb
 
         if data is None:
-            raise ValueError(f"Tried to get {camera} data, but it is empty.")
+            raise ValueError(f"Tried to get {camera} data, but it is empty or not implemented.")
         
         return data
     
