@@ -24,26 +24,32 @@ class StatusStretchCameras:
 
     cam_nav_rgb: np.ndarray|None = None
 
-    def get_all(self)-> list[tuple[str, np.ndarray]]:
-        """Returns the camera `(name, pixels)` that are available (not None).
+    def get_all(self, auto_rotate: bool = True)-> dict[StretchCameras, np.ndarray]:
+        """Returns the camera `{StretchCameras: pixels}` that are available (not None).
 
-        A note to nip confusion - this get the values inside this dataclass, it does not poll from the simulator.
+        `auto_rotate` will correct the rotation of the cam_d435i_rgb and cam_d435i_depth from their innately rotated optical frame.
+
+        Note: This get the values inside this dataclass; it does not poll from the simulator.
         
         Note: Alternatively, use `get_camera_data()` to get a specific camera's data.
         """
-        data = []
+        data: dict[StretchCameras, np.ndarray] = {}
         for camera in StretchCameras.all():
             try:
-                data.append((camera.name, self.get_camera_data(camera)))
-            except: ...
+                data[camera] = self.get_camera_data(camera=camera, auto_rotate=auto_rotate)
+            except ValueError: ... # get_camera_data throws a ValueError when the value is None or doesn't exist.
 
         return data
     
-    def get_camera_data(self, camera:StretchCameras) -> np.ndarray:
+    def get_camera_data(self, camera:StretchCameras, auto_rotate: bool = True) -> np.ndarray:
         """
-        Use this to match a StretchCameras enum instance with its property in StatusStretchCameras dataclass, to get the camera data property.
+        Use this to get the camera data (pixels) using a StretchCameras instance.
+        
+        Throws a ValueError if the data is None.
 
-        A note to nip confusion - this get the values inside this dataclass, it does not poll from the simulator.
+        `auto_rotate` will correct the rotation of the cam_d435i_rgb and cam_d435i_depth from their innately rotated optical frame.
+
+        Note: This get the values inside this dataclass; it does not poll from the simulator.
         """
         data:np.ndarray|None = None
         if camera == StretchCameras.cam_d405_rgb:
@@ -51,9 +57,9 @@ class StatusStretchCameras:
         elif camera == StretchCameras.cam_d405_depth:
             data = self.cam_d405_depth
         elif camera == StretchCameras.cam_d435i_rgb and self.cam_d435i_rgb is not None:
-            data = np.rot90(self.cam_d435i_rgb, -1)
+            data = np.rot90(self.cam_d435i_rgb, -1) if auto_rotate else self.cam_d435i_rgb
         elif camera == StretchCameras.cam_d435i_depth and self.cam_d435i_depth is not None:
-            data = np.rot90(self.cam_d435i_depth, -1)
+            data = np.rot90(self.cam_d435i_depth, -1) if auto_rotate else self.cam_d435i_depth
         elif camera == StretchCameras.cam_nav_rgb:
             data = self.cam_nav_rgb
 
@@ -66,7 +72,7 @@ class StatusStretchCameras:
         """
         Use this to match a StretchCameras enum instance with its property in StatusStretchCameras dataclass, to set the camera data property within this dataclass.
 
-        A note to nip confusion - this sets the values inside this dataclass, it does not send data to the simulator.
+        Note: This sets the values inside this dataclass; it does not send data to the simulator.
         """
         if camera == StretchCameras.cam_d405_rgb:
             self.cam_d405_rgb = data
