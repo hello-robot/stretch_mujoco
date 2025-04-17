@@ -60,14 +60,16 @@ class StatusStretchCameras:
         if camera == StretchCameras.cam_d405_rgb and self.cam_d405_rgb is not None:
             data = self.cam_d405_rgb
             data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR) if auto_correct_rgb else data
-        elif camera == StretchCameras.cam_d405_depth:
+        elif camera == StretchCameras.cam_d405_depth and self.cam_d405_depth is not None:
             data = self.cam_d405_depth
             data = get_depth_color_map(data) if use_depth_color_map else data
         elif camera == StretchCameras.cam_d435i_rgb and self.cam_d435i_rgb is not None:
-            data = np.rot90(self.cam_d435i_rgb, -1) if auto_rotate else self.cam_d435i_rgb
+            data = self.cam_d435i_rgb
+            data = np.rot90(data, -1) if auto_rotate else data
             data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR) if auto_correct_rgb else data
         elif camera == StretchCameras.cam_d435i_depth and self.cam_d435i_depth is not None:
-            data = np.rot90(self.cam_d435i_depth, -1) if auto_rotate else self.cam_d435i_depth
+            data = self.cam_d435i_depth
+            data = np.rot90(data, -1) if auto_rotate else data
             data = get_depth_color_map(data) if use_depth_color_map else data
         elif camera == StretchCameras.cam_nav_rgb and self.cam_nav_rgb is not None:
             data = self.cam_nav_rgb
