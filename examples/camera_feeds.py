@@ -22,9 +22,8 @@ def show_camera_feeds_sync(
     if print_fps:
         print(f"Physics fps: {sim.pull_status().fps}. Camera FPS: {camera_data.fps}. {sim.pull_status().sim_to_real_time_ratio_msg}")
     
-    for camera_name, pixels in camera_data.get_all().items():
-        image = cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR)
-        cv2.imshow(camera_name.name, image)
+    for camera_name, pixels in camera_data.get_all(use_depth_color_map=True).items():
+        cv2.imshow(camera_name.name, pixels)
 
     cv2.waitKey(1)
 

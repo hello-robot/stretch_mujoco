@@ -1,9 +1,10 @@
 import copy
 from dataclasses import asdict, dataclass
+import cv2
 import numpy as np
 
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
-from stretch_mujoco.utils import dataclass_from_dict
+from stretch_mujoco.utils import dataclass_from_dict, get_depth_color_map
 
 
 @dataclass
@@ -24,10 +25,12 @@ class StatusStretchCameras:
 
     cam_nav_rgb: np.ndarray|None = None
 
-    def get_all(self, auto_rotate: bool = True)-> dict[StretchCameras, np.ndarray]:
+    def get_all(self, *, auto_rotate: bool = True, auto_correct_rgb=True, use_depth_color_map=False)-> dict[StretchCameras, np.ndarray]:
         """Returns the camera `{StretchCameras: pixels}` that are available (not None).
 
-        `auto_rotate` will correct the rotation of the cam_d435i_rgb and cam_d435i_depth from their innately rotated optical frame.
+        `auto_rotate` will correct the rotation of the cam_d435i_rgb and cam_d435i_depth from their innately rotated optical frame. default: True
+        `auto_correct_rgb` will call `cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR)` before returning the pixels. default: True
+        `use_depth_color_map` default: False
 
         Note: This get the values inside this dataclass; it does not poll from the simulator.
         
@@ -36,32 +39,39 @@ class StatusStretchCameras:
         data: dict[StretchCameras, np.ndarray] = {}
         for camera in StretchCameras.all():
             try:
-                data[camera] = self.get_camera_data(camera=camera, auto_rotate=auto_rotate)
+                data[camera] = self.get_camera_data(camera=camera, auto_rotate=auto_rotate, auto_correct_rgb=auto_correct_rgb,use_depth_color_map=use_depth_color_map)
             except ValueError: ... # get_camera_data throws a ValueError when the value is None or doesn't exist.
 
         return data
     
-    def get_camera_data(self, camera:StretchCameras, auto_rotate: bool = True) -> np.ndarray:
+    def get_camera_data(self, camera:StretchCameras, *, auto_rotate: bool = True, auto_correct_rgb=True, use_depth_color_map=False) -> np.ndarray:
         """
         Use this to get the camera data (pixels) using a StretchCameras instance.
         
         Throws a ValueError if the data is None.
 
-        `auto_rotate` will correct the rotation of the cam_d435i_rgb and cam_d435i_depth from their innately rotated optical frame.
+        `auto_rotate` will correct the rotation of the cam_d435i_rgb and cam_d435i_depth from their innately rotated optical frame. default: True
+        `auto_correct_rgb` will call `cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR)` before returning the pixels. default: True
+        `use_depth_color_map` default: False
 
         Note: This get the values inside this dataclass; it does not poll from the simulator.
         """
         data:np.ndarray|None = None
-        if camera == StretchCameras.cam_d405_rgb:
+        if camera == StretchCameras.cam_d405_rgb and self.cam_d405_rgb is not None:
             data = self.cam_d405_rgb
+            data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR) if auto_correct_rgb else data
         elif camera == StretchCameras.cam_d405_depth:
             data = self.cam_d405_depth
+            data = get_depth_color_map(data) if use_depth_color_map else data
         elif camera == StretchCameras.cam_d435i_rgb and self.cam_d435i_rgb is not None:
             data = np.rot90(self.cam_d435i_rgb, -1) if auto_rotate else self.cam_d435i_rgb
+            data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR) if auto_correct_rgb else data
         elif camera == StretchCameras.cam_d435i_depth and self.cam_d435i_depth is not None:
             data = np.rot90(self.cam_d435i_depth, -1) if auto_rotate else self.cam_d435i_depth
-        elif camera == StretchCameras.cam_nav_rgb:
+            data = get_depth_color_map(data) if use_depth_color_map else data
+        elif camera == StretchCameras.cam_nav_rgb and self.cam_nav_rgb is not None:
             data = self.cam_nav_rgb
+            data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR) if auto_correct_rgb else data
 
         if data is None:
             raise ValueError(f"Tried to get {camera} data, but it is empty or not implemented.")

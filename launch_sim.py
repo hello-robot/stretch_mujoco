@@ -23,8 +23,7 @@ def main(
                 camera_data = sim.pull_camera_data()
 
                 for camera in cameras_to_use:
-                    image = cv2.cvtColor(camera_data.get_camera_data(camera), cv2.COLOR_RGB2BGR)
-                    cv2.imshow(camera.name, image)
+                    cv2.imshow(camera.name, camera_data.get_camera_data(camera))
 
     except KeyboardInterrupt:
         sim.stop()
