@@ -164,7 +164,7 @@ class MujocoServer:
             try:
                 actuator = Actuators.get_actuator_by_joint_names_in_mjcf(name)
                 self.data_proxies.set_joint_limit(actuator=actuator, min_max=(joint_range[0], joint_range[1]))
-            except: print(f"No actuator for joint {name}")
+            except: ...
 
     def set_camera_manager(
         self,
