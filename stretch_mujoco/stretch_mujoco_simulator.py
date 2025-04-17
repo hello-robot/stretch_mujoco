@@ -370,6 +370,13 @@ class StretchMujocoSimulator:
         Pull robot joint states from the simulator and return as a StatusStretchJoints
         """
         return self.data_proxies.get_status()
+    
+    @require_connection
+    def pull_joint_limits(self) -> dict[Actuators, tuple[float, float]]:
+        """
+        Pull robot joint limuts from the simulator and return as a dict
+        """
+        return self.data_proxies.get_joint_limits()
 
     def is_mujoco_process_dead_or_stopevent_triggered(self):
         return (

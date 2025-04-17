@@ -19,6 +19,7 @@ from mujoco._structs import MjData, MjModel
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 from stretch_mujoco.datamodels.status_stretch_sensors import StatusStretchSensors
+from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 import stretch_mujoco.config as config
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
@@ -38,6 +39,7 @@ class MujocoServerProxies:
     _status: "DictProxy[str, StatusStretchJoints]"
     _cameras: "DictProxy[str, StatusStretchCameras]"
     _sensors: "DictProxy[str, StatusStretchSensors]"
+    _joint_limits: "DictProxy[Actuators, tuple[float, float]]"
 
     def __setattr__(self, name: str, value) -> None:
         try:
@@ -69,13 +71,20 @@ class MujocoServerProxies:
     def set_sensors(self, value: StatusStretchSensors):
         self._sensors["val"] = value
 
+    def get_joint_limits(self) -> dict[Actuators, tuple[float, float]]:
+        return dict(self._joint_limits)
+
+    def set_joint_limit(self, actuator: Actuators, min_max: tuple[float, float]):
+        self._joint_limits[actuator] = min_max
+
     @staticmethod
     def default(manager: SyncManager) -> "MujocoServerProxies":
         return MujocoServerProxies(
             _command=manager.dict({"val": StatusCommand.default()}),
             _status=manager.dict({"val": StatusStretchJoints.default()}),
             _cameras=manager.dict({"val": StatusStretchCameras.default()}),
-            _sensors = manager.dict({"val": StatusStretchSensors.default()})
+            _sensors=manager.dict({"val": StatusStretchSensors.default()}),
+            _joint_limits=manager.dict({}),
         )
 
 
@@ -104,7 +113,6 @@ class MujocoServer:
             cameras_to_use=cameras_to_use,
         )
 
-
     def __init__(
         self,
         scene_xml_path: str | None,
@@ -129,7 +137,7 @@ class MujocoServer:
 
         # Hide the rangefinder lines:
         self.mjmodel.vis.rgba.rangefinder[3] = 0
-        
+
         self._base_in_pos_motion = False
 
         self._stop_mujoco_process_event = stop_mujoco_process_event
@@ -141,11 +149,22 @@ class MujocoServer:
         self.sensor_manager = MujocoServerSensorManagerThreaded(
             sensor_hz=15,
             sensors_to_use=StretchSensors.from_mjmodel(self.mjmodel),
-            mujoco_server=self
+            mujoco_server=self,
         )
+
+        self.update_joint_limits()
 
         signal.signal(signal.SIGTERM, lambda num, h: self.request_to_stop())
         signal.signal(signal.SIGINT, lambda num, h: self.request_to_stop())
+
+    def update_joint_limits(self):
+        for i in range(self.mjmodel.njnt):
+            name = mujoco._functions.mj_id2name(self.mjmodel, mujoco._enums.mjtObj.mjOBJ_JOINT, i)
+            joint_range = self.mjmodel.jnt_range[i]  # This gives [lower_limit, upper_limit]
+            try:
+                actuator = Actuators.get_actuator_by_joint_names_in_mjcf(name)
+                self.data_proxies.set_joint_limit(actuator=actuator, min_max=(joint_range[0], joint_range[1]))
+            except: print(f"No actuator for joint {name}")
 
     def set_camera_manager(
         self,
@@ -208,7 +227,7 @@ class MujocoServer:
         Clean up C++ resources
         """
         self.request_to_stop()
-        
+
         if isinstance(self.camera_manager, MujocoServerCameraManagerThreaded):
             self.camera_manager.cameras_thread.join()
 
@@ -216,7 +235,6 @@ class MujocoServer:
             self.sensor_manager.sensors_thread.join()
 
         self.camera_manager.close()
-
 
     def _run_ui_simulation(self, show_viewer_ui: bool) -> None:
         """
@@ -315,7 +333,7 @@ class MujocoServer:
         if not self.mjdata or not self.mjdata.time:
             print("WARNING: no mujoco data to report")
             return
-        
+
         self.physics_fps_counter.tick(sim_time=data.time)
         self.pull_status()
         self.push_command()
