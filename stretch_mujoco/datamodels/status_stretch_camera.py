@@ -73,6 +73,7 @@ class StatusStretchCameras:
             data = get_depth_color_map(data) if use_depth_color_map else data
         elif camera == StretchCameras.cam_nav_rgb and self.cam_nav_rgb is not None:
             data = self.cam_nav_rgb
+            data = np.rot90(data, 1) if auto_rotate else data
             data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR) if auto_correct_rgb else data
 
         if data is None:
