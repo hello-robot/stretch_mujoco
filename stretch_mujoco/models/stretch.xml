@@ -465,7 +465,7 @@
             <joint name="joint_head_nav_cam" class="head_tilt" stiffness="10"/>
             <geom mesh="link_SE3_head_nav_cam" material="Generic_Black" class="visual" mass="0.028346169831483"/>
             <body name="head_nav_cam" pos="0 0 0">
-              <camera name="nav_camera_rgb" pos="0 0 0" euler="-3.1415926 0 3.1415926" fovy="69"/>
+              <camera name="nav_camera_rgb" pos="0 0 0" euler="-3.1415926 0 -1.5707963" fovy="69"/>
             </body>
           </body>
         </body>
