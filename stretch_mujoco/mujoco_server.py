@@ -39,7 +39,7 @@ class MujocoServerProxies:
     _status: "DictProxy[str, StatusStretchJoints]"
     _cameras: "DictProxy[str, StatusStretchCameras]"
     _sensors: "DictProxy[str, StatusStretchSensors]"
-    _joint_limits: "DictProxy[Actuators, tuple[float, float]]"
+    _joint_limits: "DictProxy[str, dict[Actuators, tuple[float, float]]]"
 
     def __setattr__(self, name: str, value) -> None:
         try:
@@ -72,10 +72,13 @@ class MujocoServerProxies:
         self._sensors["val"] = value
 
     def get_joint_limits(self) -> dict[Actuators, tuple[float, float]]:
-        return dict(self._joint_limits)
+        return self._joint_limits["val"]
 
     def set_joint_limit(self, actuator: Actuators, min_max: tuple[float, float]):
-        self._joint_limits[actuator] = min_max
+        limits = self._joint_limits["val"]
+        limits[actuator] = min_max
+
+        self._joint_limits["val"] = limits
 
     @staticmethod
     def default(manager: SyncManager) -> "MujocoServerProxies":
@@ -84,7 +87,7 @@ class MujocoServerProxies:
             _status=manager.dict({"val": StatusStretchJoints.default()}),
             _cameras=manager.dict({"val": StatusStretchCameras.default()}),
             _sensors=manager.dict({"val": StatusStretchSensors.default()}),
-            _joint_limits=manager.dict({}),
+            _joint_limits=manager.dict({"val": {}}),
         )
 
 
