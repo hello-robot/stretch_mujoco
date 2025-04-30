@@ -119,6 +119,9 @@ sim.move_to('lift', 1.0)
 sim.move_by('head_pan', -1.1)
 sim.move_by('base_translate', 0.1)
 
+sim.wait_until_at_setpoint('lift')
+sim.wait_while_is_moving('base_translate')
+
 # Base Velocity control
 sim.set_base_velocity(0.3, -0.1)
 
