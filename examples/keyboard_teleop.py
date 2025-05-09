@@ -1,3 +1,4 @@
+from time import sleep
 from pynput import keyboard
 
 import click
@@ -54,9 +55,21 @@ def keyboard_control(key: str|None, sim: StretchMujocoSimulator):
         sim.move_by(Actuators.gripper, -0.07)
     elif key == "q":
         sim.stop()
-        exit()
 
+# Allow multiple key-presses, references https://stackoverflow.com/a/74910695
+key_buffer = []
 
+def on_press(key):
+    global key_buffer
+    if key not in key_buffer and len(key_buffer) < 3:
+        key_buffer.append(key)
+        print(key_buffer)
+
+def on_release(key):
+    global key_buffer
+    if(key in key_buffer):
+        key_buffer.remove(key)
+        
 @click.command()
 @click.option("--scene-xml-path", type=str, default=None, help="Path to the scene xml file")
 @click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
@@ -77,15 +90,22 @@ def main(scene_xml_path: str, robocasa_env: bool):
 
         print_keyboard_options()
 
-        with keyboard.Events() as events:
-            while sim.is_running():
-                event = events.get(1.0) # Blocks
-                if event is not None:
-                    key = event.key
-                    if isinstance(key, keyboard.KeyCode):
-                        keyboard_control(key.char, sim)
+
+        listener = keyboard.Listener(
+            on_press=on_press,
+            on_release=on_release
+        )
+
+        listener.start()
+
+        while sim.is_running():
+            for key in key_buffer:
+                if isinstance(key, keyboard.KeyCode):
+                    keyboard_control(key.char, sim)
+            sleep(0.05)
+
+        listener.stop()
                     
-                    print_keyboard_options()
 
     except KeyboardInterrupt:
         sim.stop()
