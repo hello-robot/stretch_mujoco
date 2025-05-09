@@ -9,10 +9,6 @@ from typing import Callable
 import click
 import mujoco
 import mujoco._functions
-import mujoco._callbacks
-import mujoco._render
-import mujoco._enums
-import mujoco.viewer
 import numpy as np
 from mujoco._structs import MjData, MjModel
 
@@ -379,8 +375,7 @@ class MujocoServer:
         new_status.wrist_roll.pos = self.mjdata.actuator("wrist_roll").length[0]
         new_status.wrist_roll.vel = self.mjdata.actuator("wrist_roll").velocity[0]
 
-        real_gripper_pos = self._to_real_gripper_range(self.mjdata.actuator("gripper").length[0])
-        new_status.gripper.pos = real_gripper_pos
+        new_status.gripper.pos = self._to_real_gripper_range(self.mjdata.actuator("gripper").length[0])
         new_status.gripper.vel = self.mjdata.actuator("gripper").velocity[
             0
         ]  # This is still in sim gripper range
@@ -411,59 +406,64 @@ class MujocoServer:
 
     def push_command(self):
         command_status = self.data_proxies.get_command()
+        
         # move_by
-        if command_status.move_by is not None:
-            for command in command_status.move_by:
-                if command.trigger:
-                    actuator_name = command.actuator_name
-                    pos = command.pos
-                    if actuator_name in ["base_translate", "base_rotate"]:
-                        if self._base_in_pos_motion:
-                            self._stop_base_pos_tracking()
-                            time.sleep(1 / 20)
-                        if actuator_name == "base_translate":
-                            threading.Thread(
-                                target=self._base_translate_by, args=(pos,), daemon=True
-                            ).start()
-                        else:
-                            threading.Thread(
-                                target=self._base_rotate_by, args=(pos,), daemon=True
-                            ).start()
+        for _, command in command_status.move_by.items():
+            if command.trigger:
+                command.trigger = False
+                actuator_name = command.actuator_name
+                pos = command.pos
+                if actuator_name in ["base_translate", "base_rotate"]:
+                    if self._base_in_pos_motion:
+                        self._stop_base_pos_tracking()
+                        time.sleep(1 / 20)
+                    if actuator_name == "base_translate":
+                        threading.Thread(
+                            target=self._base_translate_by, args=(pos,), daemon=True
+                        ).start()
                     else:
-                        current_value = self.data_proxies.get_status()[actuator_name].pos
-                        if actuator_name == "gripper":
-                            self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
-                                current_value + pos
-                            )
-                        else:
-                            self.mjdata.actuator(actuator_name).ctrl = current_value + pos
+                        threading.Thread(
+                            target=self._base_rotate_by, args=(pos,), daemon=True
+                        ).start()
+                else:
+                    if actuator_name == "gripper":
+                        current_value = self._to_real_gripper_range(self.mjdata.actuator("gripper").length[0])
+                        self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
+                            current_value + pos
+                        )
+                    else:
+                        current_value = self.mjdata.actuator(actuator_name).length[0]
+                        self.mjdata.actuator(actuator_name).ctrl = current_value + pos
 
         # move_to
-        if command_status.move_to is not None:
-            for command in command_status.move_to:
-                if command.trigger:
-                    actuator_name = command.actuator_name
-                    pos = command.pos
-                    if actuator_name == "gripper":
-                        self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
-                    else:
-                        self.mjdata.actuator(actuator_name).ctrl = pos
+        for _, command in command_status.move_to.items():
+            if command.trigger:
+                command.trigger = False
+                actuator_name = command.actuator_name
+                pos = command.pos
+                if actuator_name == "gripper":
+                    self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
+                else:
+                    self.mjdata.actuator(actuator_name).ctrl = pos
 
         # set_base_velocity
         if (
-            command_status.set_base_velocity is not None
-            and command_status.set_base_velocity.trigger
+            command_status.base_velocity is not None
+            and command_status.base_velocity.trigger
         ):
+            command_status.base_velocity.trigger = False
             self.set_base_velocity(
-                command_status.set_base_velocity.v_linear,
-                command_status.set_base_velocity.omega,
+                command_status.base_velocity.v_linear,
+                command_status.base_velocity.omega,
             )
 
         # keyframe
         if command_status.keyframe is not None and command_status.keyframe.trigger:
+            command_status.keyframe.trigger = False
             self.mjdata.ctrl = self.mjmodel.keyframe(command_status.keyframe.name).ctrl
 
-        self.data_proxies.set_command(StatusCommand.default())
+        self.data_proxies.set_command(command_status)
+        
 
     def _base_translate_by(self, x_inc: float) -> None:
         """
@@ -520,8 +520,8 @@ class MujocoServer:
             self._stop_base_pos_tracking()
             time.sleep(1 / 20)
         w_left, w_right = utils.diff_drive_inv_kinematics(v_linear, omega)
-        self.mjdata.actuator("left_wheel_vel").ctrl = w_left
-        self.mjdata.actuator("right_wheel_vel").ctrl = w_right
+        self.mjdata.actuator(Actuators.left_wheel_vel.name).ctrl = w_left
+        self.mjdata.actuator(Actuators.right_wheel_vel.name).ctrl = w_right
 
     def _to_sim_gripper_range(self, pos: float) -> float:
         """
