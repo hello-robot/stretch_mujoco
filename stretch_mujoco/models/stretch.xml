@@ -8,10 +8,6 @@
     <flag multiccd="enable"/>
   </option>
   <size njmax="5000" nconmax="5000" />
-  <visual>
-    <global offwidth="800" offheight="600"/>
-  </visual>
-
 
   <default>
     <default class="stretch">

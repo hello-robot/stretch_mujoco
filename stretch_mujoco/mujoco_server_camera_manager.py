@@ -94,6 +94,16 @@ class MujocoServerCameraManagerSync:
 
     def _create_camera_renderer(self, for_camera: StretchCameras):
         settings = for_camera.initial_camera_settings
+
+        # Update mujoco's offscreen gl buffer size to accomodate bigger resolutions:
+        offscreen_buffer_width = self.mujoco_server.mjmodel.vis.global_.offwidth
+        offscreen_buffer_height = self.mujoco_server.mjmodel.vis.global_.offheight
+
+        if settings.width > offscreen_buffer_width:
+            self.mujoco_server.mjmodel.vis.global_.offwidth = settings.width
+        if settings.height > offscreen_buffer_height:
+            self.mujoco_server.mjmodel.vis.global_.offheight = settings.height
+
         renderer = mujoco.Renderer(
             self.mujoco_server.mjmodel, width=settings.width, height=settings.height
         )
