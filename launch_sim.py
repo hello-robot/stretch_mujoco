@@ -14,16 +14,17 @@ def main(
     headless: bool,
     imagery: bool
 ) -> None:
-    sim = stretch_mujoco.StretchMujocoSimulator(scene_xml_path)
+    cameras_to_use = StretchCameras.all() if imagery else []
+    sim = stretch_mujoco.StretchMujocoSimulator(scene_xml_path,cameras_to_use=cameras_to_use)
     sim.start(headless=headless)
-    cameras_to_use = StretchCameras.all() if imagery else StretchCameras.none()
     try:
         while sim.is_running():
-            if imagery: # display camera feeds
-                camera_data = sim.pull_camera_data()
+            camera_data = sim.pull_camera_data()
 
-                for camera in cameras_to_use:
-                    cv2.imshow(camera.name, camera_data.get_camera_data(camera))
+            for camera in cameras_to_use:
+                cv2.imshow(camera.name, camera_data.get_camera_data(camera))
+
+            cv2.waitKey(10)
 
     except KeyboardInterrupt:
         sim.stop()
