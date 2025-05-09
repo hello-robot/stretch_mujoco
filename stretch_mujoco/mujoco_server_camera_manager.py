@@ -32,11 +32,7 @@ class MujocoServerCameraManagerSync:
 
         self.camera_renderers: dict[StretchCameras, mujoco.Renderer] = {}
 
-        self._set_initial_camera_properties(cameras_to_use)
-
-        for camera in cameras_to_use:
-            # Add this camera for the cameras_rendering_thread_pool to do rendering on
-            self._add_camera_renderer(camera)
+        self._set_camera_properties_and_create_renderers_in_mujoco(cameras_to_use)
 
         self.camera_fps_counter = FpsCounter()
 
@@ -96,10 +92,21 @@ class MujocoServerCameraManagerSync:
 
         self.mujoco_server.data_proxies.set_cameras(new_imagery)
 
-    def _create_camera_renderer(self, is_depth: bool):
-        renderer = mujoco.Renderer(self.mujoco_server.mjmodel, height=480, width=640)
+    def _create_camera_renderer(self, for_camera: StretchCameras):
+        settings = for_camera.initial_camera_settings
 
-        # print(f"{(threading.current_thread is threading.main_thread())=}")
+        # Update mujoco's offscreen gl buffer size to accomodate bigger resolutions:
+        offscreen_buffer_width = self.mujoco_server.mjmodel.vis.global_.offwidth
+        offscreen_buffer_height = self.mujoco_server.mjmodel.vis.global_.offheight
+
+        if settings.width > offscreen_buffer_width:
+            self.mujoco_server.mjmodel.vis.global_.offwidth = settings.width
+        if settings.height > offscreen_buffer_height:
+            self.mujoco_server.mjmodel.vis.global_.offheight = settings.height
+
+        renderer = mujoco.Renderer(
+            self.mujoco_server.mjmodel, width=settings.width, height=settings.height
+        )
 
         from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 
@@ -109,7 +116,7 @@ class MujocoServerCameraManagerSync:
             # On MacOS, switch to glfw because CGL is not compatible with offscreen rendering on the managed viewer (because of mutex locking).
             switch_to_glfw_renderer(self.mujoco_server.mjmodel, renderer)
 
-        if is_depth:
+        if for_camera.is_depth:
             renderer.enable_depth_rendering()
 
         return renderer
@@ -122,9 +129,7 @@ class MujocoServerCameraManagerSync:
         """
 
         with self.camera_lock:
-            renderer.update_scene(
-                data=self.mujoco_server.mjdata, camera=camera.camera_name_in_mjcf
-            )
+            renderer.update_scene(data=self.mujoco_server.mjdata, camera=camera.camera_name_in_mjcf)
 
             render = renderer.render()
 
@@ -155,7 +160,7 @@ class MujocoServerCameraManagerSync:
         if camera in self.camera_renderers:
             raise Exception(f"Camera {camera} is already in {self.camera_renderers=}")
 
-        self.camera_renderers[camera] = self._create_camera_renderer(is_depth=camera.is_depth)
+        self.camera_renderers[camera] = self._create_camera_renderer(for_camera=camera)
 
     def get_camera_params(self, camera: StretchCameras) -> np.ndarray:
         """
@@ -163,16 +168,18 @@ class MujocoServerCameraManagerSync:
         """
         cam = self.mujoco_server.mjmodel.camera(camera.camera_name_in_mjcf)
         d = {
-            "fovy": cam.fovy,
             "f": self.mujoco_server.mjmodel.cam_intrinsic[cam.id][:2],
             "p": self.mujoco_server.mjmodel.cam_intrinsic[cam.id][2:],
             "res": self.mujoco_server.mjmodel.cam_resolution[cam.id],
         }
-        
-        camera_k = utils.compute_K(d["fovy"][0], d["res"][0], d["res"][1])
+        camera_k = utils.compute_K(
+            camera.initial_camera_settings.field_of_view_vertical_in_degrees,
+            d["res"][0],
+            d["res"][1],
+        )
         return camera_k
 
-    def set_camera_params(self, camera: StretchCameras, fovy: float, res: tuple) -> None:
+    def set_camera_params(self, camera: StretchCameras) -> None:
         """
         Set camera parameters
         Args:
@@ -181,21 +188,41 @@ class MujocoServerCameraManagerSync:
             res: tuple, size of the camera Image
         """
         cam = self.mujoco_server.mjmodel.camera(camera.camera_name_in_mjcf)
-        self.mujoco_server.mjmodel.cam_fovy[cam.id] = fovy
-        self.mujoco_server.mjmodel.cam_resolution[cam.id] = res
 
-    def _set_initial_camera_properties(self, cameras_to_use: list[StretchCameras]):
+        settings = camera.initial_camera_settings
+
+        self.mujoco_server.mjmodel.cam_fovy[cam.id] = settings.field_of_view_vertical_in_degrees
+        self.mujoco_server.mjmodel.cam_intrinsic[cam.id] = list(settings.focal) + [
+            0,
+            0,
+        ]  # a Mujoco takes: [fx, fy, px, py]
+        self.mujoco_server.mjmodel.cam_resolution[cam.id] = (
+            settings.sensor_resolution
+            if settings.sensor_resolution is not None
+            else (settings.width, settings.height)
+        )
+        if settings.sensor_size is not None:
+            self.mujoco_server.mjmodel.cam_sensorsize[cam.id] = settings.sensor_size
+
+        print(
+            f"""
+Initializing camera {camera.name}:
+{settings=}
+"""
+        )
+
+    def _set_camera_properties_and_create_renderers_in_mujoco(
+        self, cameras_to_use: list[StretchCameras]
+    ):
         """
-        Set the camera properties
+        Set the camera properties and create a camera renderer for each camera in use.
         """
         for camera in cameras_to_use:
-            if camera == StretchCameras.cam_nav_rgb:
-                continue # No default settings for this one
-
-            settings = camera.initial_camera_settings
             self.set_camera_params(
-                camera, settings.fovy, (settings.width, settings.height)
+                camera,
             )
+
+            self._add_camera_renderer(camera)
 
 
 class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
@@ -304,6 +331,5 @@ class MujocoServerCameraManagerThreaded(MujocoServerCameraManagerSync):
 
         new_imagery.cam_d405_K = self.get_camera_params(StretchCameras.cam_d405_rgb)
         new_imagery.cam_d435i_K = self.get_camera_params(StretchCameras.cam_d435i_rgb)
-
 
         self.mujoco_server.data_proxies.set_cameras(new_imagery)
