@@ -275,7 +275,7 @@
         <geom material="Laser_Black" mesh="laser" class="visual" mass="0.24"/>
         <geom mesh="laser" class="collision"/>
 
-        <replicate count="360" euler="0 0 1">   
+        <replicate count="360" euler="0 0 0.0174533">   
             <site name="lidar" zaxis="1 0 0"/>
         </replicate>
 
