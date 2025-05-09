@@ -2,11 +2,14 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
-matplotlib.use("TkAgg")
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
+try:
+    # Some machines seem to need this for matplotlib to work.
+    matplotlib.use("TkAgg")
+except: ...
 
 def show_laser_scan(scan_data: np.ndarray):
 
