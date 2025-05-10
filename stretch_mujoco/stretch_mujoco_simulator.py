@@ -302,22 +302,19 @@ class StretchMujocoSimulator:
         """
         if isinstance(actuator, str):
             actuator = Actuators[actuator]
-
-        if actuator in [
-            Actuators.left_wheel_vel,
-            Actuators.right_wheel_vel,
-        ]:
-            raise Exception(
-                "Cannot check position for a velocity joint. use Actuators.base_rotate or Actuators.base_translate instead."
-            )
-
+            
         def check_if_moved():
             """Checks movement, returns True if movement is detected."""
             time.sleep(check_interval)
-
+            
             if actuator in [
                 Actuators.left_wheel_vel,
-                Actuators.right_wheel_vel,
+                Actuators.right_wheel_vel
+            ]:
+                base_velocity = self.data_proxies.get_command().base_velocity
+                return base_velocity.trigger and base_velocity.v_linear > 0.0
+
+            if actuator in [
                 Actuators.base_rotate,
                 Actuators.base_translate,
             ]:
