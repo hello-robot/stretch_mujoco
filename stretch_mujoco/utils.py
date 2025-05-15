@@ -368,9 +368,17 @@ def dataclass_from_dict(klass, dict_data: dict):
         return dict_data  # Not a dataclass field
 
 
-def wait_and_check(
-    wait_timeout: float, check: Callable[[], bool], is_alive: Callable[[], bool]
+def block_until_check_succeeds(
+    wait_timeout: float|None, check: Callable[[], bool], is_alive: Callable[[], bool]
 ) -> bool:
+    """Blocks until the check callback succeeds"""
+
+    if wait_timeout is None:
+        while is_alive():
+            if check():
+                return True
+        return False
+    
     start_time = time.time()
 
     while time.time() - start_time < wait_timeout:
