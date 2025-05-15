@@ -380,7 +380,7 @@
                               <geom material="Pantone_Black_6_U" mesh="link_d405_front_plate" pos="0 0 0" euler="0 0 0" mass="3.6E-06" class="visual"/>
                               <geom mesh="link_d405" class="collision"/>
                               <body name="d405_cam" pos="0 0 0" euler="0 0 3.14">
-                                <camera name="d405_rgb" pos="0 0 0" euler="-3.14 0 -3.14" fovy="58"/>
+                                <camera name="d405_rgb" pos="0 0 0" euler="-3.14 0 -3.14"/>
                                 <camera name="d405_depth" pos="0 0 0" euler="-3.14 0 -3.14"/>
                               </body>
                             </body>
@@ -458,14 +458,14 @@
           <geom mesh="link_head_tilt_0" class="collision"/>
           <geom mesh="link_head_tilt_1" class="collision"/>
           <body name="realsense" pos="0.0406 0.0053 0.0307" euler="0 0 0">
-            <camera name="d435i_camera_rgb" pos="0 0.015 0" euler="1.57 -1.57 0" fovy="58"/>
+            <camera name="d435i_camera_rgb" pos="0 0.015 0" euler="1.57 -1.57 0" />
             <camera name="d435i_camera_depth" euler="1.57 -1.57 0"/>
           </body>
           <body name="link_SE3_head_nav_cam" pos="0.04 -0.0412 -0.0246" euler="0 1.5707963 0">
             <joint name="joint_head_nav_cam" class="head_tilt" stiffness="10"/>
             <geom mesh="link_SE3_head_nav_cam" material="Generic_Black" class="visual" mass="0.028346169831483"/>
             <body name="head_nav_cam" pos="0 0 0">
-              <camera name="nav_camera_rgb" pos="0 0 0" euler="-3.1415926 0 -1.5707963" fovy="69"/>
+              <camera name="nav_camera_rgb" pos="0 0 0" euler="-3.1415926 0 -1.5707963" />
             </body>
           </body>
         </body>
