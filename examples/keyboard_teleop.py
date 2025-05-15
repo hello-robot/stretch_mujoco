@@ -56,6 +56,11 @@ def keyboard_control(key: str|None, sim: StretchMujocoSimulator):
     elif key == "q":
         sim.stop()
 
+
+def keyboard_control_release(key: str|None, sim: StretchMujocoSimulator):
+    if key in ("w", "s", "a", "d"):
+        sim.set_base_velocity(0, 0)
+
 # Allow multiple key-presses, references https://stackoverflow.com/a/74910695
 key_buffer = []
 
@@ -65,10 +70,12 @@ def on_press(key):
         key_buffer.append(key)
         print(key_buffer)
 
-def on_release(key):
+def on_release(key, sim: StretchMujocoSimulator):
     global key_buffer
     if(key in key_buffer):
         key_buffer.remove(key)
+    if isinstance(key, keyboard.KeyCode):
+        keyboard_control_release(key.char, sim)
         
 @click.command()
 @click.option("--scene-xml-path", type=str, default=None, help="Path to the scene xml file")
@@ -93,7 +100,7 @@ def main(scene_xml_path: str, robocasa_env: bool):
 
         listener = keyboard.Listener(
             on_press=on_press,
-            on_release=on_release
+            on_release=lambda key: on_release(key, sim)
         )
 
         listener.start()
