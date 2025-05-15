@@ -1,16 +1,15 @@
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-<<<<<<< HEAD
-
-=======
 import matplotlib
-matplotlib.use("TkAgg")
->>>>>>> 3d0f6d7 (Fixed the lidar spacing not being defined in radians, causing incorrect behavior in rangefinding.)
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator
 
+try:
+    # Some machines seem to need this for matplotlib to work.
+    matplotlib.use("TkAgg")
+except: ...
 
 def show_laser_scan(scan_data: np.ndarray):
 
