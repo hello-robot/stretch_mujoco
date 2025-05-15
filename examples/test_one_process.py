@@ -2,12 +2,9 @@ from multiprocessing import Manager
 import signal
 import threading
 
-from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
-from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 from stretch_mujoco.mujoco_server import MujocoServer
 
 from stretch_mujoco.mujoco_server import MujocoServerProxies
-from stretch_mujoco.datamodels.status_command import StatusCommand
 
 _manager = Manager()
 data_proxies = MujocoServerProxies.default(_manager)
