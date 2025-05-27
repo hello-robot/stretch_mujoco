@@ -158,6 +158,8 @@ Output:
 sim.stop()
 ```
 
+> Note that if you're not using `ipython`, the `if __name__ == "__main__":` guard is necessary, as mentioned in the [Python docs](https://docs.python.org/3/library/multiprocessing.html#:~:text=For%20an%20explanation%20of%20why%20the%20if%20__name__%20%3D%3D%20%27__main__%27%20part%20is%20necessary%2C%20see%20Programming%20guidelines.), when writing your own scripts.
+
 ### Loading Robocasa Kitchen Scenes
 
 The `stretch_mujoco.robocasa_gen.model_generation_wizard()` method gives you:
