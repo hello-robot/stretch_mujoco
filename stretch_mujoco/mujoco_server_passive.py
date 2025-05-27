@@ -1,11 +1,13 @@
 import threading
 import time
 from stretch_mujoco.utils import override
+import numpy as np
 
 import click
 import mujoco
 import mujoco._functions
 import mujoco.viewer
+from mujoco import mjtGeom
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.utils import FpsCounter
@@ -84,6 +86,15 @@ class MujocoServerPassive(MujocoServer):
 
                 self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=False)
 
+                # 2)  Pick a body whose pose you want to visualise
+                body_id = mujoco.mj_name2id(self.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
+                pos = [0, 0, 0.1] # self.mjdata.xipos[body_id].copy()
+                R   = self.mjdata.xmat[body_id].reshape(3, 3).copy()
+
+                # 3)  Add the RGB frame to *user_scn*
+                viewer.user_scn.ngeom = 0
+                self.add_axes_to_user_scn(viewer.user_scn, pos, R)
+
                 viewer.sync()
 
                 time_until_next_ui_update = UI_FPS_CAP_RATE - (time.perf_counter() - start_time)
@@ -111,3 +122,57 @@ class MujocoServerPassive(MujocoServer):
                     thread.join(timeout=5.0)
 
             click.secho("Mujoco viewer has terminated.", fg="blue")
+
+    def add_axes_to_user_scn(self,
+                            user_scn,
+                            origin: np.ndarray,
+                            R: np.ndarray,
+                            length: float = 0.15,
+                            radius: float = 0.006):
+        """
+        Draw a right-handed RGB frame in `user_scn` using mjv_initGeom.
+
+        * +X red, +Y green, +Z blue
+        * `origin` 3-vector in world frame
+        * `R`      3×3 rotation matrix, columns are local x,y,z in world frame
+        """
+        colors = np.array([[1, 0, 0, 1],   # +X
+                        [0, 1, 0, 1],      # +Y
+                        [0, 0, 1, 1]])     # +Z
+
+        # Pick a geom type that exists
+        if hasattr(mjtGeom, "mjGEOM_ARROW"):
+            geom_type   = mjtGeom.mjGEOM_ARROW   # arrow (MuJoCo ≥ 2.3.6)
+            extra_param = 0.0                    # third size argument (shaft length taper)
+        else:
+            geom_type   = mjtGeom.mjGEOM_CAPSULE # capsule fallback
+            extra_param = None                   # only two size arguments
+
+        for axis in range(3):
+            direction = R[:, axis]
+            half_len  = 0.5 * length
+            mid       = origin + direction * half_len   # centre of the arrow
+
+            # Build an orthonormal basis whose x-axis = `direction`
+            x_axis = direction / np.linalg.norm(direction)
+            # choose something not parallel to x_axis
+            helper = np.array([0, 0, 1]) if abs(x_axis[2]) < 0.99 else np.array([0, 1, 0])
+            y_axis = np.cross(helper, x_axis)
+            y_axis /= np.linalg.norm(y_axis)
+            z_axis = np.cross(x_axis, y_axis)
+            R_arrow = np.column_stack((x_axis, y_axis, z_axis))  # 3×3
+
+            mat_flat = R_arrow.flatten(order="F")
+
+            size = [radius, half_len] if extra_param is None else [radius, half_len, extra_param]
+
+            geom = user_scn.geoms[user_scn.ngeom]
+            mujoco.mjv_initGeom(
+                geom,
+                type=geom_type,
+                size=size,
+                pos=mid,
+                mat=mat_flat,
+                rgba=colors[axis],
+            )
+            user_scn.ngeom += 1
