@@ -3,98 +3,78 @@ import time
 import math
 
 # ---------- 1.  global design parameters (tune only these) ----------
-kappa0   = 0.1          # main heading gain
-kappa2   = 0.25         # main distance gain
-epsilon  = 2.25         # ϵ  (called “varepsilon” in the paper, must be > 1)
-xi       = 1e-3         # ξ  (small positive number)
-delta    = 25.0         # δ  (tube size)
-v_max    = 0.8          # [m/s]  linear-velocity limit
-w_max    = 1.5          # [rad/s] angular-velocity limit
-tiny     = 1e-6         # numerical zero
+k_rho    = 1.5        # > 0
+k_alpha  = 4.0        # > k_rho  (makes heading converge faster than position)
+k_delta  = 1.0        # > 0
+k_theta  = 1.0        # Worst case, π rad/s rotation
+v_max    = 0.6        # [m s⁻¹]    your motor limits
+omega_max = 2.5       # [rad s⁻¹]  your motor limits
 
-# ---------- 2.  constants derived once from the above ----------
-gamma = kappa0*epsilon + xi
-zeta  = 2*gamma + kappa0                       # ζ
-kappa1 = (2*gamma + math.sqrt(kappa0**2 + 6*kappa0*zeta + zeta**2 + 1)) / 4
+RHO_STOP     = 0.05   # [m]
+THETA_STOP   = 3*math.pi/180  # [rad] = 3°
 
-def riccati_solution():
-    """Closed-form formulas from Alg. 1, step 2 (faster than an eigen-solver)."""
-    P3 = (kappa0 + 3*zeta + math.sqrt(kappa0**2 + 6*kappa0*zeta + zeta**2)) / 4
-    P2 = P3**2 - (kappa0 + zeta)*P3/2
-    P1 = 2*P2**2 / zeta
-    return P1, P2, P3            # order matches (19)
+# ---------- 2.  helper functions ----------
+def wrap(angle: float) -> float:
+    """Wrap any angle to (–π, π]."""
+    return (angle + math.pi) % (2 * math.pi) - math.pi
 
-P1, P2, P3 = riccati_solution()
+def saturate(x: float, lo: float, hi: float) -> float:
+    """Clip x to the closed interval [lo, hi]."""
+    return max(lo, min(x, hi))
 
-# ---------- 3.  helper functions ----------
-def V(z0, z1, z2):
-    """Lyapunov-like function (eq. 19)."""
-    return P1*z1**2 - 2*P2*kappa0*z0*z1*z2 + P3*(kappa0*z0*z2)**2
+# ---------- 3.  the controller itself ----------
+def polar_controller(x_g, y_g, th_g):
+    rho   = math.hypot(x_g, y_g)
 
-def saturate(value, limit):
-    """Hard saturation symmetric in ±limit."""
-    return max(-limit, min(limit, value))
+    # ---------- stage 1 : drive to point ----------
+    if rho > RHO_STOP:
+        alpha = wrap(math.atan2(y_g, x_g))
+        delta = wrap(alpha - th_g)
 
-TWOPI = 2.0 * math.pi
-def wrap(angle_rad: float) -> float:
-    """Wrap any real angle to the interval (-π, π]."""
-    return (angle_rad + math.pi) % TWOPI - math.pi
+        v     = k_rho   * rho
+        omega = k_alpha * alpha + k_delta * delta
 
-# ---------- 4.  the controller itself ----------
-def parking_controller(xe, ye, the_e):
-    """
-    Inputs are the relative pose error already expressed in the robot frame
-      xe, ye      [m]
-      the_e (=θe) [rad]
+        # clip
+        v     = saturate(v,    -v_max,    v_max)
+        omega = saturate(omega, -omega_max, omega_max)
 
-    Returns (v, w) to feed the diff-drive low-level controller.
-    """
-    # --- build z-coordinates (eq. 8) -----------------
-    z0 = -the_e
-    z1 =  ye
-    z2 = -xe
-
-    # ---------- u0 (angular part) ----------
-    if abs(z1) < tiny and abs(z2) < tiny:
-        u0 = -math.copysign(abs(z0)**(1/3), z0)             # finite-time term
-    elif V(z0, z1, z2) < delta * (kappa0*z0)**2 / epsilon:
-        u0 = -kappa0*z0                                     # exponential term
+    # ---------- stage 2 : spin in place to heading ----------
     else:
-        psi = z2 if abs(z2) > tiny else math.copysign(1.0, z0*z1)
-        u0 = -kappa1 * z1 / psi                             # switching term
+        v     = 0.0
+        omega = k_theta * wrap(th_g)           # simple P term
+        omega = saturate(omega, -omega_max, omega_max)
 
-    # ---------- u1 (translational part) ----------
-    if abs(z0) < tiny and abs(z1) < tiny:
-        u1 = -math.copysign(abs(z2)**(1/3), z2)
-    elif abs(u0) < tiny:
-        u1 = -kappa2*z2
-    else:
-        u1 = -(P2/u0)*z1 - P3*z2
+        # done?
+        if abs(wrap(th_g)) < THETA_STOP:
+            omega = 0.0
 
-    # ---------- back-out Robot-level commands ----------
-    v = u1 + z1*u0        # assume depth Z≈1
-    w = u0
-
-    # ---------- saturation ----------
-    v = saturate(v, v_max)
-    w = saturate(w, w_max)
-    return v, w
-
+    return v, omega
 
 
 if __name__ == "__main__":
     sim = StretchMujocoSimulator()
     sim.start()
 
-    print("Loop!")
-    goalx, goaly, goalt = (0.2, 0.2, 0.0)
-    for _ in range(10000):
+    print("Start!")
+    goalx, goaly, goalt = (0.5, 0.2, 0.0)
+    for _ in range(5000):
+        # get current pose
         b = sim.pull_status().base
         currx, curry, currt = (b.x, b.y, b.theta)
         print(f"Current: ({currx:.3f}, {curry:.3f}, {currt:.3f})")
-        errx, erry, errt = (goalx-currx, goaly-curry, wrap(goalt-currt))
+
+        # compute relative goal
+        dx   = goalx - currx
+        dy   = goaly - curry
+        sgn  = math.sin(-currt)   # pre-compute for speed
+        cgn  = math.cos(-currt)
+        errx =  cgn*dx + sgn*dy
+        erry = -sgn*dx + cgn*dy
+        errt =  wrap(goalt - currt)
         print(f"Delta: ({errx:.3f}, {erry:.3f}, {errt:.3f})")
-        v, w = parking_controller(errx, erry, errt)
+
+        # apply controller
+        v, w = polar_controller(errx, erry, errt)
         print(f"Cmd: ({v:.4f}, {w:.4f})")
         sim.set_base_velocity(v, w)
         time.sleep(0.01)
