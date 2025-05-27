@@ -11,6 +11,7 @@ import mujoco
 import mujoco._functions
 import numpy as np
 from mujoco._structs import MjData, MjModel
+import mujoco._enums
 
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
@@ -335,7 +336,7 @@ class MujocoServer:
 
         self.physics_fps_counter.tick(sim_time=data.time)
         self.pull_status()
-        self.push_command()
+        self.push_command(self.data_proxies.get_command())
 
     def get_base_pose(self) -> np.ndarray:
         """Get the se(2) base pose: x, y, and theta"""
@@ -404,9 +405,7 @@ class MujocoServer:
             config.robot_settings["gripper_min_max"],
         )
 
-    def push_command(self):
-        command_status = self.data_proxies.get_command()
-        
+    def push_command(self, command_status:StatusCommand):
         # move_by
         for _, command in command_status.move_by.items():
             if command.trigger:

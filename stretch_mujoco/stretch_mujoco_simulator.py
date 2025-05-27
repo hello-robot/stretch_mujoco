@@ -22,6 +22,7 @@ from stretch_mujoco.mujoco_server_managed import MujocoServerManaged
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 from stretch_mujoco.datamodels.status_command import (
     CommandBaseVelocity,
+    CommandCoordinateFrameArrowsViz,
     CommandKeyframe,
     CommandMove,
     StatusCommand,
@@ -323,6 +324,20 @@ class StretchMujocoSimulator:
                 )
                 return False
         return True
+    
+    @require_connection
+    def add_world_frame(self, position: tuple[float, float, float]) -> None:
+        """
+        Add a world frame to the simulator for visualization.
+        Args:
+            position: tuple of (x, y, z) coordinates in the world frame
+        """
+        with self._command_lock:
+            command = self.data_proxies.get_command()
+            command.coordinate_frame_arrows_viz = CommandCoordinateFrameArrowsViz(
+                position=position, trigger=True
+            )
+            self.data_proxies.set_command(command)
 
     @require_connection
     def set_base_velocity(self, v_linear: float, omega: float) -> None:

@@ -1,5 +1,6 @@
 import threading
 import time
+from stretch_mujoco.datamodels.status_command import StatusCommand
 from stretch_mujoco.utils import override
 import numpy as np
 
@@ -7,7 +8,7 @@ import click
 import mujoco
 import mujoco._functions
 import mujoco.viewer
-from mujoco import mjtGeom
+from mujoco._enums import mjtGeom
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.utils import FpsCounter
@@ -52,11 +53,11 @@ class MujocoServerPassive(MujocoServer):
 
         https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer
         """
-
-        with mujoco.viewer.launch_passive(
+        self.viewer =  mujoco.viewer.launch_passive(
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
-        ) as viewer:
+        )
 
+        with self.viewer as viewer:
             physics_thread = threading.Thread(
                 target=self._physics_loop,
                 name="PhysicsThread",
@@ -86,15 +87,6 @@ class MujocoServerPassive(MujocoServer):
 
                 self.camera_manager.pull_camera_data_at_camera_rate(is_sleep_until_ready=False)
 
-                # 2)  Pick a body whose pose you want to visualise
-                body_id = mujoco.mj_name2id(self.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
-                pos = [0, 0, 0.1] # self.mjdata.xipos[body_id].copy()
-                R   = self.mjdata.xmat[body_id].reshape(3, 3).copy()
-
-                # 3)  Add the RGB frame to *user_scn*
-                viewer.user_scn.ngeom = 0
-                self.add_axes_to_user_scn(viewer.user_scn, pos, R)
-
                 viewer.sync()
 
                 time_until_next_ui_update = UI_FPS_CAP_RATE - (time.perf_counter() - start_time)
@@ -123,7 +115,20 @@ class MujocoServerPassive(MujocoServer):
 
             click.secho("Mujoco viewer has terminated.", fg="blue")
 
-    def add_axes_to_user_scn(self,
+    def push_command(self, command_status:StatusCommand):
+
+        command_arrows = command_status.coordinate_frame_arrows_viz
+
+        if command_arrows.trigger:
+            self._add_axes_to_user_scn(self.viewer.user_scn, np.array(command_arrows.position) , np.eye(3))
+
+            command_arrows.trigger = False
+
+        super().push_command(command_status)
+
+
+    @override
+    def _add_axes_to_user_scn(self,
                             user_scn,
                             origin: np.ndarray,
                             R: np.ndarray,
@@ -162,7 +167,7 @@ class MujocoServerPassive(MujocoServer):
             size = [radius, radius, length]
 
             geom = user_scn.geoms[user_scn.ngeom]
-            mujoco.mjv_initGeom(
+            mujoco._functions.mjv_initGeom(
                 geom,
                 type= mjtGeom.mjGEOM_ARROW,
                 size=size,
