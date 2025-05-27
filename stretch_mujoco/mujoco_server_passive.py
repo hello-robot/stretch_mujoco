@@ -127,7 +127,7 @@ class MujocoServerPassive(MujocoServer):
                             user_scn,
                             origin: np.ndarray,
                             R: np.ndarray,
-                            length: float = 0.15,
+                            length: float = 0.2,
                             radius: float = 0.006):
         """
         Draw a right-handed RGB frame in `user_scn` using mjv_initGeom.
@@ -140,39 +140,34 @@ class MujocoServerPassive(MujocoServer):
                         [0, 1, 0, 1],      # +Y
                         [0, 0, 1, 1]])     # +Z
 
-        # Pick a geom type that exists
-        if hasattr(mjtGeom, "mjGEOM_ARROW"):
-            geom_type   = mjtGeom.mjGEOM_ARROW   # arrow (MuJoCo ≥ 2.3.6)
-            extra_param = 0.0                    # third size argument (shaft length taper)
-        else:
-            geom_type   = mjtGeom.mjGEOM_CAPSULE # capsule fallback
-            extra_param = None                   # only two size arguments
-
         for axis in range(3):
-            direction = R[:, axis]
-            half_len  = 0.5 * length
-            mid       = origin + direction * half_len   # centre of the arrow
+            if axis == 0:
+                # Rotate +Z to +X: -90° about Y-axis
+                R = np.array([
+                    [0, 0, 1],
+                    [0, 1, 0],
+                    [-1, 0, 0]
+                ])
+            elif axis ==1:
+                # Rotate +Z to +Y: +90° about X-axis
+                R = np.array([
+                    [1, 0, 0],
+                    [0, 0, -1],
+                    [0, 1, 0]
+                ])
+            elif axis ==2:
+                # No rotation needed
+                R = np.eye(3)
 
-            # Build an orthonormal basis whose x-axis = `direction`
-            x_axis = direction / np.linalg.norm(direction)
-            # choose something not parallel to x_axis
-            helper = np.array([0, 0, 1]) if abs(x_axis[2]) < 0.99 else np.array([0, 1, 0])
-            y_axis = np.cross(helper, x_axis)
-            y_axis /= np.linalg.norm(y_axis)
-            z_axis = np.cross(x_axis, y_axis)
-            R_arrow = np.column_stack((x_axis, y_axis, z_axis))  # 3×3
-
-            mat_flat = R_arrow.flatten(order="F")
-
-            size = [radius, half_len] if extra_param is None else [radius, half_len, extra_param]
+            size = [radius, radius, length]
 
             geom = user_scn.geoms[user_scn.ngeom]
             mujoco.mjv_initGeom(
                 geom,
-                type=geom_type,
+                type= mjtGeom.mjGEOM_ARROW,
                 size=size,
-                pos=mid,
-                mat=mat_flat,
+                pos=origin,
+                mat=R.flatten(),
                 rgba=colors[axis],
             )
             user_scn.ngeom += 1
