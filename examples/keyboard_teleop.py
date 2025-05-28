@@ -1,5 +1,6 @@
 from time import sleep
 from pynput import keyboard
+from pprint import pprint
 
 import click
 
@@ -10,12 +11,13 @@ from stretch_mujoco.enums.actuators import Actuators
 def print_keyboard_options():
     click.secho("\n       Keyboard Controls:", fg="yellow")
     click.secho("=====================================", fg="yellow")
-    print("W / A /S / D : Move BASE")
-    print("U / J / H / K : Move LIFT & ARM")
+    print("W / A / S / D: Move BASE")
+    print("U / H / J / K: Move LIFT & ARM")
     print("O / P: Move WRIST YAW")
     print("C / V: Move WRIST PITCH")
     print("T / Y: Move WRIST ROLL")
-    print("N / M : Open & Close GRIPPER")
+    print("N / M: Open & Close GRIPPER")
+    print("L : Print status")
     print("Q : Stop")
     click.secho("=====================================", fg="yellow")
 
@@ -53,6 +55,8 @@ def keyboard_control(key: str|None, sim: StretchMujocoSimulator):
         sim.move_by(Actuators.gripper, 0.07)
     elif key == "m":
         sim.move_by(Actuators.gripper, -0.07)
+    elif key == "l":
+        pprint(sim.pull_status())
     elif key == "q":
         sim.stop()
 
@@ -68,7 +72,6 @@ def on_press(key):
     global key_buffer
     if key not in key_buffer and len(key_buffer) < 3:
         key_buffer.append(key)
-        print(key_buffer)
 
 def on_release(key, sim: StretchMujocoSimulator):
     global key_buffer
