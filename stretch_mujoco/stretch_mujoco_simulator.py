@@ -334,9 +334,9 @@ class StretchMujocoSimulator:
         """
         with self._command_lock:
             command = self.data_proxies.get_command()
-            command.coordinate_frame_arrows_viz = CommandCoordinateFrameArrowsViz(
+            command.coordinate_frame_arrows_viz.append( CommandCoordinateFrameArrowsViz(
                 position=position, trigger=True
-            )
+            ))
             self.data_proxies.set_command(command)
 
     @require_connection

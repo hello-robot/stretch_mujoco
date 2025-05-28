@@ -117,12 +117,13 @@ class MujocoServerPassive(MujocoServer):
 
     def push_command(self, command_status:StatusCommand):
 
-        command_arrows = command_status.coordinate_frame_arrows_viz
+        arrows = command_status.coordinate_frame_arrows_viz
 
-        if command_arrows.trigger:
-            self._add_axes_to_user_scn(self.viewer.user_scn, np.array(command_arrows.position) , np.eye(3))
+        for command_arrows in arrows:
+            if command_arrows.trigger:
+                self._add_axes_to_user_scn(self.viewer.user_scn, np.array(command_arrows.position) , np.eye(3))
 
-            command_arrows.trigger = False
+                command_arrows.trigger = False
 
         super().push_command(command_status)
 
