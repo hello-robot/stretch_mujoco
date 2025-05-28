@@ -109,6 +109,14 @@ cv2.waitKey(1)
 
 > Important Note: you should call `cv2.imshow()` on the MAIN THREAD to avoid getting graphics library (GL) related errors from your OS.
 
+### Misc Stretch Mujoco Simulator API calls
+
+#### World Coordinate Frame Arrows
+
+You can use `sim.add_world_frame((0.1, 0.0, 0.0))` to add arrows dynamically to the Mujoco viewer:
+
+<img src="coordinate_frame_arrows.png" width=400/>
+
 ## More to know
 
 ### Behind the scenes

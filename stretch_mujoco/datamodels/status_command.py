@@ -30,6 +30,12 @@ class CommandKeyframe:
 
 
 @dataclass
+class CommandCoordinateFrameArrowsViz:
+    position: tuple[float, float, float]
+    trigger: bool
+
+
+@dataclass
 class StatusCommand:
     """
     A dataclass to ferry movement commands to the Mujoco server.
@@ -39,6 +45,9 @@ class StatusCommand:
     move_by: dict[str, CommandMove] = field(default_factory=dict)
     base_velocity: CommandBaseVelocity = field(default=CommandBaseVelocity(0, 0, False))
     keyframe: CommandKeyframe = field(default=CommandKeyframe("", False))
+    coordinate_frame_arrows_viz: list[CommandCoordinateFrameArrowsViz] = field(default_factory=list)
+
+
 
     def set_move_to(self, command: CommandMove):
         """Sends a move_to command and removes the move_by command."""
