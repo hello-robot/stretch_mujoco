@@ -415,20 +415,6 @@ class StretchMujocoSimulator:
             )
 
             self.data_proxies.set_command(command)
-    
-    @require_connection
-    def add_world_frame(self, position: tuple[float, float, float]) -> None:
-        """
-        Add a world frame to the simulator for visualization.
-        Args:
-            position: tuple of (x, y, z) coordinates in the world frame
-        """
-        with self._command_lock:
-            command = self.data_proxies.get_command()
-            command.coordinate_frame_arrows_viz.append( CommandCoordinateFrameArrowsViz(
-                position=position, trigger=True
-            ))
-            self.data_proxies.set_command(command)
 
     @require_connection
     def set_base_velocity(self, v_linear: float, omega: float) -> None:
@@ -447,6 +433,20 @@ class StretchMujocoSimulator:
 
             self.data_proxies.set_command(command)
 
+    @require_connection
+    def add_world_frame(self, position: tuple[float, float, float]) -> None:
+        """
+        Add a world frame to the simulator for visualization.
+        Args:
+            position: tuple of (x, y, z) coordinates in the world frame
+        """
+        with self._command_lock:
+            command = self.data_proxies.get_command()
+            command.coordinate_frame_arrows_viz.append( CommandCoordinateFrameArrowsViz(
+                position=position, trigger=True
+            ))
+            self.data_proxies.set_command(command)
+            
     @require_connection
     def get_base_pose(self):
         """Get the se(2) base pose: x, y, and theta"""
