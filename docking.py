@@ -56,7 +56,9 @@ if __name__ == "__main__":
     sim.start()
 
     print("Start!")
-    goalx, goaly, goalt = (0.5, 0.2, 0.0)
+    sim.add_world_frame((0, 0, 0))
+    goalx, goaly, goalt = (1.0, 0.0, 0.0)
+    sim.add_world_frame((goalx, goaly, goalt))
     for _ in range(5000):
         # get current pose
         b = sim.pull_status().base
