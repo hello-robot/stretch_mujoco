@@ -144,7 +144,7 @@ class MujocoServerPassive(MujocoServer):
         colors = np.array([[1, 0, 0, 1],   # +X
                         [0, 1, 0, 1],      # +Y
                         [0, 0, 1, 1]])     # +Z
-
+        
         for axis in range(3):
             if axis == 0:
                 # Rotate +Z to +X: -90° about Y-axis
@@ -154,10 +154,10 @@ class MujocoServerPassive(MujocoServer):
                     [-1, 0, 0]
                 ])
             elif axis ==1:
-                # Rotate +Z to +Y: +90° about X-axis
+                # Rotate +Z to +Y: -90° about X-axis
                 R = np.array([
-                    [1, 0, 0],
-                    [0, 0, -1],
+                    [-1, 0, 0],
+                    [0, 0, 1],
                     [0, 1, 0]
                 ])
             elif axis ==2:
