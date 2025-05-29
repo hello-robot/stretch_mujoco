@@ -25,8 +25,8 @@ k_theta  = 1.0        # Worst case, π rad/s rotation
 v_max    = 0.6        # [m s⁻¹]    your motor limits
 omega_max = 2.5       # [rad s⁻¹]  your motor limits
 
-RHO_STOP     = 0.05   # [m]
-THETA_STOP   = 3*math.pi/180  # [rad] = 3°
+RHO_STOP     = 0.005   # [m] = 0.5cm
+THETA_STOP   = math.radians(0.5)  # [rad] = 0.5°
 
 # ---------- 2.  helper functions ----------
 def wrap(angle: float) -> float:
@@ -72,14 +72,13 @@ if __name__ == "__main__":
 
     print("Start!")
     sim.add_world_frame((0, 0, 0))
-    goalx, goaly, goalt = (0.5, 0.2, 0.0)
-    sim.add_world_frame((goalx, goaly, goalt))
-    for _ in range(40):
+    goalx, goaly, goalt = (0.3, 0.3, 0.4)
+    sim.add_world_frame((goalx, goaly, 0.0))
+    for _ in range(5000):
         # get current pose
         b = sim.pull_status().base
         currx, curry, currt = (b.x, b.y, b.theta)
         print(f"Current: ({currx:.3f}, {curry:.3f}, {currt:.3f})")
-        sim.add_world_frame((currx, curry, 0.1))
 
         # compute relative goal
         errx, erry, errt = inverse_3x3_matrix(rotation_3x3_matrix(currt)) @ np.array([goalx-currx, goaly-curry, wrap(goalt-currt)])
@@ -91,13 +90,12 @@ if __name__ == "__main__":
         erry_wrt_world = curry + Sb[1]
         errt_wrt_world = currt + Sb[2]
         print(f"Delta wrt World: ({errx_wrt_world:.3f}, {erry_wrt_world:.3f}, {errt_wrt_world:.3f})")
-        sim.add_world_frame((errx_wrt_world, erry_wrt_world, 0.2))
 
         # apply controller
         v, w = polar_controller(errx, erry, errt)
         print(f"Cmd: ({v:.4f}, {w:.4f})")
         sim.set_base_velocity(v, w)
-        time.sleep(1.5)
+        time.sleep(0.01)
 
     from pprint import pprint
     pprint(sim.pull_status())
