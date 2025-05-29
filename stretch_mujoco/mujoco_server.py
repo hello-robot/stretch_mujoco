@@ -100,7 +100,6 @@ class BaseController:
         """Push a command to the base. Call `update()` to set the next trajectory."""
         self.last_command = command
         self.start_pose = self.get_base_pose()
-        self.start_ts = time.perf_counter()
 
     def _clear_command(self, is_stop_motion: bool):
         self.last_command = None
@@ -153,25 +152,16 @@ class BaseController:
 
         self._set_base_velocity(config.base_motion["default_x_vel"] * sign, 0)
 
-        if time.perf_counter() - self.start_ts > config.base_motion["timeout"]:
-            click.secho("Base translation timeout", fg="red")
-            return self._clear_command(is_stop_motion=True)
-
     def _base_rotate_by(self, theta_inc: float) -> None:
         """
         Rotate the base by a certain w.r.t base global pose
         """
         start_pose = self.start_pose[-1]
         sign = 1 if theta_inc > 0 else -1
-        start_ts = time.perf_counter()
         if not abs(start_pose - self.get_base_pose()[-1]) <= abs(theta_inc):
             return self._clear_command(is_stop_motion=True)
 
         self._set_base_velocity(0, config.base_motion["default_r_vel"] * sign)
-
-        if time.perf_counter() - start_ts > config.base_motion["timeout"]:
-            click.secho("Base rotation timeout", fg="red")
-            return self._clear_command(is_stop_motion=True)
 
     def _set_base_velocity(self, v_linear: float, omega: float) -> None:
         """
