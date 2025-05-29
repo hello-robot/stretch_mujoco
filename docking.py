@@ -1,6 +1,21 @@
 from stretch_mujoco import StretchMujocoSimulator
 import time
 import math
+import numpy as np
+
+
+def inverse_3x3_matrix(matrix):
+    if matrix.shape != (3, 3):
+        raise ValueError("Input must be a 3x3 matrix.")
+    determinant = np.linalg.det(matrix)
+    if determinant == 0:
+        raise ValueError("Matrix is singular and cannot be inverted.")
+    return np.linalg.inv(matrix)
+
+def rotation_3x3_matrix(theta):
+    return np.array([[np.cos(theta), -np.sin(theta), 0],
+                     [np.sin(theta), np.cos(theta),  0],
+                     [0            , 0,              1]])
 
 # ---------- 1.  global design parameters (tune only these) ----------
 k_rho    = 1.5        # > 0
@@ -57,29 +72,32 @@ if __name__ == "__main__":
 
     print("Start!")
     sim.add_world_frame((0, 0, 0))
-    goalx, goaly, goalt = (1.0, 0.0, 0.0)
+    goalx, goaly, goalt = (0.5, 0.2, 0.0)
     sim.add_world_frame((goalx, goaly, goalt))
-    for _ in range(5000):
+    for _ in range(40):
         # get current pose
         b = sim.pull_status().base
         currx, curry, currt = (b.x, b.y, b.theta)
         print(f"Current: ({currx:.3f}, {curry:.3f}, {currt:.3f})")
+        sim.add_world_frame((currx, curry, 0.1))
 
         # compute relative goal
-        dx   = goalx - currx
-        dy   = goaly - curry
-        sgn  = math.sin(-currt)   # pre-compute for speed
-        cgn  = math.cos(-currt)
-        errx =  cgn*dx + sgn*dy
-        erry = -sgn*dx + cgn*dy
-        errt =  wrap(goalt - currt)
+        errx, erry, errt = inverse_3x3_matrix(rotation_3x3_matrix(currt)) @ np.array([goalx-currx, goaly-curry, wrap(goalt-currt)])
         print(f"Delta: ({errx:.3f}, {erry:.3f}, {errt:.3f})")
+
+        # back out errpose in world frame
+        Sb = rotation_3x3_matrix(currt) @ np.array([errx, erry, errt])
+        errx_wrt_world = currx + Sb[0]
+        erry_wrt_world = curry + Sb[1]
+        errt_wrt_world = currt + Sb[2]
+        print(f"Delta wrt World: ({errx_wrt_world:.3f}, {erry_wrt_world:.3f}, {errt_wrt_world:.3f})")
+        sim.add_world_frame((errx_wrt_world, erry_wrt_world, 0.2))
 
         # apply controller
         v, w = polar_controller(errx, erry, errt)
         print(f"Cmd: ({v:.4f}, {w:.4f})")
         sim.set_base_velocity(v, w)
-        time.sleep(0.01)
+        time.sleep(1.5)
 
     from pprint import pprint
     pprint(sim.pull_status())
