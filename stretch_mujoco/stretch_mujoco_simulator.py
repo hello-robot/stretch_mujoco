@@ -304,14 +304,6 @@ class StretchMujocoSimulator:
         if isinstance(actuator, str):
             actuator = Actuators[actuator]
 
-        if actuator in [
-            Actuators.left_wheel_vel,
-            Actuators.right_wheel_vel,
-        ]:
-            raise Exception(
-                "Cannot check position for a velocity joint. use Actuators.base_rotate or Actuators.base_translate instead."
-            )
-
         def check_if_moved():
             """Checks movement, returns True if movement is detected."""
             time.sleep(check_interval)
@@ -325,6 +317,12 @@ class StretchMujocoSimulator:
                 current_position = actuator.get_position_relative(
                     self.pull_status()
                 )
+                if actuator == Actuators.left_wheel_vel or actuator == Actuators.base_translate:
+                    current_position = current_position[0]
+                elif actuator == Actuators.right_wheel_vel:
+                    current_position = current_position[1]
+                elif actuator == Actuators.base_rotate:
+                    current_position = current_position[2]
             else:
                 current_position = actuator.get_position(self.pull_status())
 
@@ -335,8 +333,6 @@ class StretchMujocoSimulator:
             last_position = self._last_movement_positions[actuator]
 
             is_moved = not np.isclose(current_position, last_position, atol=position_tolerance)
-
-            # print(f"{actuator=}, {is_moved=}, {current_position=}, {last_position=}")
 
             self._last_movement_positions[actuator] = current_position
 
@@ -446,7 +442,7 @@ class StretchMujocoSimulator:
                 position=position, trigger=True
             ))
             self.data_proxies.set_command(command)
-            
+
     @require_connection
     def get_base_pose(self):
         """Get the se(2) base pose: x, y, and theta"""
