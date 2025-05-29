@@ -1,7 +1,7 @@
 import threading
 import time
 from stretch_mujoco.datamodels.status_command import StatusCommand
-from stretch_mujoco.utils import override
+from stretch_mujoco.utils import Rx, Ry, Rz, override
 import numpy as np
 
 import click
@@ -121,7 +121,8 @@ class MujocoServerPassive(MujocoServer):
 
         for arrows in command_arrows:
             if arrows.trigger:
-                self._add_axes_to_user_scn(self.viewer.user_scn, np.array(arrows.position) , np.eye(3))
+                rot_matrix = Rx(arrows.rotation[0]) @ Ry(arrows.rotation[1]) @ Rz(arrows.rotation[2])
+                self._add_axes_to_user_scn(self.viewer.user_scn, np.array(arrows.position) , rot_matrix)
 
                 command_status.coordinate_frame_arrows_viz.remove(arrows)
 
