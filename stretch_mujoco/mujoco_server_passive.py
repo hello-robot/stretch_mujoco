@@ -1,7 +1,7 @@
 import threading
 import time
 from stretch_mujoco.datamodels.status_command import StatusCommand
-from stretch_mujoco.utils import override
+from stretch_mujoco.utils import Rx, Ry, Rz, override
 import numpy as np
 
 import click
@@ -121,7 +121,7 @@ class MujocoServerPassive(MujocoServer):
 
         for arrows in command_arrows:
             if arrows.trigger:
-                self._add_axes_to_user_scn(self.viewer.user_scn, np.array(arrows.position) , np.eye(3))
+                self._add_axes_to_user_scn(self.viewer.user_scn, np.array(arrows.position) , arrows.rotation)
 
                 command_status.coordinate_frame_arrows_viz.remove(arrows)
 
@@ -132,7 +132,7 @@ class MujocoServerPassive(MujocoServer):
     def _add_axes_to_user_scn(self,
                             user_scn,
                             origin: np.ndarray,
-                            R: np.ndarray,
+                            rotation: tuple[float,float,float],
                             length: float = 0.2,
                             radius: float = 0.006):
         """
@@ -146,6 +146,7 @@ class MujocoServerPassive(MujocoServer):
                         [0, 1, 0, 1],      # +Y
                         [0, 0, 1, 1]])     # +Z
         
+        rot_matrix = Rx(rotation[0]) @ Ry(rotation[1]) @ Rz(rotation[2])
         for axis in range(3):
             if axis == 0:
                 # Rotate +Z to +X: -90° about Y-axis
@@ -163,7 +164,9 @@ class MujocoServerPassive(MujocoServer):
                 ])
             elif axis ==2:
                 # No rotation needed
-                R = np.eye(3)
+                R = np.eye(3) 
+
+            R = rot_matrix @ R
 
             size = [radius, radius, length]
 
@@ -173,7 +176,7 @@ class MujocoServerPassive(MujocoServer):
                 type= mjtGeom.mjGEOM_ARROW,
                 size=size,
                 pos=origin,
-                mat=R.flatten(),
+                mat=np.array(R).flatten(),
                 rgba=colors[axis],
             )
             user_scn.ngeom += 1

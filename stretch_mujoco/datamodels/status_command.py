@@ -32,6 +32,7 @@ class CommandKeyframe:
 @dataclass
 class CommandCoordinateFrameArrowsViz:
     position: tuple[float, float, float]
+    rotation: tuple[float, float, float]
     trigger: bool
 
 
