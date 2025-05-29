@@ -149,7 +149,6 @@ class BaseController:
 
         sign = 1 if x_inc > 0 else -1
         if not np.linalg.norm(self.get_base_pose()[:2] - start_pose) <= abs(x_inc):
-            print(f"Moved {np.linalg.norm(self.get_base_pose()[:2] - start_pose)}, shoulda {x_inc}")
             return self._clear_command(is_stop_motion=True)
 
         self._set_base_velocity(config.base_motion["default_x_vel"] * sign, 0)
