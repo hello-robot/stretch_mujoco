@@ -17,20 +17,17 @@
 
     <mesh file="link_docking_base_0.obj"/>
     <mesh file="link_docking_base_1.obj"/>
-    <mesh name="link_docking_base" file="link_docking_base.STL"/>
     <mesh file="link_docking_aruco.obj"/>
   </asset>
   <worldbody>
-    <body name="link_docking_base" pos="-1.0 0 0">
+    <body name="link_docking_base" pos="-1.0 0 0.01">
       <freejoint/>
       <geom mesh="link_docking_base_0" material="Shiny" class="visual_ds"/>
       <geom mesh="link_docking_base_1" material="Black" class="visual_ds"/>
-      <!-- <geom mesh="link_docking_base_0" class="collision_ds"/>
-      <geom mesh="link_docking_base_1" class="collision_ds"/> -->
-      <geom class="collision_ds" mesh="link_docking_base" mass="0.386736"/>
+      <geom mesh="link_docking_base_0" class="collision_ds"/>
+      <geom mesh="link_docking_base_1" class="collision_ds" mass="0.386736" />
       <body name="link_docking_aruco" pos="-0.326626 0 0.20514" quat="0.602908 -0.369462 0.369462 -0.602908">
         <geom material="Aruco_Docking_Station_Sticker" mesh="link_docking_aruco" class="visual_ds"/>
-        <geom mesh="link_docking_aruco" class="collision_ds"/>
       </body>
     </body>
   </worldbody>
