@@ -61,6 +61,20 @@ def compute_K(fovy: float, width: int, height: int) -> np.ndarray:
     return np.array(((f, 0, width / 2), (0, f, height / 2), (0, 0, 1)))
 
 
+def Rx(theta):
+    """
+    Rotation matrix about x-axis
+    """
+    return np.matrix(
+        [[1,0,0], [0, math.cos(theta), -math.sin(theta)], [0, math.sin(theta), math.cos(theta)], ]
+    )
+def Ry(theta):
+    """
+    Rotation matrix about y-axis
+    """
+    return np.matrix(
+        [[math.cos(theta), 0, math.sin(theta)],  [0, 1, 0],[-math.sin(theta), 0, math.cos(theta)],]
+    )
 def Rz(theta):
     """
     Rotation matrix about z-axis

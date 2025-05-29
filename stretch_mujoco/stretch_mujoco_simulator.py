@@ -287,8 +287,8 @@ class StretchMujocoSimulator:
             )
             return False
         return True
-    
-    _last_movement_positions:dict[Actuators, float|tuple[float,float,float]] = {}
+
+    _last_movement_positions: dict[Actuators, float | tuple[float, float, float]] = {}
 
     def wait_while_is_moving(
         self,
@@ -430,17 +430,22 @@ class StretchMujocoSimulator:
             self.data_proxies.set_command(command)
 
     @require_connection
-    def add_world_frame(self, position: tuple[float, float, float]) -> None:
+    def add_world_frame(
+        self,
+        position: tuple[float, float, float],
+        rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> None:
         """
         Add a world frame to the simulator for visualization.
         Args:
             position: tuple of (x, y, z) coordinates in the world frame
+            rotation: tuple of (x, y, z) angle in radians for the rotation around each axis
         """
         with self._command_lock:
             command = self.data_proxies.get_command()
-            command.coordinate_frame_arrows_viz.append( CommandCoordinateFrameArrowsViz(
-                position=position, trigger=True
-            ))
+            command.coordinate_frame_arrows_viz.append(
+                CommandCoordinateFrameArrowsViz(position=position, rotation=rotation, trigger=True)
+            )
             self.data_proxies.set_command(command)
 
     @require_connection
@@ -494,7 +499,7 @@ class StretchMujocoSimulator:
         Pull robot joint states from the simulator and return as a StatusStretchJoints
         """
         return self.data_proxies.get_status()
-    
+
     @require_connection
     def pull_joint_limits(self) -> dict[Actuators, tuple[float, float]]:
         """
