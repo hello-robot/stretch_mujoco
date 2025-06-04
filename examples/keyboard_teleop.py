@@ -91,9 +91,9 @@ def on_release(key, sim: StretchMujocoSimulator):
 @click.command()
 @click.option("--scene-xml-path", type=str, default=None, help="Path to the scene xml file")
 @click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
-@click.option("--imagery-nav", is_flag=True, help="Show only the Navigation cameras imagery")
+@click.option("--imagery-nav", is_flag=True, help="Show only the Navigation camera")
 @click.option("--imagery", is_flag=True, help="Show all the cameras' imagery")
-@click.option("--lidar", is_flag=True, help="Show the lidar scan")
+@click.option("--lidar", is_flag=True, help="Show the lidar scan in Matplotlib")
 @click.option("--print-ratio", is_flag=True, help="Print the sim-to-real time ratio to the cli.")
 def main(scene_xml_path: str|None, robocasa_env: bool, imagery_nav: bool, imagery: bool, lidar:bool, print_ratio:bool):
     cameras_to_use = StretchCameras.all() if imagery else []
