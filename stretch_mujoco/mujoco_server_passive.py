@@ -13,6 +13,8 @@ from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.utils import FpsCounter
 
+import mujoco._enums
+
 
 class MujocoServerPassive(MujocoServer):
     """
@@ -56,6 +58,8 @@ class MujocoServerPassive(MujocoServer):
         self.viewer =  mujoco.viewer.launch_passive(
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
         )
+
+        self.viewer._opt.flags[mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER] = False # Disables the lidar yellow lines.
 
         with self.viewer as viewer:
             physics_thread = threading.Thread(

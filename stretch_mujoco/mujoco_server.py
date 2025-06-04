@@ -233,9 +233,6 @@ class MujocoServer:
             self.mjmodel = model
         self.mjdata = MjData(self.mjmodel)
 
-        # Hide the rangefinder lines:
-        self.mjmodel.vis.rgba.rangefinder[3] = 0
-
         self._base_in_pos_motion = False
 
         self._stop_mujoco_process_event = stop_mujoco_process_event
