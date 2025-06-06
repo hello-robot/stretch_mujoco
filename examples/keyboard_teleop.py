@@ -4,8 +4,12 @@ from pprint import pprint
 
 import click
 
+from examples.camera_feeds import show_camera_feeds_sync
+from examples.laser_scan import show_laser_scan
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.actuators import Actuators
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
+from stretch_mujoco.enums.stretch_sensors import StretchSensors
 
 
 def print_keyboard_options():
@@ -22,7 +26,7 @@ def print_keyboard_options():
     click.secho("=====================================", fg="yellow")
 
 
-def keyboard_control(key: str|None, sim: StretchMujocoSimulator):
+def keyboard_control(key: str | None, sim: StretchMujocoSimulator):
     if key == "w":
         sim.move_by(Actuators.base_translate, 0.07)
     elif key == "s":
@@ -61,50 +65,62 @@ def keyboard_control(key: str|None, sim: StretchMujocoSimulator):
         sim.stop()
 
 
-def keyboard_control_release(key: str|None, sim: StretchMujocoSimulator):
+def keyboard_control_release(key: str | None, sim: StretchMujocoSimulator):
     if key in ("w", "s", "a", "d"):
         sim.set_base_velocity(0, 0)
 
+
 # Allow multiple key-presses, references https://stackoverflow.com/a/74910695
 key_buffer = []
+
 
 def on_press(key):
     global key_buffer
     if key not in key_buffer and len(key_buffer) < 3:
         key_buffer.append(key)
 
+
 def on_release(key, sim: StretchMujocoSimulator):
     global key_buffer
-    if(key in key_buffer):
+    if key in key_buffer:
         key_buffer.remove(key)
     if isinstance(key, keyboard.KeyCode):
         keyboard_control_release(key.char, sim)
-        
+
+
 @click.command()
 @click.option("--scene-xml-path", type=str, default=None, help="Path to the scene xml file")
 @click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
-def main(scene_xml_path: str, robocasa_env: bool):
+@click.option("--imagery-nav", is_flag=True, help="Show only the Navigation camera")
+@click.option("--imagery", is_flag=True, help="Show all the cameras' imagery")
+@click.option("--lidar", is_flag=True, help="Show the lidar scan in Matplotlib")
+@click.option("--print-ratio", is_flag=True, help="Print the sim-to-real time ratio to the cli.")
+def main(scene_xml_path: str|None, robocasa_env: bool, imagery_nav: bool, imagery: bool, lidar:bool, print_ratio:bool):
+    cameras_to_use = StretchCameras.all() if imagery else []
+    if imagery_nav:
+        cameras_to_use = [StretchCameras.cam_nav_rgb]
+        imagery = True
+    use_imagery = imagery or imagery_nav
+
     model = None
+
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
         model, xml, objects_info = model_generation_wizard()
-        sim = StretchMujocoSimulator(model=model)
-    elif scene_xml_path:
-        sim = StretchMujocoSimulator(scene_xml_path=scene_xml_path)
-    else:
-        sim = StretchMujocoSimulator()
+
+    sim = StretchMujocoSimulator(
+        model=model,
+        scene_xml_path=scene_xml_path,
+        cameras_to_use=cameras_to_use
+    )
 
     try:
         sim.start()
 
         print_keyboard_options()
 
-
-        listener = keyboard.Listener(
-            on_press=on_press,
-            on_release=lambda key: on_release(key, sim)
-        )
+        listener = keyboard.Listener(on_press=on_press, on_release=lambda key: on_release(key, sim))
 
         listener.start()
 
@@ -112,10 +128,22 @@ def main(scene_xml_path: str, robocasa_env: bool):
             for key in key_buffer:
                 if isinstance(key, keyboard.KeyCode):
                     keyboard_control(key.char, sim)
-            sleep(0.05)
+
+            if not lidar and not use_imagery:
+                sleep(0.05)
+
+            if use_imagery:
+                show_camera_feeds_sync(sim, print_ratio)
+
+            if lidar:
+                sensor_data = sim.pull_sensor_data()
+
+                try:
+                    show_laser_scan(scan_data=sensor_data.get_data(StretchSensors.base_lidar))
+                except: ...
+
 
         listener.stop()
-                    
 
     except KeyboardInterrupt:
         sim.stop()
