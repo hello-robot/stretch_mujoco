@@ -117,6 +117,15 @@ You can use `sim.add_world_frame((0.1, 0.0, 0.0))` to add arrows dynamically to 
 
 <img src="coordinate_frame_arrows.png" width=400/>
 
+This also supports rotating the frame:
+
+```
+sim.add_world_frame((0.1,0,0), (0,0,0))
+sim.add_world_frame((0.2,0,0), (1.57,0,0)) # (x, y, z), (r, p, y)
+```
+
+<img src="rotate_coordinate_frames.png" width=400/>
+
 ## More to know
 
 ### Behind the scenes
