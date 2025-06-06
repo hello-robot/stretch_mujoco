@@ -22,14 +22,23 @@ def draw_circle(n, diameter_m, arm_init, lift_init, sim:StretchMujocoSimulator):
         sim.move_to(Actuators.arm, pt[0])
         sim.move_to(Actuators.lift, pt[1])
 
+        sim.wait_until_at_setpoint(Actuators.arm)
+        sim.wait_until_at_setpoint(Actuators.lift)
+
 def _run_draw_circle():
     time.sleep(2)
     try:
         while sim.is_running(): 
+            sim.move_to(Actuators.head_tilt, -1.5707)
+            sim.move_to(Actuators.head_pan, -0.7853)
+
             sim.move_to(Actuators.wrist_yaw, 1.5707)
             sim.move_to(Actuators.gripper, 0.5)
-            # input('Press enter to close the gripper')
+            sim.wait_until_at_setpoint(Actuators.wrist_yaw)
+            sim.wait_until_at_setpoint(Actuators.gripper)
+
             sim.move_to(Actuators.gripper, pos=-0.15)
+            sim.wait_until_at_setpoint(Actuators.gripper)
             
             status = sim.pull_status()
             draw_circle(25, 0.2, status.arm.pos, status.lift.pos, sim)
@@ -43,11 +52,11 @@ if __name__ == "__main__":
 
     # You can use all the camera's, but it takes longer to render, and may affect the overall simulation FPS.
     # cameras_to_use = StretchCameras.all()
-    cameras_to_use = [StretchCameras.cam_d405_rgb]
+    cameras_to_use = [StretchCameras.cam_d405_rgb, StretchCameras.cam_d435i_rgb]
 
     sim = StretchMujocoSimulator(cameras_to_use=cameras_to_use)
 
-    sim.start(headless=True)
+    sim.start(headless=False)
 
     threading.Thread(target=_run_draw_circle, daemon=False).start()
 
