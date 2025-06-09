@@ -1,5 +1,6 @@
 import atexit
-from multiprocessing import Manager, Process
+from multiprocessing import Lock, Manager, Process
+
 import multiprocessing
 import platform
 import signal
@@ -19,9 +20,15 @@ from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer, MujocoServerProxies
 from stretch_mujoco.mujoco_server_managed import MujocoServerManaged
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
-from stretch_mujoco.datamodels.status_command import CommandBaseVelocity, CommandKeyframe, CommandMove, StatusCommand
+from stretch_mujoco.datamodels.status_command import (
+    CommandBaseVelocity,
+    CommandCoordinateFrameArrowsViz,
+    CommandKeyframe,
+    CommandMove,
+    StatusCommand,
+)
 import stretch_mujoco.utils as utils
-from stretch_mujoco.utils import require_connection, wait_and_check
+from stretch_mujoco.utils import require_connection, block_until_check_succeeds
 
 
 class StretchMujocoSimulator:
@@ -57,6 +64,8 @@ class StretchMujocoSimulator:
         self._stop_mujoco_process_event = self._manager.Event()
 
         self.data_proxies = MujocoServerProxies.default(self._manager)
+
+        self._command_lock = Lock()
 
     def start(
         self, show_viewer_ui: bool = False, headless: bool = False, use_passive_viewer: bool = True
@@ -199,31 +208,158 @@ class StretchMujocoSimulator:
         """
         Move the robot to home position
         """
-        self.data_proxies.set_command(
-            StatusCommand(
-                keyframe=CommandKeyframe(name="home", trigger=True)
+        with self._command_lock:
+            self.data_proxies.set_command(
+                StatusCommand(keyframe=CommandKeyframe(name="home", trigger=True))
             )
-        )
+        self.wait_while_is_moving(Actuators.lift)
 
     @require_connection
     def stow(self) -> None:
         """
         Move the robot to stow position
         """
-        self.data_proxies.set_command(
-            StatusCommand(
-                keyframe=CommandKeyframe(name="stow", trigger=True)
+        with self._command_lock:
+            self.data_proxies.set_command(
+                StatusCommand(keyframe=CommandKeyframe(name="stow", trigger=True))
             )
-        )
+
+        self.wait_while_is_moving(Actuators.wrist_pitch)
+
+    def is_reached_set_position(self, actuator: str | Actuators, position_tolerance: float = 0.05):
+        """
+        Checks if the joint has reached a previously commanded location.
+
+        Only listens to the `move_to` command.
+        """
+        if isinstance(actuator, str):
+            actuator = Actuators[actuator]
+
+        if actuator in [
+            Actuators.base_rotate,
+            Actuators.base_translate,
+            Actuators.left_wheel_vel,
+            Actuators.right_wheel_vel,
+        ]:
+            raise NotImplementedError(f"Check joint reached is not supported for {actuator}.")
+
+        move_command = self.data_proxies.get_command().move_to.get(actuator.name)
+
+        if not move_command:
+            click.secho(
+                "Warning: Position check requested, but the joint was not commanded to move.",
+                fg="yellow",
+            )
+            return True
+
+        set_position = move_command.pos
+
+        current_position = actuator.get_position(self.pull_status())
+
+        return bool(np.isclose(current_position, set_position, atol=position_tolerance))
+
+    def wait_until_at_setpoint(
+        self, actuator: str | Actuators, timeout: float = 5.0, position_tolerance: float = 0.05
+    ):
+        """Blocks until the actuator reaches its previously set point."""
+        if isinstance(actuator, str):
+            actuator = Actuators[actuator]
+
+        move_command = self.data_proxies.get_command().move_to.get(actuator.name)
+
+        if not move_command:
+            return True
+
+        if not block_until_check_succeeds(
+            wait_timeout=timeout,
+            check=lambda: self.is_reached_set_position(
+                actuator=actuator, position_tolerance=position_tolerance
+            )
+            == True,
+            is_alive=self.is_running,
+        ):
+            pos = move_command.pos
+            actual = actuator.get_position(self.pull_status())
+            error = pos - actual
+            click.secho(
+                f"Timeout: Joint {actuator.name} did not reach {pos}. Actual: {actual:.4f} Diff: {error*100:.4f}cm",
+                fg="red",
+            )
+            return False
+        return True
+
+    _last_movement_positions: dict[Actuators, float | tuple[float, float, float]] = {}
+
+    def wait_while_is_moving(
+        self,
+        actuator: str | Actuators,
+        timeout: float | None = 5.0,
+        check_interval: float = 0.1,
+        position_tolerance: float = 0.0005,
+    ):
+        """
+        Checks position after a delay, and blocks if position has changed.
+        If `timeout` is None, will block indefinitely.
+        """
+        if isinstance(actuator, str):
+            actuator = Actuators[actuator]
+
+        def check_if_moved():
+            """Checks movement, returns True if movement is detected."""
+            time.sleep(check_interval)
+
+            if actuator in [
+                Actuators.left_wheel_vel,
+                Actuators.right_wheel_vel,
+                Actuators.base_rotate,
+                Actuators.base_translate,
+            ]:
+                current_position = actuator.get_position_relative(
+                    self.pull_status()
+                )
+                if actuator == Actuators.left_wheel_vel or actuator == Actuators.base_translate:
+                    current_position = current_position[0]
+                elif actuator == Actuators.right_wheel_vel:
+                    current_position = current_position[1]
+                elif actuator == Actuators.base_rotate:
+                    current_position = current_position[2]
+            else:
+                current_position = actuator.get_position(self.pull_status())
+
+            if not actuator in self._last_movement_positions:
+                self._last_movement_positions[actuator] = current_position
+                return True
+
+            last_position = self._last_movement_positions[actuator]
+
+            is_moved = not np.isclose(current_position, last_position, atol=position_tolerance)
+
+            self._last_movement_positions[actuator] = current_position
+
+            return is_moved
+
+        if not block_until_check_succeeds(
+            wait_timeout=timeout,
+            check=lambda: check_if_moved() == False,
+            is_alive=self.is_running,
+        ):
+            if timeout is not None:
+                click.secho(
+                    f"Timeout: Joint {actuator.name} is still moving after {timeout}.",
+                    fg="red",
+                )
+            return False
+        return True
 
     @require_connection
-    def move_to(self, actuator: str|Actuators, pos: float, timeout: float | None = 15.0):
+    def move_to(self, actuator: str | Actuators, pos: float) -> None:
         """
-        Move the actuator to a specific position
+        Move the actuator to an absolute position.
         Args:
             actuator: string name of the actuator or Actuator enum instance
             pos: float, absolute position goal
-            timeout: if not None, then it will wait for the joint to reach that position, or return False
+
+        Use `wait_until_at_setpoint()` or `wait_while_is_moving()` to block until the joint reaches its location.
         """
         if isinstance(actuator, str):
             actuator = Actuators[actuator]
@@ -234,40 +370,25 @@ class StretchMujocoSimulator:
             Actuators.base_rotate,
             Actuators.base_translate,
         ]:
-            click.secho(
-                f"Cannot set an absolute position for a continuous joint {actuator.name}",
-                fg="red",
+            raise Exception(
+                f"Cannot set an absolute position for a continuous joint {actuator.name}"
             )
-            return
 
-        self.data_proxies.set_command(
-            StatusCommand(
-                move_to=[CommandMove(actuator_name=actuator.name, pos=pos, trigger=True)]
-            )
-        )
+        with self._command_lock:
+            command = self.data_proxies.get_command()
+            command.set_move_to(CommandMove(actuator_name=actuator.name, pos=pos, trigger=True))
 
-        if timeout:
-            if not wait_and_check(
-                timeout,
-                lambda: np.isclose(actuator.get_position(self.pull_status()), pos, atol=0.05)
-                == True,
-                self.is_running,
-            ):
-                click.secho(
-                    f"Joint {actuator.name} did not reach {pos}. Actual: {actuator.get_position(self.pull_status())}",
-                    fg="red",
-                )
-                return False
-        return True
+            self.data_proxies.set_command(command)
 
     @require_connection
-    def move_by(self, actuator: str|Actuators, pos: float) -> None:
+    def move_by(self, actuator: str | Actuators, pos: float):
         """
-        Move the actuator by a specific amount
+        Move the actuator by a relative amount.
         Args:
             actuator: string name of the actuator or Actuator enum instance
             pos: float, position to increment by
-            timeout: if not None, then it will wait for the joint to reach that position, or throw.
+
+        Use `wait_until_at_setpoint()` or `wait_while_is_moving()` to block until the joint reaches its location.
         """
         if isinstance(actuator, str):
             actuator = Actuators[actuator]
@@ -277,31 +398,19 @@ class StretchMujocoSimulator:
                 f"Cannot set a position for a velocity joint {actuator.name}",
                 fg="red",
             )
-            return
-
-        self.data_proxies.set_command(
-            StatusCommand(
-                move_by=[CommandMove(actuator_name=actuator.name, pos=pos, trigger=True)]
+            raise Exception(
+                f"Cannot set an absolute position for a continuous joint {actuator.name}"
             )
-        )
 
-        # if timeout:
-        #     if actuator in [Actuators.base_rotate, Actuators.base_translate]:
+        with self._command_lock:
+            command = self.data_proxies.get_command()
 
-        #         initial_position = actuator.get_position_relative(self.pull_status())
+            command.set_move_by(
+                # We set the pos here, and not new_position, because this relative motion math is handled by mujoco_server:
+                CommandMove(actuator_name=actuator.name, pos=pos, trigger=True)
+            )
 
-        #         # TODO: implement the check for moving the base
-        #         check = lambda: True
-        #     else:
-        #         initial_position = actuator.get_position(self.pull_status())
-
-        #         check = lambda: np.isclose(initial_position-actuator.get_position(self.pull_status()), pos,  atol=0.05) == True
-
-        #     if not wait_and_check(
-        #         timeout,
-        #         check
-        #     ):
-        #         raise Exception(f"Joint {actuator.name} did not move by {pos}.")
+            self.data_proxies.set_command(command)
 
     @require_connection
     def set_base_velocity(self, v_linear: float, omega: float) -> None:
@@ -311,13 +420,33 @@ class StretchMujocoSimulator:
             v_linear: float, linear velocity
             omega: float, angular velocity
         """
-        self.data_proxies.set_command(
-            StatusCommand(
-                set_base_velocity= CommandBaseVelocity(
-                    v_linear=v_linear, omega=omega, trigger=True
-                )
+
+        with self._command_lock:
+            command = self.data_proxies.get_command()
+            command.set_base_velocity(
+                CommandBaseVelocity(v_linear=v_linear, omega=omega, trigger=True)
             )
-        )
+
+            self.data_proxies.set_command(command)
+
+    @require_connection
+    def add_world_frame(
+        self,
+        position: tuple[float, float, float],
+        rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> None:
+        """
+        Add a world frame to the simulator for visualization.
+        Args:
+            position: tuple of (x, y, z) coordinates in the world frame
+            rotation: tuple of (x, y, z) angle in radians for the rotation around each axis
+        """
+        with self._command_lock:
+            command = self.data_proxies.get_command()
+            command.coordinate_frame_arrows_viz.append(
+                CommandCoordinateFrameArrowsViz(position=position, rotation=rotation, trigger=True)
+            )
+            self.data_proxies.set_command(command)
 
     @require_connection
     def get_base_pose(self):
@@ -356,7 +485,7 @@ class StretchMujocoSimulator:
         Pull camera data from the simulator and return as a StatusStretchCameras
         """
         return self.data_proxies.get_cameras()
-    
+
     @require_connection
     def pull_sensor_data(self) -> StatusStretchSensors:
         """
@@ -370,6 +499,13 @@ class StretchMujocoSimulator:
         Pull robot joint states from the simulator and return as a StatusStretchJoints
         """
         return self.data_proxies.get_status()
+
+    @require_connection
+    def pull_joint_limits(self) -> dict[Actuators, tuple[float, float]]:
+        """
+        Pull robot joint limuts from the simulator and return as a dict
+        """
+        return self.data_proxies.get_joint_limits()
 
     def is_mujoco_process_dead_or_stopevent_triggered(self):
         return (

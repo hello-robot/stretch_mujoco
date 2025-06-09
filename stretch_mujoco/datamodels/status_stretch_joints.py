@@ -27,6 +27,7 @@ class BaseStatus:
 class StatusStretchJoints:
     time: float
     fps:float
+    sim_to_real_time_ratio_msg: str
     base:BaseStatus
     lift: PositionVelocity
     arm: PositionVelocity
@@ -60,6 +61,7 @@ class StatusStretchJoints:
         return StatusStretchJoints(
             0,
             0,
+            "",
             BaseStatus.default(),
             PositionVelocity.default(),
             PositionVelocity.default(),

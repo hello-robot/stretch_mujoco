@@ -3,48 +3,15 @@ import time
 
 import click
 import cv2
+from examples.camera_feeds import show_camera_feeds_sync
 from gamepad_controller import GamePadController
 
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.actuators import Actuators
-from stretch_mujoco.utils import get_depth_color_map
 
 sim:StretchMujocoSimulator
 gamepad:GamePadController
-
-
-def display_camera_feeds():
-    global sim
-    # display camera feeds
-    while True:
-        camera_data = sim.pull_camera_data()
-        if camera_data.cam_d405_rgb:
-            cv2.imshow("cam_d405_rgb", cv2.cvtColor(camera_data.cam_d405_rgb, cv2.COLOR_RGB2BGR))
-        if camera_data.cam_d405_depth:
-            cv2.imshow("cam_d405_depth", get_depth_color_map(camera_data.cam_d405_depth))
-        if camera_data.cam_d435i_rgb:
-            cv2.imshow(
-            "cam_d435i_rgb",
-            cv2.rotate(
-                cv2.cvtColor(camera_data.cam_d435i_rgb, cv2.COLOR_RGB2BGR),
-                cv2.ROTATE_90_CLOCKWISE,
-                ),
-            )
-
-        if camera_data.cam_d435i_depth:
-            cv2.imshow(
-            "cam_d435i_depth",
-            cv2.rotate(
-                get_depth_color_map(camera_data.cam_d435i_depth), cv2.ROTATE_90_CLOCKWISE
-            ),
-        )
-        if camera_data.cam_nav_rgb:
-            cv2.imshow("cam_nav_rgb", cv2.cvtColor(camera_data.cam_nav_rgb, cv2.COLOR_RGB2BGR))
-
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-
 
 button_mapping = {
     "top_pad_pressed": ["wrist_pitch", 1, 0.05],
@@ -157,7 +124,8 @@ def main(scene_xml_path: str, robocasa_env: bool, headless: bool):
         sim.start(headless=headless)
         gamepad.start()
         threading.Thread(target=gamepad_loop, daemon=True).start()
-        display_camera_feeds()
+        while sim.is_running():
+            show_camera_feeds_sync(sim, False)
     except KeyboardInterrupt:
         sim.stop()
         cv2.destroyAllWindows()

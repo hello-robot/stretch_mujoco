@@ -61,6 +61,20 @@ def compute_K(fovy: float, width: int, height: int) -> np.ndarray:
     return np.array(((f, 0, width / 2), (0, f, height / 2), (0, 0, 1)))
 
 
+def Rx(theta):
+    """
+    Rotation matrix about x-axis
+    """
+    return np.matrix(
+        [[1,0,0], [0, math.cos(theta), -math.sin(theta)], [0, math.sin(theta), math.cos(theta)], ]
+    )
+def Ry(theta):
+    """
+    Rotation matrix about y-axis
+    """
+    return np.matrix(
+        [[math.cos(theta), 0, math.sin(theta)],  [0, 1, 0],[-math.sin(theta), 0, math.cos(theta)],]
+    )
 def Rz(theta):
     """
     Rotation matrix about z-axis
@@ -123,20 +137,45 @@ def diff_drive_inv_kinematics(V: float, omega: float) -> tuple:
 
 class FpsCounter:
     def __init__(self):
-        self.fps_counter = 0
-        self.fps_start_time = time.perf_counter()
+        self._fps_counter = 0
+        self._wall_time = time.perf_counter()
+
         self.fps = 0
+        """The actual fps count"""
 
-    def tick(self):
-        self.fps_counter += 1
+        self.sim_to_real_ratio:float|None = None
+        """Sim time compared with real time"""
 
-        elapsed = time.perf_counter() - self.fps_start_time
+        self._last_sim_time = 0
+
+
+    def tick(self, sim_time:float|None = None):
+        """
+        Call this during step() to update the fps counter. 
+
+        Pass sim_time to calculate sim-to-real time.
+        """
+        self._fps_counter += 1
+
+        elapsed = time.perf_counter() - self._wall_time
         # When one second has passed, count:
-        if elapsed > 1.0:
-            self.fps = self.fps_counter / elapsed
-            self.fps_start_time = time.perf_counter()
-            self.fps_counter = 0
+        if elapsed >= 1.0:
+            new_wall_time = time.perf_counter()
+            
+            if sim_time:
+                self.sim_to_real_ratio = (sim_time - self._last_sim_time)/(new_wall_time - self._wall_time)
+                self._last_sim_time = sim_time
 
+            self.fps = self._fps_counter / elapsed
+            self._wall_time = new_wall_time
+            self._fps_counter = 0
+
+        
+    @property
+    def sim_to_real_time_ratio_msg(self): 
+        if self.sim_to_real_ratio is None:
+            return "sim_to_real_ratio is not set. Call `tick(sim_time=)` with the sim_time to calculate it."
+        return f"Sim is running {self.sim_to_real_ratio:.3f}x as fast as realtime"
 
 class URDFmodel:
     def __init__(self) -> None:
@@ -343,9 +382,17 @@ def dataclass_from_dict(klass, dict_data: dict):
         return dict_data  # Not a dataclass field
 
 
-def wait_and_check(
-    wait_timeout: float, check: Callable[[], bool], is_alive: Callable[[], bool]
+def block_until_check_succeeds(
+    wait_timeout: float|None, check: Callable[[], bool], is_alive: Callable[[], bool]
 ) -> bool:
+    """Blocks until the check callback succeeds"""
+
+    if wait_timeout is None:
+        while is_alive():
+            if check():
+                return True
+        return False
+    
     start_time = time.time()
 
     while time.time() - start_time < wait_timeout:

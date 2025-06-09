@@ -112,56 +112,62 @@ Try the code below using `uv run ipython`. For advanced Mujoco users, the class 
 ```python
 from stretch_mujoco import StretchMujocoSimulator
 
-sim = StretchMujocoSimulator()
-sim.start(headless=False) # This will open a Mujoco-Viewer window
+if __name__ == "__main__":
+    sim = StretchMujocoSimulator()
+    sim.start(headless=False) # This will open a Mujoco-Viewer window
+    
+    # Poses
+    sim.stow()
+    sim.home()
+    
+    # Position Control 
+    sim.move_to('lift', 1.0)
+    sim.move_by('head_pan', -1.1)
+    sim.move_by('base_translate', 0.1)
 
-# Poses
-sim.stow()
-sim.home()
-
-# Position Control 
-sim.move_to('lift', 1.0)
-sim.move_by('head_pan', -1.1)
-sim.move_by('base_translate', 0.1)
-
-# Base Velocity control
-sim.set_base_velocity(0.3, -0.1)
-
-# Get Joint Status
-from pprint import pprint
-pprint(sim.pull_status())
-"""
-Output:
-{'time': 6.421999999999515,
- 'base': {'x_vel': -3.293721562016785e-07,'theta_vel': -3.061556698064456e-05},
- 'lift': {'pos': 0.5889703729548038, 'vel': 1.3548342274419937e-08},
- 'arm': {'pos': 0.09806380391427844, 'vel': -0.0001650879063921366},
- 'head_pan': {'pos': -4.968686850480367e-06, 'vel': 3.987855066304579e-08},
- 'head_tilt': {'pos': -0.00451929555883404, 'vel': -2.2404905787897265e-09},
- 'wrist_yaw': {'pos': 0.004738908190630005, 'vel': -5.8446467640096307e-05},
- 'wrist_pitch': {'pos': -0.0033446975569971366,'vel': -4.3182498418896415e-06},
- 'wrist_roll': {'pos': 0.0049449466225058416, 'vel': 1.27366845279872e-08},
- 'gripper': {'pos': -0.00044654737698173895, 'vel': -8.808287459130369e-07}}
-"""
-
-# Get Camera Frames
-camera_data = sim.pull_camera_data()
-pprint(camera_data)
-"""
-Output:
-{'time': 80.89999999999286,
- 'cam_d405_rgb': array([[...]]),
- 'cam_d405_depth': array([[...]]),
- 'cam_d435i_rgb': array([[...]]),
- 'cam_d435i_depth': array([[...]]),
- 'cam_nav_rgb': array([[...]]),
- 'cam_d405_K': array([[...]]),
- 'cam_d435i_K': array([[...]])}
-"""
-
-# Kills simulation process
-sim.stop()
+    sim.wait_until_at_setpoint('lift')
+    sim.wait_while_is_moving('base_translate')
+    
+    # Base Velocity control
+    sim.set_base_velocity(0.3, -0.1)
+    
+    # Get Joint Status
+    from pprint import pprint
+    pprint(sim.pull_status())
+    """
+    Output:
+    {'time': 6.421999999999515,
+     'base': {'x_vel': -3.293721562016785e-07,'theta_vel': -3.061556698064456e-05},
+     'lift': {'pos': 0.5889703729548038, 'vel': 1.3548342274419937e-08},
+     'arm': {'pos': 0.09806380391427844, 'vel': -0.0001650879063921366},
+     'head_pan': {'pos': -4.968686850480367e-06, 'vel': 3.987855066304579e-08},
+     'head_tilt': {'pos': -0.00451929555883404, 'vel': -2.2404905787897265e-09},
+     'wrist_yaw': {'pos': 0.004738908190630005, 'vel': -5.8446467640096307e-05},
+     'wrist_pitch': {'pos': -0.0033446975569971366,'vel': -4.3182498418896415e-06},
+     'wrist_roll': {'pos': 0.0049449466225058416, 'vel': 1.27366845279872e-08},
+     'gripper': {'pos': -0.00044654737698173895, 'vel': -8.808287459130369e-07}}
+    """
+    
+    # Get Camera Frames
+    camera_data = sim.pull_camera_data()
+    pprint(camera_data)
+    """
+    Output:
+    {'time': 80.89999999999286,
+     'cam_d405_rgb': array([[...]]),
+     'cam_d405_depth': array([[...]]),
+     'cam_d435i_rgb': array([[...]]),
+     'cam_d435i_depth': array([[...]]),
+     'cam_nav_rgb': array([[...]]),
+     'cam_d405_K': array([[...]]),
+     'cam_d435i_K': array([[...]])}
+    """
+    
+    # Kills simulation process
+    sim.stop()
 ```
+
+Note that the `if __name__ == "__main__":` guard is necessary, as explained in the [Python Docs](https://docs.python.org/3/library/multiprocessing.html#:~:text=For%20an%20explanation%20of%20why%20the%20if%20__name__%20%3D%3D%20%27__main__%27%20part%20is%20necessary%2C%20see%20Programming%20guidelines.).
 
 ### Loading Robocasa Kitchen Scenes
 

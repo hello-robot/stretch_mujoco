@@ -9,16 +9,15 @@ from typing import Callable
 import click
 import mujoco
 import mujoco._functions
-import mujoco._callbacks
-import mujoco._render
 import mujoco._enums
-import mujoco.viewer
 import numpy as np
 from mujoco._structs import MjData, MjModel
+import mujoco._enums
 
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 from stretch_mujoco.datamodels.status_stretch_sensors import StatusStretchSensors
+from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 import stretch_mujoco.config as config
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
@@ -26,7 +25,7 @@ from stretch_mujoco.mujoco_server_camera_manager import (
     MujocoServerCameraManagerThreaded,
     MujocoServerCameraManagerSync,
 )
-from stretch_mujoco.datamodels.status_command import StatusCommand
+from stretch_mujoco.datamodels.status_command import CommandBaseVelocity, CommandMove, StatusCommand
 from stretch_mujoco.mujoco_server_sensor_manager import MujocoServerSensorManagerThreaded
 import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import FpsCounter
@@ -38,6 +37,7 @@ class MujocoServerProxies:
     _status: "DictProxy[str, StatusStretchJoints]"
     _cameras: "DictProxy[str, StatusStretchCameras]"
     _sensors: "DictProxy[str, StatusStretchSensors]"
+    _joint_limits: "DictProxy[str, dict[Actuators, tuple[float, float]]]"
 
     def __setattr__(self, name: str, value) -> None:
         try:
@@ -69,14 +69,110 @@ class MujocoServerProxies:
     def set_sensors(self, value: StatusStretchSensors):
         self._sensors["val"] = value
 
+    def get_joint_limits(self) -> dict[Actuators, tuple[float, float]]:
+        return self._joint_limits["val"]
+
+    def set_joint_limit(self, actuator: Actuators, min_max: tuple[float, float]):
+        limits = self._joint_limits["val"]
+        limits[actuator] = min_max
+
+        self._joint_limits["val"] = limits
+
     @staticmethod
     def default(manager: SyncManager) -> "MujocoServerProxies":
         return MujocoServerProxies(
             _command=manager.dict({"val": StatusCommand.default()}),
             _status=manager.dict({"val": StatusStretchJoints.default()}),
             _cameras=manager.dict({"val": StatusStretchCameras.default()}),
-            _sensors = manager.dict({"val": StatusStretchSensors.default()})
+            _sensors=manager.dict({"val": StatusStretchSensors.default()}),
+            _joint_limits=manager.dict({"val": {}}),
         )
+
+
+class BaseController:
+
+    def __init__(self, mujoco_server: "MujocoServer") -> None:
+        self.mujoco_server = mujoco_server
+        self.last_command: CommandMove | CommandBaseVelocity | None = None
+        self.start_pose = np.array([0, 0, 0])
+
+    def push_command(self, command: CommandMove | CommandBaseVelocity):
+        """Push a command to the base. Call `update()` to set the next trajectory."""
+        self.last_command = command
+        self.start_pose = self.get_base_pose()
+
+    def _clear_command(self, is_stop_motion: bool):
+        self.last_command = None
+
+        if is_stop_motion:
+            self._set_base_velocity(0.0, 0.0)
+
+    def update(self):
+        """
+        The update method to set mujoco ctrl's for the base while in motion.
+        """
+        if self.last_command is None:
+            return
+
+        if isinstance(self.last_command, CommandMove):
+            return self.handle_move_by(self.last_command)
+
+        if isinstance(self.last_command, CommandBaseVelocity):
+            return self._set_base_velocity(self.last_command.v_linear, self.last_command.omega)
+
+    def get_base_pose(self) -> np.ndarray:
+        """Get the se(2) base pose: x, y, and theta"""
+        xyz = self.mujoco_server.mjdata.body("base_link").xpos
+        rotation = self.mujoco_server.mjdata.body("base_link").xmat.reshape(3, 3)
+        theta = np.arctan2(rotation[1, 0], rotation[0, 0])
+        return np.array([xyz[0], xyz[1], theta])
+
+    def handle_move_by(self, command: CommandMove):
+        if command.actuator_name == Actuators.base_translate.name:
+            return self._base_translate_by(
+                command.pos,
+            )
+
+        if command.actuator_name == Actuators.base_rotate.name:
+            return self._base_rotate_by(
+                command.pos,
+            )
+
+        raise NotImplementedError(f"Actuator {command.actuator_name} is not supported.")
+
+    def _base_translate_by(self, x_inc: float) -> None:
+        """
+        Translate the base by a certain w.r.t base global pose
+        """
+        start_pose = self.start_pose[:2]
+
+        sign = 1 if x_inc > 0 else -1
+        if not np.linalg.norm(self.get_base_pose()[:2] - start_pose) <= abs(x_inc):
+            return self._clear_command(is_stop_motion=True)
+
+        self._set_base_velocity(config.base_motion["default_x_vel"] * sign, 0)
+
+    def _base_rotate_by(self, theta_inc: float) -> None:
+        """
+        Rotate the base by a certain w.r.t base global pose
+        """
+        start_pose = self.start_pose[-1]
+        sign = 1 if theta_inc > 0 else -1
+        if not abs(start_pose - self.get_base_pose()[-1]) <= abs(theta_inc):
+            return self._clear_command(is_stop_motion=True)
+
+        self._set_base_velocity(0, config.base_motion["default_r_vel"] * sign)
+
+    def _set_base_velocity(self, v_linear: float, omega: float) -> None:
+        """
+        Set the base velocity of the robot
+        Args:
+            v_linear: float, linear velocity
+            omega: float, angular velocity
+        """
+        w_left, w_right = utils.diff_drive_inv_kinematics(v_linear, omega)
+        self.mujoco_server.mjdata.actuator(Actuators.left_wheel_vel.name).ctrl = w_left
+        self.mujoco_server.mjdata.actuator(Actuators.right_wheel_vel.name).ctrl = w_right
 
 
 class MujocoServer:
@@ -104,7 +200,6 @@ class MujocoServer:
             cameras_to_use=cameras_to_use,
         )
 
-
     def __init__(
         self,
         scene_xml_path: str | None,
@@ -127,25 +222,38 @@ class MujocoServer:
             self.mjmodel = model
         self.mjdata = MjData(self.mjmodel)
 
-        # Hide the rangefinder lines:
-        self.mjmodel.vis.rgba.rangefinder[3] = 0
-        
         self._base_in_pos_motion = False
 
         self._stop_mujoco_process_event = stop_mujoco_process_event
 
         self.data_proxies = data_proxies
 
+        self.base_controller = BaseController(self)
+
         self.physics_fps_counter = FpsCounter()
 
         self.sensor_manager = MujocoServerSensorManagerThreaded(
             sensor_hz=15,
             sensors_to_use=StretchSensors.from_mjmodel(self.mjmodel),
-            mujoco_server=self
+            mujoco_server=self,
         )
+
+        self.update_joint_limits()
 
         signal.signal(signal.SIGTERM, lambda num, h: self.request_to_stop())
         signal.signal(signal.SIGINT, lambda num, h: self.request_to_stop())
+
+    def update_joint_limits(self):
+        for i in range(self.mjmodel.njnt):
+            name = mujoco._functions.mj_id2name(self.mjmodel, mujoco._enums.mjtObj.mjOBJ_JOINT, i)
+            joint_range = self.mjmodel.jnt_range[i]  # This gives [lower_limit, upper_limit]
+            try:
+                actuator = Actuators.get_actuator_by_joint_names_in_mjcf(name)
+                self.data_proxies.set_joint_limit(
+                    actuator=actuator, min_max=(joint_range[0], joint_range[1])
+                )
+            except:
+                ...
 
     def set_camera_manager(
         self,
@@ -208,7 +316,7 @@ class MujocoServer:
         Clean up C++ resources
         """
         self.request_to_stop()
-        
+
         if isinstance(self.camera_manager, MujocoServerCameraManagerThreaded):
             self.camera_manager.cameras_thread.join()
 
@@ -216,7 +324,6 @@ class MujocoServer:
             self.sensor_manager.sensors_thread.join()
 
         self.camera_manager.close()
-
 
     def _run_ui_simulation(self, show_viewer_ui: bool) -> None:
         """
@@ -309,19 +416,16 @@ class MujocoServer:
         """
         Callback function that gets executed with mj_step
         """
-        self.physics_fps_counter.tick()
-
         self.mjdata = data
         self.mjmodel = model
-        self.pull_status()
-        self.push_command()
 
-    def get_base_pose(self) -> np.ndarray:
-        """Get the se(2) base pose: x, y, and theta"""
-        xyz = self.mjdata.body("base_link").xpos
-        rotation = self.mjdata.body("base_link").xmat.reshape(3, 3)
-        theta = np.arctan2(rotation[1, 0], rotation[0, 0])
-        return np.array([xyz[0], xyz[1], theta])
+        if not self.mjdata or not self.mjdata.time:
+            print("WARNING: no mujoco data to report")
+            return
+
+        self.physics_fps_counter.tick(sim_time=data.time)
+        self.pull_status()
+        self.push_command(self.data_proxies.get_command())
 
     def pull_status(self):
         """
@@ -331,11 +435,8 @@ class MujocoServer:
         new_status = StatusStretchJoints.default()
         new_status.fps = self.physics_fps_counter.fps
 
-        if not self.mjdata or not self.mjdata.time:
-            print("WARNING: no mujoco data to report")
-            return
-
         new_status.time = self.mjdata.time
+        new_status.sim_to_real_time_ratio_msg = self.physics_fps_counter.sim_to_real_time_ratio_msg
         new_status.lift.pos = self.mjdata.actuator("lift").length[0]
         new_status.lift.vel = self.mjdata.actuator("lift").velocity[0]
 
@@ -357,8 +458,9 @@ class MujocoServer:
         new_status.wrist_roll.pos = self.mjdata.actuator("wrist_roll").length[0]
         new_status.wrist_roll.vel = self.mjdata.actuator("wrist_roll").velocity[0]
 
-        real_gripper_pos = self._to_real_gripper_range(self.mjdata.actuator("gripper").length[0])
-        new_status.gripper.pos = real_gripper_pos
+        new_status.gripper.pos = self._to_real_gripper_range(
+            self.mjdata.actuator("gripper").length[0]
+        )
         new_status.gripper.vel = self.mjdata.actuator("gripper").velocity[
             0
         ]  # This is still in sim gripper range
@@ -373,7 +475,7 @@ class MujocoServer:
             new_status.base.x,
             new_status.base.y,
             new_status.base.theta,
-        ) = self.get_base_pose()
+        ) = self.base_controller.get_base_pose()
 
         self.data_proxies.set_status(new_status)
 
@@ -387,119 +489,58 @@ class MujocoServer:
             config.robot_settings["gripper_min_max"],
         )
 
-    def push_command(self):
-        command_status = self.data_proxies.get_command()
+    def push_command(self, command_status:StatusCommand):
+        """
+        Handles setting mujoco ctrl properties to move joints.
+        """
         # move_by
-        if command_status.move_by is not None:
-            for command in command_status.move_by:
-                if command.trigger:
-                    actuator_name = command.actuator_name
-                    pos = command.pos
-                    if actuator_name in ["base_translate", "base_rotate"]:
-                        if self._base_in_pos_motion:
-                            self._stop_base_pos_tracking()
-                            time.sleep(1 / 20)
-                        if actuator_name == "base_translate":
-                            threading.Thread(
-                                target=self._base_translate_by, args=(pos,), daemon=True
-                            ).start()
-                        else:
-                            threading.Thread(
-                                target=self._base_rotate_by, args=(pos,), daemon=True
-                            ).start()
+        for _, command in command_status.move_by.items():
+            if command.trigger:
+                command.trigger = False
+                actuator_name = command.actuator_name
+                pos = command.pos
+                if actuator_name in (Actuators.base_translate.name, Actuators.base_rotate.name):
+                    self.base_controller.push_command(command)
+                else:
+                    if actuator_name == Actuators.gripper.name:
+                        current_value = self._to_real_gripper_range(
+                            self.mjdata.actuator("gripper").length[0]
+                        )
+                        self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
+                            current_value + pos
+                        )
                     else:
-                        current_value = self.data_proxies.get_status()[actuator_name].pos
-                        if actuator_name == "gripper":
-                            self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(
-                                current_value + pos
-                            )
-                        else:
-                            self.mjdata.actuator(actuator_name).ctrl = current_value + pos
+                        current_value = self.mjdata.actuator(actuator_name).length[0]
+                        self.mjdata.actuator(actuator_name).ctrl = current_value + pos
 
         # move_to
-        if command_status.move_to is not None:
-            for command in command_status.move_to:
-                if command.trigger:
-                    actuator_name = command.actuator_name
-                    pos = command.pos
-                    if actuator_name == "gripper":
-                        self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
-                    else:
-                        self.mjdata.actuator(actuator_name).ctrl = pos
+        for _, command in command_status.move_to.items():
+            if command.trigger:
+                command.trigger = False
+                actuator_name = command.actuator_name
+                pos = command.pos
+                if actuator_name == Actuators.gripper.name:
+                    self.mjdata.actuator(actuator_name).ctrl = self._to_sim_gripper_range(pos)
+                elif actuator_name in (Actuators.base_translate.name, Actuators.base_rotate.name):
+                    raise NotImplementedError(
+                        f"Cannot set move_to for {actuator_name}, which is a relative joint."
+                    )
+                else:
+                    self.mjdata.actuator(actuator_name).ctrl = pos
 
         # set_base_velocity
-        if (
-            command_status.set_base_velocity is not None
-            and command_status.set_base_velocity.trigger
-        ):
-            self.set_base_velocity(
-                command_status.set_base_velocity.v_linear,
-                command_status.set_base_velocity.omega,
-            )
+        if command_status.base_velocity is not None and command_status.base_velocity.trigger:
+            command_status.base_velocity.trigger = False
+            self.base_controller.push_command(command_status.base_velocity)
 
         # keyframe
         if command_status.keyframe is not None and command_status.keyframe.trigger:
+            command_status.keyframe.trigger = False
             self.mjdata.ctrl = self.mjmodel.keyframe(command_status.keyframe.name).ctrl
 
-        self.data_proxies.set_command(StatusCommand.default())
+        self.base_controller.update()
 
-    def _base_translate_by(self, x_inc: float) -> None:
-        """
-        Translate the base by a certain w.r.t base global pose
-        """
-        start_pose = self.get_base_pose()[:2]
-        self._base_in_pos_motion = True
-        sign = 1 if x_inc > 0 else -1
-        start_ts = time.perf_counter()
-        while np.linalg.norm(self.get_base_pose()[:2] - start_pose) <= abs(x_inc):
-            if self._base_in_pos_motion:
-                self.set_base_velocity(
-                    config.base_motion["default_x_vel"] * sign, 0, _override=True
-                )
-                if time.perf_counter() - start_ts > config.base_motion["timeout"]:
-                    click.secho("Base translation timeout", fg="red")
-                    break
-            else:
-                break
-            time.sleep(1 / 30)
-        self.set_base_velocity(0, 0)
-        self._base_in_pos_motion = False
-
-    def _base_rotate_by(self, theta_inc: float) -> None:
-        """
-        Rotate the base by a certain w.r.t base global pose
-        """
-        start_pose = self.get_base_pose()[-1]
-        self._base_in_pos_motion = True
-        sign = 1 if theta_inc > 0 else -1
-        start_ts = time.perf_counter()
-        while abs(start_pose - self.get_base_pose()[-1]) <= abs(theta_inc):
-            if self._base_in_pos_motion:
-                self.set_base_velocity(
-                    0, config.base_motion["default_r_vel"] * sign, _override=True
-                )
-                time.sleep(1 / 30)
-                if time.perf_counter() - start_ts > config.base_motion["timeout"]:
-                    click.secho("Base rotation timeout", fg="red")
-                    break
-            else:
-                break
-        self.set_base_velocity(0, 0)
-        self._base_in_pos_motion = False
-
-    def set_base_velocity(self, v_linear: float, omega: float, _override=False) -> None:
-        """
-        Set the base velocity of the robot
-        Args:
-            v_linear: float, linear velocity
-            omega: float, angular velocity
-        """
-        if not _override and self._base_in_pos_motion:
-            self._stop_base_pos_tracking()
-            time.sleep(1 / 20)
-        w_left, w_right = utils.diff_drive_inv_kinematics(v_linear, omega)
-        self.mjdata.actuator("left_wheel_vel").ctrl = w_left
-        self.mjdata.actuator("right_wheel_vel").ctrl = w_right
+        self.data_proxies.set_command(command_status)
 
     def _to_sim_gripper_range(self, pos: float) -> float:
         """
@@ -510,9 +551,3 @@ class MujocoServer:
             config.robot_settings["gripper_min_max"],
             config.robot_settings["sim_gripper_min_max"],
         )
-
-    def _stop_base_pos_tracking(self) -> None:
-        """
-        Stop the base position tracking
-        """
-        self._base_in_pos_motion = False

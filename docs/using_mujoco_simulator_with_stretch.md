@@ -102,13 +102,29 @@ The [camera_feeds.py](../examples/camera_feeds.py) example shows a sample to dis
 camera_data = sim.pull_camera_data()
 
 for camera in cameras_to_use:
-    image = cv2.cvtColor(camera_data.get_camera_data(camera), cv2.COLOR_RGB2BGR)
-    cv2.imshow(camera.name, image)
+    cv2.imshow(camera.name, camera_data.get_camera_data(camera))
 
 cv2.waitKey(1)
 ```
 
 > Important Note: you should call `cv2.imshow()` on the MAIN THREAD to avoid getting graphics library (GL) related errors from your OS.
+
+### Misc Stretch Mujoco Simulator API calls
+
+#### World Coordinate Frame Arrows
+
+You can use `sim.add_world_frame((0.1, 0.0, 0.0))` to add arrows dynamically to the Mujoco viewer:
+
+<img src="coordinate_frame_arrows.png" width=400/>
+
+This also supports rotating the frame:
+
+```
+sim.add_world_frame((0.1,0,0), (0,0,0))
+sim.add_world_frame((0.2,0,0), (1.57,0,0)) # (x, y, z), (r, p, y)
+```
+
+<img src="rotate_coordinate_frames.png" width=400/>
 
 ## More to know
 
