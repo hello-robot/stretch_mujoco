@@ -44,8 +44,8 @@ class StatusCommand:
 
     move_to: dict[str, CommandMove] = field(default_factory=dict)
     move_by: dict[str, CommandMove] = field(default_factory=dict)
-    base_velocity: CommandBaseVelocity = field(default=CommandBaseVelocity(0, 0, False))
-    keyframe: CommandKeyframe = field(default=CommandKeyframe("", False))
+    base_velocity: CommandBaseVelocity = field(default_factory=lambda:CommandBaseVelocity(0, 0, False))
+    keyframe: CommandKeyframe = field(default_factory=lambda:CommandKeyframe("", False))
     coordinate_frame_arrows_viz: list[CommandCoordinateFrameArrowsViz] = field(default_factory=list)
 
 
