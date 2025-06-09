@@ -61,7 +61,7 @@ ln -s "$PYTHON_LIB_DIR/libpython3.10.dylib" ./.venv/lib/libpython3.10.dylib
 export DYLD_LIBRARY_PATH=/usr/lib:$DYLD_LIBRARY_PATH
 ```
 
-## Try Example Scripts
+## Example Scripts
 
 [Keyboard teleop](./examples/keyboard_teleop.py)
 
@@ -97,12 +97,7 @@ Ignore any warnings.
 <img src="./docs/robocasa_scene_1.png" title="Camera Streams" width="300px">
 <img src="./docs/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
 
-## Try Writing Code
-
-```
-# setup
-uv pip install -e ".[dev]"
-```
+## Writing Code
 
 Use the [StretchMujocoSimulator](./stretch_mujoco/stretch_mujoco.py) class to:
 
