@@ -25,10 +25,10 @@ class StatusCommand:
     """
     A dataclass to ferry movement commands to the Mujoco server.
     """
-    move_to:list[CommandMove]|None = field(default_factory=None)
-    move_by:list[CommandMove]|None = field(default_factory=None)
-    set_base_velocity:CommandBaseVelocity|None = field(default_factory=None)
-    keyframe:CommandKeyframe|None = field(default_factory=None)
+    move_to:list[CommandMove]|None = field(default_factory=lambda: None)
+    move_by:list[CommandMove]|None = field(default_factory=lambda: None)
+    set_base_velocity:CommandBaseVelocity|None = field(default_factory=lambda: None)
+    keyframe:CommandKeyframe|None = field(default_factory=lambda: None)
 
 
     @staticmethod
