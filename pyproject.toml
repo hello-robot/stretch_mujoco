@@ -3,14 +3,14 @@ name = "stretch_mujoco"
 version = "0.0.1"
 description = "A Stretch simulation in MuJoCo"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.11"
 dependencies = [
     "click>=8.1.8",
     "hello-robot-stretch-urdf>=0.1.0",
     "inputs>=0.5",
     "matplotlib>=3.10.1",
     "mujoco==3.2.6",
-    "opencv-python",
+    "opencv-python==4.8.0.76",
     "urchin>=0.0.29",
 ]
 authors = [
@@ -39,7 +39,6 @@ line-length = 100
 
 [project.optional-dependencies]
 dev = [
-    "ipython>=8.31.0",
     "pre-commit",
     "pytest",
     "flake8",
