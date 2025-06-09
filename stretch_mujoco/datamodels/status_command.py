@@ -1,7 +1,7 @@
 """
 Dataclasses that communicate movement commands to Mujoco.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 @dataclass
 class CommandMove:
@@ -25,10 +25,10 @@ class StatusCommand:
     """
     A dataclass to ferry movement commands to the Mujoco server.
     """
-    move_to:list[CommandMove]|None = None
-    move_by:list[CommandMove]|None = None
-    set_base_velocity:CommandBaseVelocity|None = None
-    keyframe:CommandKeyframe|None = None
+    move_to:list[CommandMove]|None = field(default_factory=None)
+    move_by:list[CommandMove]|None = field(default_factory=None)
+    set_base_velocity:CommandBaseVelocity|None = field(default_factory=None)
+    keyframe:CommandKeyframe|None = field(default_factory=None)
 
 
     @staticmethod
