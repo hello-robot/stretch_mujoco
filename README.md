@@ -197,6 +197,10 @@ sim = StretchMujocoSimulator(model=model)
 sim.start()
 ```
 
+### ROS2
+
+You can use this simulation in ROS2 using the [`stretch_simulation` package](https://github.com/hello-robot/stretch_ros2/tree/humble/stretch_simulation) in `stretch_ros2`.
+
 ### Docs
 
 Check out the following documentation resources:
