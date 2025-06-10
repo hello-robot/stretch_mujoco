@@ -6,11 +6,7 @@
 
 <img src="./docs/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
 
-This library provides the simulation stack for Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
-
-Currently only Stretch 3 is fully supported with a position control interface for all arm/head/gripper joints and velocity control for base. Camera data with depth perception and camera parameters are provided. 
-
-The library supports simuation with GUI or headless mode. Also, Stretch can be spawned in any Robocasa-provided kitchen environment.
+This library provides a simulation stack for Stretch, built on [MuJoCo](https://github.com/google-deepmind/mujoco). There is position control for the arm, head, and gripper joints, velocity control for mobile base, calibrated camera RGB + depth imagery, 2D spinning lidar scans, and more. There is a visualizer that supports [user interaction](https://youtu.be/2P-Dt-Jfd6U), or a more efficient headless mode. There is a [ROS2 package](https://github.com/hello-robot/stretch_ros2/tree/humble/stretch_simulation), built on this library, that works with Nav2, Web Teleop, and more. There is 100s of permutations of Robocasa-provided kitchen environments that Stretch can spawn into. The MuJoCo API can be used for features like deformables, procedural model generation, SDF collisions, cloth simulation, and more.
 
 Check out the [highlight reel](https://www.youtube.com/watch?v=SWPJt67IB0Q) for features that have been recently added.
 
