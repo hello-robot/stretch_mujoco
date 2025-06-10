@@ -7,7 +7,13 @@
 <img src="./docs/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
 
 This library provides the simulation stack for Stretch with [Mujoco](https://github.com/google-deepmind/mujoco).
-Currently only Stretch 3 is fully supported with a position control interface for all arm/head/gripper joints and velocity control for base. Camera data with depth perception and camera parameters are provided. The library supports simuation with GUI or headless mode. Also, Stretch can be spawned in any Robocasa-provided kitchen environment.
+
+Currently only Stretch 3 is fully supported with a position control interface for all arm/head/gripper joints and velocity control for base. Camera data with depth perception and camera parameters are provided. 
+
+The library supports simuation with GUI or headless mode. Also, Stretch can be spawned in any Robocasa-provided kitchen environment.
+
+Check out the [highlight reel](https://www.youtube.com/watch?v=SWPJt67IB0Q) for features that have been recently added.
+
 
 ## Getting Started
 Start with Google Colab:
