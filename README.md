@@ -4,7 +4,7 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-<img src="./docs/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
+<img src="./docs/images/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
 
 This library provides a simulation stack for Stretch, built on [MuJoCo](https://github.com/google-deepmind/mujoco). There is position control for the arm, head, and gripper joints, velocity control for mobile base, calibrated camera RGB + depth imagery, 2D spinning lidar scans, and more. There is a visualizer that supports [user interaction](https://youtu.be/2P-Dt-Jfd6U), or a more efficient headless mode. There is a [ROS2 package](https://github.com/hello-robot/stretch_ros2/tree/humble/stretch_simulation), built on this library, that works with Nav2, Web Teleop, and more. There is 100s of permutations of Robocasa-provided kitchen environments that Stretch can spawn into. The MuJoCo API can be used for features like deformables, procedural model generation, SDF collisions, cloth simulation, and more.
 
@@ -45,8 +45,8 @@ uv run launch_sim.py
 To exit, press `Ctrl+C` in the terminal.
 
 <p>
-    <img src="./docs/camera_streams.png" title="Camera Streams" height="250px">
-    <img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
+    <img src="./docs/images/camera_streams.png" title="Camera Streams" height="250px">
+    <img src="./docs/images/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
 </p>
 
 > On MacOS, if `mjpython` fails to locate `libpython3.10.dylib` and `libz.1.dylib`, run these commands:
@@ -96,8 +96,8 @@ uv run examples/robocasa_environment.py
 
 Ignore any warnings.
 
-<img src="./docs/robocasa_scene_1.png" title="Camera Streams" width="300px">
-<img src="./docs/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
+<img src="./docs/images/robocasa_scene_1.png" title="Camera Streams" width="300px">
+<img src="./docs/images/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
 
 ## Writing Code
 
