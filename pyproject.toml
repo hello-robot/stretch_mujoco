@@ -1,6 +1,6 @@
 [project]
 name = "stretch_mujoco"
-version = "0.0.1"
+version = "0.5.0"
 description = "A Stretch simulation in MuJoCo"
 readme = "README.md"
 requires-python = ">=3.10"
