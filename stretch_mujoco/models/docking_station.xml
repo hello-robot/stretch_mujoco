@@ -70,7 +70,7 @@
 
       <geom mesh="link_docking_plug" material="Shiny" class="visual_ds"/>
 
-      <body name="link_docking_aruco" pos="-0.326626 0 0.20514" quat="0.602908 -0.369462 0.369462 -0.602908">
+      <body name="link_docking_aruco">
         <geom material="Aruco_Docking_Station_Sticker" mesh="link_docking_aruco" class="visual_ds"/>
       </body>
     </body>
