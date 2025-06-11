@@ -1,0 +1,78 @@
+<mujoco model="docking_station">
+  <compiler angle="radian" assetdir="assets" />
+  <default>
+    <default class="visual_ds">
+      <geom group="2" type="mesh" contype="0" conaffinity="0"/>
+    </default>
+    <default class="collision_ds">
+      <geom group="3" type="mesh"/>
+    </default>
+  </default>
+  <asset>
+    <texture type="2d" name="docking_station_aruco_sticker" file="docking_station_aruco_sticker.png"/>
+
+    <material name="Black" specular="0.5" shininess="0.25" rgba="0.000000 0.000000 0.000000 1.000000"/>
+    <material name="Shiny" specular="0.5" shininess="0.5683440550000001" rgba="0.800000 0.800000 0.800000 1.000000"/>
+    <material name="Aruco_Docking_Station_Sticker" texture="docking_station_aruco_sticker" specular="0.5" shininess="0.25"/>
+
+    <mesh file="link_docking_plate.obj"/>
+    <mesh file="link_docking_base.obj"/>
+    <mesh file="link_docking_base_collision_0.obj"/>
+    <mesh file="link_docking_base_collision_1.obj"/>
+    <mesh file="link_docking_base_collision_2.obj"/>
+    <mesh file="link_docking_base_collision_3.obj"/>
+    <mesh file="link_docking_base_collision_4.obj"/>
+    <!-- <mesh file="link_docking_base_collision_5.obj"/> --> <!-- Plug -->
+    <mesh file="link_docking_base_collision_6.obj"/>
+    <mesh file="link_docking_base_collision_7.obj"/>
+    <!-- <mesh file="link_docking_base_collision_8.obj"/> --> <!-- Plug -->
+    <mesh file="link_docking_base_collision_9.obj"/>
+    <mesh file="link_docking_base_collision_10.obj"/>
+    <mesh file="link_docking_base_collision_11.obj"/>
+    <mesh file="link_docking_base_collision_12.obj"/>
+    <mesh file="link_docking_base_collision_13.obj"/>
+    <mesh file="link_docking_base_collision_14.obj"/>
+    <mesh file="link_docking_base_collision_15.obj"/>
+    <mesh file="link_docking_base_collision_16.obj"/>
+    <mesh file="link_docking_base_collision_17.obj"/>
+    <mesh file="link_docking_base_collision_18.obj"/>
+    <mesh file="link_docking_base_collision_19.obj"/>
+    <mesh file="link_docking_plug.obj"/>
+    <mesh file="link_docking_aruco.obj"/>
+  </asset>
+  <worldbody>
+    <body name="link_docking_station" pos="-1.0 0 0.01">
+      <freejoint/>
+      <geom mesh="link_docking_plate" material="Black" class="visual_ds"/>
+      <geom mesh="link_docking_plate" class="collision_ds"/>
+
+      <geom mesh="link_docking_base" material="Black" class="visual_ds"/>
+      <geom mesh="link_docking_base_collision_0" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_1" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_2" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_3" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_4" class="collision_ds"/>
+      <!-- <geom mesh="link_docking_base_collision_5" class="collision_ds"/> --> <!-- Plug -->
+      <geom mesh="link_docking_base_collision_6" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_7" class="collision_ds"/>
+      <!-- <geom mesh="link_docking_base_collision_8" class="collision_ds"/> --> <!-- Plug -->
+      <geom mesh="link_docking_base_collision_9" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_10" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_11" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_12" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_13" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_14" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_15" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_16" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_17" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_18" class="collision_ds"/>
+      <geom mesh="link_docking_base_collision_19" class="collision_ds"/>
+
+      <geom mesh="link_docking_plug" material="Shiny" class="visual_ds"/>
+
+      <body name="link_docking_aruco">
+        <geom material="Aruco_Docking_Station_Sticker" mesh="link_docking_aruco" class="visual_ds"/>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
