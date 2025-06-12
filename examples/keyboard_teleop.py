@@ -1,16 +1,174 @@
+import numpy as np
 from time import sleep
 from pynput import keyboard
 from pprint import pprint
 
 import click
+import cv2
+import cv2.aruco as aruco
 
-from examples.camera_feeds import show_camera_feeds_sync
 from examples.laser_scan import show_laser_scan
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
 
+
+def draw_detected_arucos(img, detections, border_color=(0, 255, 0)):
+    assert type(img) == np.ndarray
+    assert len(img.shape) == 2 or len(img.shape) == 3
+    if len(img.shape) == 3:
+        assert img.shape[2] == 1 or img.shape[2] == 3
+    assert type(detections) == dict
+    assert type(border_color) == tuple
+    assert len(border_color) == 3
+
+    # colors
+    corner_color = (border_color[0], border_color[2], border_color[1])
+    text_color = (255, 255, 255) # white shows better
+
+    for mid, d in detections.items():
+        # draw borders
+        corners = d['corners']
+        pts = np.moveaxis(corners, 0, 1).astype(int)
+        cv2.polylines(img, [pts], True, border_color)
+
+        # draw top left corner
+        v1 = (pts[0][0][0] - 3, pts[0][0][1] - 3)
+        v2 = (pts[0][0][0] + 3, pts[0][0][1] + 3)
+        cv2.rectangle(img, v1, v2, corner_color, lineType=cv2.LINE_AA)
+
+        # draw ID or name
+        name = d['name'] if d['name'] != None else f"id={mid}"
+        ptsf = np.moveaxis(corners, 0, 1)
+        p1 = np.average(ptsf.reshape(ptsf.shape[0], -1), axis=0).astype(int)
+        cv2.putText(img, name, p1, cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, thickness=2)
+
+    return img
+
+
+class ArucoDetector:
+
+    def __init__(self, dictionary=aruco.DICT_6X6_250, use_apriltag_refinement=False, brighten_images=False):
+        # OpenCV's Aruco detection parameters are documented here:
+        # https://docs.opencv.org/4.x/d1/dcd/structcv_1_1aruco_1_1DetectorParameters.html
+        aruco_detection_parameters =  aruco.DetectorParameters()
+        aruco_detection_parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+        if use_apriltag_refinement:
+            aruco_detection_parameters.cornerRefinementMethod = aruco.CORNER_REFINE_APRILTAG
+        # aruco_detection_parameters.cornerRefinementWinSize = 2
+        # TODO: Investigate Aruco3
+        # aruco_detection_parameters.useAruco3Detection = True
+        self._detector = aruco.ArucoDetector(aruco.getPredefinedDictionary(dictionary), aruco_detection_parameters)
+
+        # Equalize the gray scale image to improve ArUco marker
+        # detection in low exposure time images. Low exposure reduces
+        # motion blur, which interferes with ArUco detecction.
+        self._adaptive_equalization = None
+        if brighten_images:
+            self._adaptive_equalization = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+
+        self._known_markers = {
+            130: {
+                'length_mm': 47.0,
+                'use_rgb_only': False,
+                'name': 'base_left',
+                'link': 'link_aruco_left_base',
+            },
+            131: {
+                'length_mm': 47.0,
+                'use_rgb_only': False,
+                'name': 'base_right',
+                'link': 'link_aruco_right_base',
+            },
+            132: {
+                'length_mm': 23.5,
+                'use_rgb_only': False,
+                'name': 'wrist_inside',
+                'link': 'link_aruco_inner_wrist',
+            },
+            133: {
+                'length_mm': 23.5,
+                'use_rgb_only': False,
+                'name': 'wrist_top',
+                'link': 'link_aruco_top_wrist',
+            },
+            134: {
+                'length_mm': 31.4,
+                'use_rgb_only': False,
+                'name': 'shoulder_top',
+                'link': 'link_aruco_shoulder',
+            },
+            135: {
+                'length_mm': 31.4,
+                'use_rgb_only': False,
+                'name': 'd405_back',
+                'link': 'link_aruco_d405',
+            },
+            200: {
+                'length_mm': 14.0,
+                'use_rgb_only': True,
+                'name': 'finger_left',
+                'link': 'link_finger_left',
+            },
+            201: {
+                'length_mm': 14.0,
+                'use_rgb_only': True,
+                'name': 'finger_right',
+                'link': 'link_finger_right',
+            },
+            202: {
+                'length_mm': 30.0,
+                'use_rgb_only': True,
+                'name': 'toy',
+                'link': 'None',
+            },
+            245: {
+                'length_mm': 88.0,
+                'use_rgb_only': False,
+                'name': 'docking_station',
+                'link': None,
+            },
+        }
+
+    def detect(self, rgb_image):
+        gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+        if self._adaptive_equalization is not None:
+            gray_image = self._adaptive_equalization.apply(gray_image)
+
+        corners, ids, _ = self._detector.detectMarkers(gray_image)
+
+        # return as dict
+        detections = {}
+        if ids is not None:
+            for i, mid in enumerate(ids.reshape(ids.shape[0])):
+                detections[int(mid)] = {
+                    'name': self._known_markers[mid]['name'] if mid in self._known_markers else None,
+                    'link': self._known_markers[mid]['link'] if mid in self._known_markers else None,
+                    'corners': corners[i],
+                }
+
+        return detections
+
+detector = ArucoDetector()
+
+def show_camera_feeds_sync(
+    sim: StretchMujocoSimulator, 
+    print_fps: bool
+):
+    """
+    Pull camera data from the simulator and display it using OpenCV.
+
+    Call this after calling StretchMujocoSimulator::start().
+    """
+
+    camera_data = sim.pull_camera_data()
+
+    for camera_name, pixels in camera_data.get_all(use_depth_color_map=True).items():
+        detections = detector.detect(pixels)
+        cv2.imshow(camera_name.name, draw_detected_arucos(pixels, detections))
+
+    cv2.waitKey(1)
 
 def print_keyboard_options():
     click.secho("\n       Keyboard Controls:", fg="yellow")
