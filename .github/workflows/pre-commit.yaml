@@ -27,6 +27,9 @@ jobs:
         with:
           python-version-file: ".python-version"
 
+      - name: Create a virtual environment
+        run: uv venv
+
       - name: Install the project
         run: uv pip install ".[dev]"
 
