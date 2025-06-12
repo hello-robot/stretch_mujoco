@@ -10,11 +10,11 @@ This library provides a simulation stack for Stretch, built on [MuJoCo](https://
 
 Check out the [highlight reel](https://www.youtube.com/watch?v=SWPJt67IB0Q) for features that have been recently added.
 
-
 ## Getting Started
+
 Start with Google Colab:
 
- - Getting Started Tutorial [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hello-robot/stretch_mujoco/blob/main/docs/getting_started.ipynb)
+- Getting Started Tutorial [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hello-robot/stretch_mujoco/blob/main/docs/getting_started.ipynb)
 
 **or** follow these instructions on your computer:
 
@@ -50,6 +50,7 @@ To exit, press `Ctrl+C` in the terminal.
 </p>
 
 > On MacOS, if `mjpython` fails to locate `libpython3.10.dylib` and `libz.1.dylib`, run these commands:
+
 ```shell
 # Before proceeding, please reload your terminal and/or IDE window, to make sure the correct UV environment variables are loaded.
 
@@ -103,11 +104,11 @@ Ignore any warnings.
 
 Use the [StretchMujocoSimulator](./stretch_mujoco/stretch_mujoco.py) class to:
 
- * start the simulation
- * position control the robot's ranged joints
- * velocity control the robot's mobile base
- * read joint states
- * read camera imagery
+- start the simulation
+- position control the robot's ranged joints
+- velocity control the robot's mobile base
+- read joint states
+- read camera imagery
 
 Try the code below using `uv run ipython`. For advanced Mujoco users, the class also exposes the `mjModel` and `mjData`. See the [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
 
@@ -212,6 +213,16 @@ Check out the following documentation resources:
 ### Feature Requests and Bug reporting
 
 All the enhancements/missing features/Bugfixes are tracked by [Issues](https://github.com/hello-robot/stretch_mujoco/issues) filed. Please feel free to file an issue if you would like to report bugs or request a feature addition.
+
+## Contributing
+
+This repository uses [pre-commit hooks](https://pre-commit.com/) to enforce consistent formatting and style.
+
+Install pre-commit in the dev optional dependencies: `uv pip install ".[dev]`
+
+Install the hooks locally: cd to the top-level of this repository and run `pre-commit install`.
+
+Run pre-commit manually: `pre-commit run --all-files`
 
 ## Acknowledgment
 
