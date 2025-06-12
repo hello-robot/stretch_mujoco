@@ -8,7 +8,7 @@ import mujoco
 import mujoco._enums
 import numpy as np
 
-from stretch_mujoco import config, utils
+from stretch_mujoco import utils
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer

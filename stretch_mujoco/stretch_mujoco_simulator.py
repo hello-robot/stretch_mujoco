@@ -274,7 +274,7 @@ class StretchMujocoSimulator:
             check=lambda: self.is_reached_set_position(
                 actuator=actuator, position_tolerance=position_tolerance
             )
-            == True,
+            is True,
             is_alive=self.is_running,
         ):
             pos = move_command.pos
@@ -323,7 +323,7 @@ class StretchMujocoSimulator:
             else:
                 current_position = actuator.get_position(self.pull_status())
 
-            if not actuator in self._last_movement_positions:
+            if actuator not in self._last_movement_positions:
                 self._last_movement_positions[actuator] = current_position
                 return True
 
@@ -337,7 +337,7 @@ class StretchMujocoSimulator:
 
         if not block_until_check_succeeds(
             wait_timeout=timeout,
-            check=lambda: check_if_moved() == False,
+            check=lambda: check_if_moved() is False,
             is_alive=self.is_running,
         ):
             if timeout is not None:
