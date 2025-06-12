@@ -3,18 +3,26 @@ repos:
     rev: v4.6.0
     hooks:
       - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-xml
+      - id: check-yaml
 
 
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:
       - id: black
+        args: ["--check"]
 
   - repo: https://github.com/pycqa/isort
     rev: 5.11.5
     hooks:
       - id: isort
-        args: ["--profile", "black", "--filter-files"]
+        args: ["--profile", "black", "--filter-files", "--check"]
 
   - repo: https://github.com/pycqa/flake8
     rev: 5.0.4
@@ -45,12 +53,15 @@ repos:
     rev: v6.2.1 
     hooks: 
       - id: beautysh 
+        args: ["--check"]
 
   # Mdformat formats Markdown files 
   - repo: https://github.com/executablebooks/mdformat 
     rev: 0.7.16 
     hooks: 
       - id: mdformat 
+        args: ["--check"]
+        exclude: \.github/.*
   
     # Codespell checks the code for common misspellings 
   - repo: https://github.com/codespell-project/codespell 
