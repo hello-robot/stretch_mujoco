@@ -54,14 +54,6 @@ repos:
     hooks: 
       - id: beautysh 
         args: ["--check"]
-
-  # Mdformat formats Markdown files 
-  - repo: https://github.com/executablebooks/mdformat 
-    rev: 0.7.16 
-    hooks: 
-      - id: mdformat 
-        args: ["--check"]
-        exclude: \.github/.*
   
     # Codespell checks the code for common misspellings 
   - repo: https://github.com/codespell-project/codespell 
