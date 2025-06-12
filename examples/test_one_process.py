@@ -1,10 +1,8 @@
-from multiprocessing import Manager
 import signal
 import threading
+from multiprocessing import Manager
 
-from stretch_mujoco.mujoco_server import MujocoServer
-
-from stretch_mujoco.mujoco_server import MujocoServerProxies
+from stretch_mujoco.mujoco_server import MujocoServer, MujocoServerProxies
 
 _manager = Manager()
 data_proxies = MujocoServerProxies.default(_manager)

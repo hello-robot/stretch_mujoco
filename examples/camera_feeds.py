@@ -1,7 +1,9 @@
 import random
 import threading
 import time
+
 import cv2
+
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator

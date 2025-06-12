@@ -1,8 +1,8 @@
-from time import sleep
-from pynput import keyboard
 from pprint import pprint
+from time import sleep
 
 import click
+from pynput import keyboard
 
 from examples.camera_feeds import show_camera_feeds_sync
 from examples.laser_scan import show_laser_scan

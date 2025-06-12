@@ -1,7 +1,9 @@
 import time
+
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib
+
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
 from stretch_mujoco.stretch_mujoco_simulator import StretchMujocoSimulator

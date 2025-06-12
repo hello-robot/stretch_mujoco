@@ -1,25 +1,21 @@
 import dataclasses
+import importlib.resources
 import math
 import re
 import time
 import xml.etree.ElementTree as ET
+from functools import wraps
 from typing import TYPE_CHECKING, Callable, Tuple
 
 import cv2
-import numpy as np
-import importlib.resources
-import urchin as urdf_loader
-
-
-from functools import wraps
-
 import mujoco
-import mujoco._functions
 import mujoco._callbacks
-import mujoco._render
 import mujoco._enums
+import mujoco._functions
+import mujoco._render
 import mujoco.viewer
 import numpy as np
+import urchin as urdf_loader
 from mujoco._structs import MjModel
 from mujoco.glfw import GLContext as GlFwContext
 

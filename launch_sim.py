@@ -1,7 +1,7 @@
-import stretch_mujoco
 import click
 import cv2
 
+import stretch_mujoco
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 
 

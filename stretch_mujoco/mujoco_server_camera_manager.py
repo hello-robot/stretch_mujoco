@@ -1,15 +1,16 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import platform
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
+
 import mujoco
 import mujoco._enums
 import numpy as np
 
 from stretch_mujoco import config, utils
-from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.utils import FpsCounter, switch_to_glfw_renderer
 
 if TYPE_CHECKING:
@@ -96,7 +97,7 @@ class MujocoServerCameraManagerSync:
     def _create_camera_renderer(self, for_camera: StretchCameras):
         settings = for_camera.initial_camera_settings
 
-        # Update mujoco's offscreen gl buffer size to accomodate bigger resolutions:
+        # Update mujoco's offscreen gl buffer size to accommodate bigger resolutions:
         offscreen_buffer_width = self.mujoco_server.mjmodel.vis.global_.offwidth
         offscreen_buffer_height = self.mujoco_server.mjmodel.vis.global_.offheight
 
@@ -109,9 +110,9 @@ class MujocoServerCameraManagerSync:
             self.mujoco_server.mjmodel, width=settings.width, height=settings.height
         )
 
-        renderer._scene_option.flags[mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER] = (
-            False  # Disables the lidar yellow lines.
-        )
+        renderer._scene_option.flags[
+            mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER
+        ] = False  # Disables the lidar yellow lines.
 
         from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 

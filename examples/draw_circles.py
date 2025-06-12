@@ -1,5 +1,6 @@
 import threading
 import time
+
 import numpy as np
 
 from examples.camera_feeds import show_camera_feeds_sync

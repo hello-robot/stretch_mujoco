@@ -1,5 +1,6 @@
 import copy
 from dataclasses import asdict, dataclass
+
 import cv2
 import numpy as np
 

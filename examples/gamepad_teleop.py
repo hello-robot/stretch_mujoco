@@ -3,12 +3,12 @@ import time
 
 import click
 import cv2
-from examples.camera_feeds import show_camera_feeds_sync
 from gamepad_controller import GamePadController
 
+from examples.camera_feeds import show_camera_feeds_sync
 from stretch_mujoco import StretchMujocoSimulator
-from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.actuators import Actuators
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
 
 sim: StretchMujocoSimulator
 gamepad: GamePadController

@@ -1,19 +1,18 @@
 import threading
 import time
-from stretch_mujoco.datamodels.status_command import StatusCommand
-from stretch_mujoco.utils import Rx, Ry, Rz, override
-import numpy as np
 
 import click
 import mujoco
+import mujoco._enums
 import mujoco._functions
 import mujoco.viewer
+import numpy as np
 from mujoco._enums import mjtGeom
+
+from stretch_mujoco.datamodels.status_command import StatusCommand
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer
-from stretch_mujoco.utils import FpsCounter
-
-import mujoco._enums
+from stretch_mujoco.utils import FpsCounter, Rx, Ry, Rz, override
 
 
 class MujocoServerPassive(MujocoServer):
@@ -59,9 +58,9 @@ class MujocoServerPassive(MujocoServer):
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
         )
 
-        self.viewer._opt.flags[mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER] = (
-            False  # Disables the lidar yellow lines.
-        )
+        self.viewer._opt.flags[
+            mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER
+        ] = False  # Disables the lidar yellow lines.
 
         with self.viewer as viewer:
             physics_thread = threading.Thread(
@@ -82,7 +81,7 @@ class MujocoServerPassive(MujocoServer):
             )  # 1/Hz.Put the UI thread to sleep so that the physics thread can do work, to mitigate `viewer.lock()` locking physics thread.
 
             click.secho(
-                f"Using the Mujoco Passive Viewer. Note: UI thread and camera rendering is capped to {1/UI_FPS_CAP_RATE}Hz to increase performance. You can set this rate using the `camera_rate` arugment.",
+                f"Using the Mujoco Passive Viewer. Note: UI thread and camera rendering is capped to {1/UI_FPS_CAP_RATE}Hz to increase performance. You can set this rate using the `camera_rate` argument.",
                 fg="green",
             )
 

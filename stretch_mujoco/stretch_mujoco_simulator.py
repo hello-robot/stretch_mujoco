@@ -1,17 +1,24 @@
 import atexit
-from multiprocessing import Lock, Manager, Process
-
 import multiprocessing
 import platform
 import signal
 import sys
 import threading
 import time
+from multiprocessing import Lock, Manager, Process
 
 import click
 import numpy as np
 from mujoco._structs import MjModel
 
+import stretch_mujoco.utils as utils
+from stretch_mujoco.datamodels.status_command import (
+    CommandBaseVelocity,
+    CommandCoordinateFrameArrowsViz,
+    CommandKeyframe,
+    CommandMove,
+    StatusCommand,
+)
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 from stretch_mujoco.datamodels.status_stretch_sensors import StatusStretchSensors
@@ -20,15 +27,7 @@ from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.mujoco_server import MujocoServer, MujocoServerProxies
 from stretch_mujoco.mujoco_server_managed import MujocoServerManaged
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
-from stretch_mujoco.datamodels.status_command import (
-    CommandBaseVelocity,
-    CommandCoordinateFrameArrowsViz,
-    CommandKeyframe,
-    CommandMove,
-    StatusCommand,
-)
-import stretch_mujoco.utils as utils
-from stretch_mujoco.utils import require_connection, block_until_check_succeeds
+from stretch_mujoco.utils import block_until_check_succeeds, require_connection
 
 
 class StretchMujocoSimulator:

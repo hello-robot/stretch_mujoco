@@ -1,33 +1,32 @@
 import contextlib
-from dataclasses import dataclass
-from multiprocessing.managers import DictProxy, SyncManager
 import signal
 import threading
 import time
+from dataclasses import dataclass
+from multiprocessing.managers import DictProxy, SyncManager
 from typing import Callable
 
 import click
 import mujoco
-import mujoco._functions
 import mujoco._enums
+import mujoco._functions
 import numpy as np
 from mujoco._structs import MjData, MjModel
-import mujoco._enums
 
+import stretch_mujoco.config as config
+import stretch_mujoco.utils as utils
+from stretch_mujoco.datamodels.status_command import CommandBaseVelocity, CommandMove, StatusCommand
 from stretch_mujoco.datamodels.status_stretch_camera import StatusStretchCameras
 from stretch_mujoco.datamodels.status_stretch_joints import StatusStretchJoints
 from stretch_mujoco.datamodels.status_stretch_sensors import StatusStretchSensors
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
-import stretch_mujoco.config as config
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
 from stretch_mujoco.mujoco_server_camera_manager import (
-    MujocoServerCameraManagerThreaded,
     MujocoServerCameraManagerSync,
+    MujocoServerCameraManagerThreaded,
 )
-from stretch_mujoco.datamodels.status_command import CommandBaseVelocity, CommandMove, StatusCommand
 from stretch_mujoco.mujoco_server_sensor_manager import MujocoServerSensorManagerThreaded
-import stretch_mujoco.utils as utils
 from stretch_mujoco.utils import FpsCounter
 
 
@@ -90,7 +89,6 @@ class MujocoServerProxies:
 
 
 class BaseController:
-
     def __init__(self, mujoco_server: "MujocoServer") -> None:
         self.mujoco_server = mujoco_server
         self.last_command: CommandMove | CommandBaseVelocity | None = None

@@ -1,4 +1,5 @@
 import random
+
 import numpy as np
 
 from stretch_mujoco.enums.actuators import Actuators

@@ -1,6 +1,6 @@
-from multiprocessing import Manager
 import signal
 import threading
+from multiprocessing import Manager
 
 from stretch_mujoco.mujoco_server import MujocoServerProxies
 from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
