@@ -1,0 +1,92 @@
+site_name: Stretch Mujoco
+site_url: https://docs.hello-robot.com/stretch_mujoco
+site_description: "Hello Robot Stretch Mujoco Documentation"
+copyright: 'Copyright &copy; 2025 Hello Robot Inc'
+site_author: Hello Robot Inc
+use_directory_urls: True
+docs_dir: .
+site_dir: ../site
+
+theme:
+ name: material
+ #font: Arial
+ palette:
+  - scheme: default
+    primary: hello-robot-light
+    toggle:
+      icon: material/lightbulb-outline
+      name: Switch to dark mode
+  - scheme: slate
+    primary: hello-robot-dark
+    toggle:
+      icon: material/lightbulb
+      name: Switch to light mode
+ logo: ./docs/images/hello_robot_logo_light.png
+ favicon: ./docs/images/hello_robot_favicon.png
+ features:
+  - navigation.instant
+
+extra_css:
+  - ./docs/extra.css
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - admonition
+
+plugins:
+  - same-dir
+#  - simple:
+#      merge_docs_dir: true
+#      include_extensions: [".css", ".png"]
+#      include_folders: ['../hello_helpers']
+  - mike:
+      # these fields are all optional; the defaults are as below...
+      version_selector: true   # set to false to leave out the version selector
+      css_dir: css             # the directory to put the version selector's CSS
+      javascript_dir: js       # the directory to put the version selector's JS
+      canonical_version: null  # the version for <link rel="canonical">; `null`
+      # uses the version specified via `mike deploy`
+  - search
+  - tags
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          selection:
+            docstring_style: numpy
+          rendering:
+            show_root_heading: true
+            show_source: false
+            members_order: source
+            heading_level: 3
+            show_if_no_docstring: true
+
+extra:
+  version:
+    provider: mike
+    default: latest
+  social:
+    - icon: material/home
+      link: https://hello-robot.com
+    - icon: material/twitter
+      link: https://twitter.com/HelloRobotInc
+    - icon: material/github
+      link: https://github.com/hello-robot
+    - icon: material/linkedin
+      link: https://linkedin.com/company/hello-robot-inc
+
+nav:
+ - Stretch Mujoco: README.md
+ - Stretch ROS2 Simulation: https://github.com/hello-robot/stretch_ros2/tree/humble/stretch_simulation
+ - Getting Started: 
+    - Getting Started Notebook: ./docs/getting_started.ipynb
+    - Stretch Mujoco API: ./docs/using_mujoco_simulator_with_stretch.md
+    - Simulation Parameters: https://forum.hello-robot.com/t/physical-aspects-of-the-robot-for-simulation/792
+ - Other Simulators:
+    - ROS2 with Gazebo: https://github.com/CardiffUniversityComputationalRobotics/stretch_ros2
+    - MuJoCo Menagerie: https://github.com/google-deepmind/mujoco_menagerie/tree/main/hello_robot_stretch
+
+

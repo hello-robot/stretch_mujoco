@@ -115,7 +115,7 @@ cv2.waitKey(1)
 
 You can use `sim.add_world_frame((0.1, 0.0, 0.0))` to add arrows dynamically to the Mujoco viewer:
 
-<img src="coordinate_frame_arrows.png" width=400/>
+<img src="images/coordinate_frame_arrows.png" width=400/>
 
 This also supports rotating the frame:
 
@@ -124,7 +124,7 @@ sim.add_world_frame((0.1,0,0), (0,0,0))
 sim.add_world_frame((0.2,0,0), (1.57,0,0)) # (x, y, z), (r, p, y)
 ```
 
-<img src="rotate_coordinate_frames.png" width=400/>
+<img src="images/rotate_coordinate_frames.png" width=400/>
 
 ## More to know
 
@@ -134,7 +134,7 @@ When you call `sim.start()`, the following process diagram explains how Mujoco i
 
 > tl;dr The Mujoco simulator is started on a spawned process, and data is communicated between your main process and the Mujoco process using a [Multiprocesing Manager](https://docs.python.org/3/library/multiprocessing.html#multiprocessing.Manager).
 
-<img src="mujoco_server_process_diagram.jpg" width=600>
+<img src="images/mujoco_server_process_diagram.jpg" width=600>
 
 
 ### Mujoco rendering locks
