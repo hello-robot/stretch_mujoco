@@ -21,9 +21,7 @@ from stretch_mujoco.utils import (
 
 
 def get_styles() -> OrderedDict:
-    raw_styles = dict(
-        map(lambda item: (item.value, item.name.lower().capitalize()), StyleType)
-    )
+    raw_styles = dict(map(lambda item: (item.value, item.name.lower().capitalize()), StyleType))
     styles = OrderedDict()
     for k in sorted(raw_styles.keys()):
         if k < 0:
@@ -97,16 +95,16 @@ def choose_option(options, option_name, show_keys=False, default=None, default_m
     # Return the chosen environment name
     return choice
 
+
 def choose_layout():
-    layout = choose_option(
-            layouts, "kitchen layout", default=-1, default_message="random layouts"
-        )
-    
+    layout = choose_option(layouts, "kitchen layout", default=-1, default_message="random layouts")
+
     if layout == -1:
         layout = np.random.choice(range(10))
         print(colored(f"Randomly choosing layout... id: {layout}", "yellow"))
-    
+
     return layout
+
 
 def choose_style():
     styles = get_styles()
@@ -115,16 +113,19 @@ def choose_style():
     if style == -1:
         style = np.random.choice(range(11))
         print(colored(f"Randomly choosing style... id: {style}", "yellow"))
-    
+
     return style
 
-def layout_from_str(layout:str) -> int:
+
+def layout_from_str(layout: str) -> int:
     """Returns the index of the layout in the orderedDict"""
     return list(layouts.values()).index(layout)
 
-def style_from_str(style:str) -> int:
+
+def style_from_str(style: str) -> int:
     """Returns the index of the style in the orderedDict"""
     return list(get_styles().values()).index(style)
+
 
 def model_generation_wizard(
     task: str = "PnPCounterToCab",

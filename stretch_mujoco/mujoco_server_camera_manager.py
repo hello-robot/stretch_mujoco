@@ -109,7 +109,9 @@ class MujocoServerCameraManagerSync:
             self.mujoco_server.mjmodel, width=settings.width, height=settings.height
         )
 
-        renderer._scene_option.flags[mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER] = False # Disables the lidar yellow lines.
+        renderer._scene_option.flags[mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER] = (
+            False  # Disables the lidar yellow lines.
+        )
 
         from stretch_mujoco.mujoco_server_passive import MujocoServerPassive
 

@@ -14,11 +14,11 @@ signal.signal(signal.SIGTERM, lambda num, frame: event.set())
 signal.signal(signal.SIGINT, lambda num, frame: event.set())
 
 MujocoServer.launch_server(
-    scene_xml_path=None, 
-    model=None, 
-    camera_hz=30, 
+    scene_xml_path=None,
+    model=None,
+    camera_hz=30,
     show_viewer_ui=True,
-    stop_mujoco_process_event=event, 
+    stop_mujoco_process_event=event,
     data_proxies=data_proxies,
-    cameras_to_use=[]
+    cameras_to_use=[],
 )

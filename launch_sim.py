@@ -9,13 +9,9 @@ from stretch_mujoco.enums.stretch_cameras import StretchCameras
 @click.option("--scene-xml-path", help="Path to a scene xml file")
 @click.option("--headless", is_flag=True, help="Run the simulation headless")
 @click.option("--imagery", is_flag=True, help="Show the cameras' imagery")
-def main(
-    scene_xml_path: str,
-    headless: bool,
-    imagery: bool
-) -> None:
+def main(scene_xml_path: str, headless: bool, imagery: bool) -> None:
     cameras_to_use = StretchCameras.all() if imagery else []
-    sim = stretch_mujoco.StretchMujocoSimulator(scene_xml_path,cameras_to_use=cameras_to_use)
+    sim = stretch_mujoco.StretchMujocoSimulator(scene_xml_path, cameras_to_use=cameras_to_use)
     sim.start(headless=headless)
     try:
         while sim.is_running():

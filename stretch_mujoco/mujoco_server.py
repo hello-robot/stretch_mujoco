@@ -489,7 +489,7 @@ class MujocoServer:
             config.robot_settings["gripper_min_max"],
         )
 
-    def push_command(self, command_status:StatusCommand):
+    def push_command(self, command_status: StatusCommand):
         """
         Handles setting mujoco ctrl properties to move joints.
         """

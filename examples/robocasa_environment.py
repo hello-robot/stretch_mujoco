@@ -17,7 +17,7 @@ def main(task: str, layout: int, style: int, write_to_file):
     # You can use all the camera's, but it takes longer to render, and may affect the overall simulation FPS.
     # cameras_to_use = StretchCameras.all()
     cameras_to_use = [StretchCameras.cam_d405_rgb]
-    
+
     model, xml, objects_info = model_generation_wizard(
         task=task,
         layout=layout,

@@ -95,7 +95,14 @@ def on_release(key, sim: StretchMujocoSimulator):
 @click.option("--imagery", is_flag=True, help="Show all the cameras' imagery")
 @click.option("--lidar", is_flag=True, help="Show the lidar scan in Matplotlib")
 @click.option("--print-ratio", is_flag=True, help="Print the sim-to-real time ratio to the cli.")
-def main(scene_xml_path: str|None, robocasa_env: bool, imagery_nav: bool, imagery: bool, lidar:bool, print_ratio:bool):
+def main(
+    scene_xml_path: str | None,
+    robocasa_env: bool,
+    imagery_nav: bool,
+    imagery: bool,
+    lidar: bool,
+    print_ratio: bool,
+):
     cameras_to_use = StretchCameras.all() if imagery else []
     if imagery_nav:
         cameras_to_use = [StretchCameras.cam_nav_rgb]
@@ -110,9 +117,7 @@ def main(scene_xml_path: str|None, robocasa_env: bool, imagery_nav: bool, imager
         model, xml, objects_info = model_generation_wizard()
 
     sim = StretchMujocoSimulator(
-        model=model,
-        scene_xml_path=scene_xml_path,
-        cameras_to_use=cameras_to_use
+        model=model, scene_xml_path=scene_xml_path, cameras_to_use=cameras_to_use
     )
 
     try:
@@ -140,8 +145,8 @@ def main(scene_xml_path: str|None, robocasa_env: bool, imagery_nav: bool, imager
 
                 try:
                     show_laser_scan(scan_data=sensor_data.get_data(StretchSensors.base_lidar))
-                except: ...
-
+                except:
+                    ...
 
         listener.stop()
 

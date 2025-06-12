@@ -55,17 +55,22 @@ class MujocoServerPassive(MujocoServer):
 
         https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer
         """
-        self.viewer =  mujoco.viewer.launch_passive(
+        self.viewer = mujoco.viewer.launch_passive(
             self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
         )
 
-        self.viewer._opt.flags[mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER] = False # Disables the lidar yellow lines.
+        self.viewer._opt.flags[mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER] = (
+            False  # Disables the lidar yellow lines.
+        )
 
         with self.viewer as viewer:
             physics_thread = threading.Thread(
                 target=self._physics_loop,
                 name="PhysicsThread",
-                args=(viewer.lock(), lambda: viewer.is_running() and not self._is_requested_to_stop()),
+                args=(
+                    viewer.lock(),
+                    lambda: viewer.is_running() and not self._is_requested_to_stop(),
+                ),
                 daemon=True,
             )
             physics_thread.start()
@@ -82,7 +87,7 @@ class MujocoServerPassive(MujocoServer):
             )
 
             # Replace the camera_lock with the viewer lock so that we're not accessing mjdata at the same time as the physics thread.
-            self.camera_manager.camera_lock = viewer.lock() #type: ignore
+            self.camera_manager.camera_lock = viewer.lock()  # type: ignore
 
             while viewer.is_running() and not self._is_requested_to_stop():
                 fps.tick()
@@ -119,26 +124,29 @@ class MujocoServerPassive(MujocoServer):
 
             click.secho("Mujoco viewer has terminated.", fg="blue")
 
-    def push_command(self, command_status:StatusCommand):
+    def push_command(self, command_status: StatusCommand):
 
         command_arrows = command_status.coordinate_frame_arrows_viz.copy()
 
         for arrows in command_arrows:
             if arrows.trigger:
-                self._add_axes_to_user_scn(self.viewer.user_scn, np.array(arrows.position) , arrows.rotation)
+                self._add_axes_to_user_scn(
+                    self.viewer.user_scn, np.array(arrows.position), arrows.rotation
+                )
 
                 command_status.coordinate_frame_arrows_viz.remove(arrows)
 
         super().push_command(command_status)
 
-
     @override
-    def _add_axes_to_user_scn(self,
-                            user_scn,
-                            origin: np.ndarray,
-                            rotation: tuple[float,float,float],
-                            length: float = 0.2,
-                            radius: float = 0.006):
+    def _add_axes_to_user_scn(
+        self,
+        user_scn,
+        origin: np.ndarray,
+        rotation: tuple[float, float, float],
+        length: float = 0.2,
+        radius: float = 0.006,
+    ):
         """
         Draw a right-handed RGB frame in `user_scn` using mjv_initGeom.
 
@@ -146,29 +154,19 @@ class MujocoServerPassive(MujocoServer):
         * `origin` 3-vector in world frame
         * `R`      3×3 rotation matrix, columns are local x,y,z in world frame
         """
-        colors = np.array([[1, 0, 0, 1],   # +X
-                        [0, 1, 0, 1],      # +Y
-                        [0, 0, 1, 1]])     # +Z
-        
+        colors = np.array([[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1]])  # +X  # +Y  # +Z
+
         rot_matrix = Rx(rotation[0]) @ Ry(rotation[1]) @ Rz(rotation[2])
         for axis in range(3):
             if axis == 0:
                 # Rotate +Z to +X: -90° about Y-axis
-                R = np.array([
-                    [0, 0, 1],
-                    [0, 1, 0],
-                    [-1, 0, 0]
-                ])
-            elif axis ==1:
+                R = np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]])
+            elif axis == 1:
                 # Rotate +Z to +Y: -90° about X-axis
-                R = np.array([
-                    [-1, 0, 0],
-                    [0, 0, 1],
-                    [0, 1, 0]
-                ])
-            elif axis ==2:
+                R = np.array([[-1, 0, 0], [0, 0, 1], [0, 1, 0]])
+            elif axis == 2:
                 # No rotation needed
-                R = np.eye(3) 
+                R = np.eye(3)
 
             R = rot_matrix @ R
 
@@ -177,7 +175,7 @@ class MujocoServerPassive(MujocoServer):
             geom = user_scn.geoms[user_scn.ngeom]
             mujoco._functions.mjv_initGeom(
                 geom,
-                type= mjtGeom.mjGEOM_ARROW,
+                type=mjtGeom.mjGEOM_ARROW,
                 size=size,
                 pos=origin,
                 mat=np.array(R).flatten(),

@@ -10,8 +10,8 @@ from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.actuators import Actuators
 
-sim:StretchMujocoSimulator
-gamepad:GamePadController
+sim: StretchMujocoSimulator
+gamepad: GamePadController
 
 button_mapping = {
     "top_pad_pressed": ["wrist_pitch", 1, 0.05],

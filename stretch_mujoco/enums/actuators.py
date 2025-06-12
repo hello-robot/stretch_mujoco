@@ -24,7 +24,6 @@ class Actuators(Enum):
     gripper_left_finger = 12
     gripper_right_finger = 13
 
-
     def get_joint_names_in_mjcf(self) -> list[str]:
         """
         An actuator may have multiple joints in the MJCF. Return their names here. Useful for querying positions from Mujoco.
@@ -57,7 +56,7 @@ class Actuators(Enum):
             return ["joint_head_tilt"]
 
         raise NotImplementedError(f"Joint names for {self} are not defined.")
-    
+
     @staticmethod
     @cache
     def get_actuator_by_joint_names_in_mjcf(joint_name: str) -> "Actuators":
@@ -91,11 +90,11 @@ class Actuators(Enum):
             return Actuators.left_wheel_vel
         if joint_name == "joint_right_wheel":
             return Actuators.right_wheel_vel
-        if joint_name == 'translate_mobile_base' or joint_name == 'position':
+        if joint_name == "translate_mobile_base" or joint_name == "position":
             return Actuators.base_translate
-        if joint_name == 'rotate_mobile_base':
+        if joint_name == "rotate_mobile_base":
             return Actuators.base_rotate
-        
+
         if joint_name == "joint_lift":
             return Actuators.lift
         if "joint_arm" in joint_name:
@@ -118,8 +117,6 @@ class Actuators(Enum):
             return Actuators.head_tilt
 
         raise NotImplementedError(f"Actuator for {joint_name} is not defined.")
-
-
 
     def _get_status_attribute(self, is_position: bool, status: StatusStretchJoints) -> float:
         attribute_name = "pos" if is_position else "vel"
