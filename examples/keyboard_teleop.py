@@ -16,17 +16,19 @@ def print_keyboard_options():
     click.secho("\n       Keyboard Controls:", fg="yellow")
     click.secho("=====================================", fg="yellow")
     print("W / A / S / D: Move BASE")
-    print("U / H / J / K: Move LIFT & ARM")
+    print("T / F / G / H: Move HEAD")
+    print("I / J / K / L: Move ARM")
     print("O / P: Move WRIST YAW")
     print("C / V: Move WRIST PITCH")
-    print("T / Y: Move WRIST ROLL")
+    print("E / R: Move WRIST ROLL")
     print("N / M: Open & Close GRIPPER")
-    print("L : Print status")
+    print("Z : Print status")
     print("Q : Stop")
     click.secho("=====================================", fg="yellow")
 
 
 def keyboard_control(key: str | None, sim: StretchMujocoSimulator):
+    # mobile base
     if key == "w":
         sim.move_by(Actuators.base_translate, 0.07)
     elif key == "s":
@@ -35,14 +37,28 @@ def keyboard_control(key: str | None, sim: StretchMujocoSimulator):
         sim.move_by(Actuators.base_rotate, 0.15)
     elif key == "d":
         sim.move_by(Actuators.base_rotate, -0.15)
-    elif key == "u":
-        sim.move_by(Actuators.lift, 0.1)
-    elif key == "j":
-        sim.move_by(Actuators.lift, -0.1)
+
+    # head
+    elif key == "t":
+        sim.move_by(Actuators.head_tilt, 0.2)
+    elif key == "f":
+        sim.move_by(Actuators.head_pan, 0.2)
+    elif key == "g":
+        sim.move_by(Actuators.head_tilt, -0.2)
     elif key == "h":
-        sim.move_by(Actuators.arm, -0.05)
+        sim.move_by(Actuators.head_pan, -0.2)
+
+    # arm
+    elif key == "i":
+        sim.move_by(Actuators.lift, 0.1)
     elif key == "k":
+        sim.move_by(Actuators.lift, -0.1)
+    elif key == "j":
+        sim.move_by(Actuators.arm, -0.05)
+    elif key == "l":
         sim.move_by(Actuators.arm, 0.05)
+
+    # wrist
     elif key == "o":
         sim.move_by(Actuators.wrist_yaw, 0.2)
     elif key == "p":
@@ -51,15 +67,19 @@ def keyboard_control(key: str | None, sim: StretchMujocoSimulator):
         sim.move_by(Actuators.wrist_pitch, 0.2)
     elif key == "v":
         sim.move_by(Actuators.wrist_pitch, -0.2)
-    elif key == "t":
+    elif key == "e":
         sim.move_by(Actuators.wrist_roll, 0.2)
-    elif key == "y":
+    elif key == "r":
         sim.move_by(Actuators.wrist_roll, -0.2)
+
+    # gripper
     elif key == "n":
         sim.move_by(Actuators.gripper, 0.07)
     elif key == "m":
         sim.move_by(Actuators.gripper, -0.07)
-    elif key == "l":
+
+    # other
+    elif key == "z":
         pprint(sim.pull_status())
     elif key == "q":
         sim.stop()
