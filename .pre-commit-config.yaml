@@ -57,3 +57,7 @@ repos:
     rev: v2.2.4 
     hooks: 
       - id: codespell 
+        description: Checks for common misspellings in text files.
+        entry: codespell --skip="*ipynb"
+        language: python
+        types: [text]
