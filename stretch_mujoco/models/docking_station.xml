@@ -41,7 +41,7 @@
     <mesh file="link_docking_aruco.obj"/>
   </asset>
   <worldbody>
-    <body name="link_docking_station" pos="-1.0 0 0.01">
+    <body name="link_docking_station" pos="0.0 0 0.01">
       <freejoint/>
       <geom mesh="link_docking_plate" material="Black" class="visual_ds"/>
       <geom mesh="link_docking_plate" class="collision_ds"/>
