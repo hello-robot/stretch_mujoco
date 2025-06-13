@@ -4,17 +4,17 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-<img src="./docs/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
+<img src="./docs/images/stretch_mujoco.png" title="Stretch In Kitchen" width="100%">
 
 This library provides a simulation stack for Stretch, built on [MuJoCo](https://github.com/google-deepmind/mujoco). There is position control for the arm, head, and gripper joints, velocity control for mobile base, calibrated camera RGB + depth imagery, 2D spinning lidar scans, and more. There is a visualizer that supports [user interaction](https://youtu.be/2P-Dt-Jfd6U), or a more efficient headless mode. There is a [ROS2 package](https://github.com/hello-robot/stretch_ros2/tree/humble/stretch_simulation), built on this library, that works with Nav2, Web Teleop, and more. There is 100s of permutations of Robocasa-provided kitchen environments that Stretch can spawn into. The MuJoCo API can be used for features like deformables, procedural model generation, SDF collisions, cloth simulation, and more.
 
 Check out the [highlight reel](https://www.youtube.com/watch?v=SWPJt67IB0Q) for features that have been recently added.
 
-## Getting Started
 
+## Getting Started
 Start with Google Colab:
 
-- Getting Started Tutorial [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hello-robot/stretch_mujoco/blob/main/docs/getting_started.ipynb)
+ - Getting Started Tutorial [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hello-robot/stretch_mujoco/blob/main/docs/getting_started.ipynb)
 
 **or** follow these instructions on your computer:
 
@@ -45,12 +45,11 @@ uv run launch_sim.py
 To exit, press `Ctrl+C` in the terminal.
 
 <p>
-    <img src="./docs/camera_streams.png" title="Camera Streams" height="250px">
-    <img src="./docs/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
+    <img src="./docs/images/camera_streams.png" title="Camera Streams" height="250px">
+    <img src="./docs/images/stretch3_in_mujoco.png" title="Camera Streams" height="250px">
 </p>
 
 > On MacOS, if `mjpython` fails to locate `libpython3.10.dylib` and `libz.1.dylib`, run these commands:
-
 ```shell
 # Before proceeding, please reload your terminal and/or IDE window, to make sure the correct UV environment variables are loaded.
 
@@ -97,18 +96,18 @@ uv run examples/robocasa_environment.py
 
 Ignore any warnings.
 
-<img src="./docs/robocasa_scene_1.png" title="Camera Streams" width="300px">
-<img src="./docs/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
+<img src="./docs/images/robocasa_scene_1.png" title="Camera Streams" width="300px">
+<img src="./docs/images/robocasa_scene_camera_data.png" title="Camera Streams" width="300px">
 
 ## Writing Code
 
 Use the [StretchMujocoSimulator](./stretch_mujoco/stretch_mujoco.py) class to:
 
-- start the simulation
-- position control the robot's ranged joints
-- velocity control the robot's mobile base
-- read joint states
-- read camera imagery
+ * start the simulation
+ * position control the robot's ranged joints
+ * velocity control the robot's mobile base
+ * read joint states
+ * read camera imagery
 
 Try the code below using `uv run ipython`. For advanced Mujoco users, the class also exposes the `mjModel` and `mjData`. See the [official Mujoco documentation](https://mujoco.readthedocs.io/en/stable/python.html).
 
@@ -216,7 +215,7 @@ All the enhancements/missing features/Bugfixes are tracked by [Issues](https://g
 
 ## Contributing
 
-This repository uses [pre-commit hooks](https://pre-commit.com/) to enforce consistent formatting and style.
+This repository uses [pre-commit hooks](https://pre-commit.com/).
 
 Install pre-commit in the dev optional dependencies: `uv pip install ".[dev]`
 
