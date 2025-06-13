@@ -1,4 +1,0 @@
-[flake8]
-max-line-length = 120
-extend-ignore = E203,E701,E501,E722,F541
-exclude = __init__.py,stretch_mujoco/robocasa_gen.py
