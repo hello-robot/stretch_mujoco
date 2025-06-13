@@ -17,7 +17,7 @@ def print_keyboard_options():
     click.secho("=====================================", fg="yellow")
     print("W / A / S / D: Move BASE")
     print("T / F / G / H: Move HEAD")
-    print("I / J / K / L: Move ARM")
+    print("I / J / K / L: Move LIFT & ARM")
     print("O / P: Move WRIST YAW")
     print("C / V: Move WRIST PITCH")
     print("E / R: Move WRIST ROLL")
