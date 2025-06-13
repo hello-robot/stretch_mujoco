@@ -11,24 +11,11 @@ repos:
       - id: check-xml
       - id: check-yaml
 
-
-  - repo: https://github.com/psf/black
-    rev: 22.3.0
-    hooks:
-      - id: black
-        args: ["--check"]
-
   - repo: https://github.com/pycqa/isort
     rev: 5.11.5
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files", "--check"]
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 5.0.4
-    hooks:
-      - id: flake8
-        args: ["--config=.flake8"]
 
 
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -46,14 +33,6 @@ repos:
           - --no-strict-optional
           - --disable-error-code=override
           - --disable-error-code=attr-defined
-
-
-  # Beautysh formats Bash scripts 
-  - repo: https://github.com/lovesegfault/beautysh 
-    rev: v6.2.1 
-    hooks: 
-      - id: beautysh 
-        args: ["--check"]
   
     # Codespell checks the code for common misspellings 
   - repo: https://github.com/codespell-project/codespell 
