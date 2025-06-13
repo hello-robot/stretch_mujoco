@@ -3,25 +3,13 @@ repos:
     rev: v4.6.0
     hooks:
       - id: check-added-large-files
-
-
-  - repo: https://github.com/psf/black
-    rev: 22.3.0
-    hooks:
-      - id: black
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.11.5
-    hooks:
-      - id: isort
-        args: ["--profile", "black", "--filter-files"]
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 5.0.4
-    hooks:
-      - id: flake8
-        args: ["--config=.flake8"]
-
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-xml
+      - id: check-yaml
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v0.981
@@ -38,22 +26,13 @@ repos:
           - --no-strict-optional
           - --disable-error-code=override
           - --disable-error-code=attr-defined
-
-
-  # Beautysh formats Bash scripts 
-  - repo: https://github.com/lovesegfault/beautysh 
-    rev: v6.2.1 
-    hooks: 
-      - id: beautysh 
-
-  # Mdformat formats Markdown files 
-  - repo: https://github.com/executablebooks/mdformat 
-    rev: 0.7.16 
-    hooks: 
-      - id: mdformat 
   
     # Codespell checks the code for common misspellings 
   - repo: https://github.com/codespell-project/codespell 
     rev: v2.2.4 
     hooks: 
       - id: codespell 
+        description: Checks for common misspellings in text files.
+        entry: codespell --skip="*ipynb"
+        language: python
+        types: [text]

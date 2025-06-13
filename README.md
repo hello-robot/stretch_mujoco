@@ -213,6 +213,16 @@ Check out the following documentation resources:
 
 All the enhancements/missing features/Bugfixes are tracked by [Issues](https://github.com/hello-robot/stretch_mujoco/issues) filed. Please feel free to file an issue if you would like to report bugs or request a feature addition.
 
+## Contributing
+
+This repository uses [pre-commit hooks](https://pre-commit.com/).
+
+Install pre-commit in the dev optional dependencies: `uv pip install ".[dev]`
+
+Install the hooks locally: cd to the top-level of this repository and run `pre-commit install`.
+
+Run pre-commit manually: `pre-commit run --all-files`
+
 ## Acknowledgment
 
 The assets in this repository contain significant contributions and efforts from [Kevin Zakka](https://github.com/kevinzakka) and [Google Deepmind](https://github.com/google-deepmind), along with others in Hello Robot Inc. who helped us in modeling Stretch in Mujoco. Thank you for your contributions.
