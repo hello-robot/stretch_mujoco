@@ -163,10 +163,11 @@ def update(sim):
     })
 
     # Compute servoing target
-    normal = np.array([-dock_direction[1], dock_direction[0]])
+    normal = np.array([-wall_direction[1], wall_direction[0]])
     normal /= np.linalg.norm(normal)
     normal = -normal
     target_t = math.atan2(-normal[1], -normal[0])
+    target_t = target_t % (2 * math.pi)
     target_xy = (dock_centroid/1000) + 0.3 * normal
     print("target", target_xy, target_t)
 
