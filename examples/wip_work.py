@@ -169,15 +169,6 @@ def update(sim):
     dock_centroid[1] = -1*dock_centroid[1]
     target_x, target_y = (dock_centroid/1000) + 0.625 * normal
 
-    # Back out target into world frame
-    b = sim.pull_status().base
-    currx, curry, currt = (b.x, b.y, b.theta)
-    errx, erry, errt = (target_x, target_y, target_t)
-    Sb = rotation_3x3_matrix(currt) @ np.array([errx, erry, errt])
-    errx_wrt_world = currx + Sb[0]
-    erry_wrt_world = curry + Sb[1]
-    errt_wrt_world = currt + Sb[2]
-    sim.add_world_frame((errx_wrt_world, erry_wrt_world, 0.0), (0.0, 0.0, errt_wrt_world))
 
     sim.set_base_velocity(0.0, 0.4)
 
