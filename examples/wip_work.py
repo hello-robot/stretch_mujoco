@@ -162,32 +162,21 @@ def update(sim):
         'line_points': line_points,
     })
 
-    print(wall_direction)
-    print(dock_centroid)
-
     # Compute servoing target
     normal = np.array([wall_direction[1], wall_direction[0]])
     normal /= np.linalg.norm(normal)
-    # normal = -normal
     target_t = math.atan2(normal[1], normal[0])
     dock_centroid[1] = -1*dock_centroid[1]
-    target_x, target_y = (dock_centroid/1000) + 0.4 * normal
-    # dock_wrt_odom = rotation_3x3_matrix(curr_heading) @ np.array([target_x, target_y, target_t])
-    # target_x += dock_wrt_odom[0]
-    # target_y += dock_wrt_odom[1]
-    # target_t += dock_wrt_odom[2]
-    print("target", np.array([target_x, target_y]), target_t)
+    target_x, target_y = (dock_centroid/1000) + 0.625 * normal
 
     # Back out target into world frame
     b = sim.pull_status().base
     currx, curry, currt = (b.x, b.y, b.theta)
-    print("curr", np.array([currx, curry]), currt)
     errx, erry, errt = (target_x, target_y, target_t)
     Sb = rotation_3x3_matrix(currt) @ np.array([errx, erry, errt])
     errx_wrt_world = currx + Sb[0]
     erry_wrt_world = curry + Sb[1]
     errt_wrt_world = currt + Sb[2]
-    print("wrt_world", np.array([errx_wrt_world, erry_wrt_world]), errt_wrt_world)
     sim.add_world_frame((errx_wrt_world, erry_wrt_world, 0.0), (0.0, 0.0, errt_wrt_world))
 
     sim.set_base_velocity(0.0, 0.4)
