@@ -12,6 +12,7 @@ dependencies = [
     "mujoco==3.2.6", # 3.2.6 is required for Robocasa compatibility
     "opencv-python",
     "pynput>=1.8.1",
+    "scikit-learn>=1.7.0",
     "urchin>=0.0.29",
     "zmq>=0.0.0",
 ]
