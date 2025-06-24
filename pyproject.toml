@@ -13,6 +13,7 @@ dependencies = [
     "opencv-python",
     "pynput>=1.8.1",
     "urchin>=0.0.29",
+    "zmq>=0.0.0",
 ]
 authors = [
     {name = "Binit Shah", email = "bshah@hello-robot.com"},
