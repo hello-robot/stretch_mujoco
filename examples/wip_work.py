@@ -29,7 +29,7 @@ def prepare_scan(sim):
     sensor_data = sim.pull_sensor_data()
     scan_data = sensor_data.get_data(StretchSensors.base_lidar)
 
-    lower_bound = 0.2
+    lower_bound = 0.05
     upper_bound = 5
 
     mask_lower = scan_data >= lower_bound
@@ -40,7 +40,7 @@ def prepare_scan(sim):
         return np.empty((0, 2))
 
     degrees = np.array(range(len(scan_data)))
-    degrees = (degrees - 180) % (360)
+    degrees = (-1*degrees + 180) % (360)
     angles = np.radians(degrees)
     angles_filtered = angles[mask_lower & mask_upper]
 
