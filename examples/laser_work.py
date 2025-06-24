@@ -24,6 +24,7 @@ def prepare_scan(sim):
         return np.empty((0, 2))
 
     degrees = np.array(range(len(scan_data)))
+    degrees = (degrees - 180) % (360)
     angles = np.radians(degrees)
     angles_filtered = angles[mask_lower & mask_upper]
 
