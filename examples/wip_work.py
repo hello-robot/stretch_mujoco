@@ -10,12 +10,13 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 
 # Constants
 DMAX = 4000
-SEEK = 12
+SEEK = 25
 
 # Program
 prev = time.time()
 dock_angle = math.pi
 prev_heading = 0.0
+servo_done = False
 
 # Networking
 ctx = zmq.Context()
@@ -24,11 +25,63 @@ sock.setsockopt(zmq.SNDHWM, 1)
 sock.setsockopt(zmq.RCVHWM, 1)
 sock.connect(f"tcp://127.0.0.1:8080")
 
+# Controller parameters
+k_rho: float   = 1.2      # >0  (distance gain)
+k_alpha: float = 2.5      # >k_rho (bearing gain)
+k_theta: float = -1.6     # <0  (heading gain)
+v_max: float = 0.6        # m/s
+w_max: float = 2.5        # rad/s
+rho_tol: float = 0.01     # m (10mm)
+theta_tol: float = 0.02   # rad (1.14deg)
 
-def rotation_3x3_matrix(theta):
-    return np.array([[np.cos(theta), -np.sin(theta), 0],
-                     [np.sin(theta), np.cos(theta),  0],
-                     [0            , 0,              1]])
+def wrap(angle):
+    """Wrap to (-pi, pi]"""
+    return (angle + math.pi) % (2 * math.pi) - math.pi
+
+def compute_cmd(x_g: float,
+                y_g: float,
+                theta_g: float,
+                force_backwards: bool = False):
+    """
+    Returns (v, w, arrived).
+    arrived=True when both distance ≤ rho_tol and heading error ≤ theta_tol.
+
+    • If force_backwards == True the robot always tries to drive in reverse.
+    • Otherwise it chooses the direction that minimises how much it must turn:
+        * drive forward when |α| ≤ π/2
+        * drive backward when |α| > π/2
+    """
+    # --- 1. basic geometry in the robot frame --------------------------------
+    rho        = math.hypot(x_g, y_g)               # distance to goal  (≥ 0)
+    alpha      = math.atan2(y_g, x_g)               # bearing to goal   (−π, π]
+    theta_err  = wrap(theta_g)                      # wanted final yaw
+
+    # --- 2. choose a driving direction ---------------------------------------
+    drive_dir = -1 if force_backwards else ( -1 if abs(alpha) > math.pi/2 else 1 )
+
+    #  When driving backward we redefine α so that it is measured w.r.t
+    #  the *rear* of the robot.  This keeps α in (−π/2, π/2) and prevents the
+    #  controller from trying to spin the base around.
+    if drive_dir == -1:
+        alpha = wrap(alpha - math.copysign(math.pi, alpha))
+
+    # --- 3. control law -------------------------------------------------------
+    v = drive_dir * k_rho * rho                      # ← may be negative
+    w = k_alpha * alpha + k_theta * theta_err  # unchanged sign law
+
+    # --- 4. saturation --------------------------------------------------------
+    v = max(min(v,  v_max), -v_max)
+    w = max(min(w,  w_max), -w_max)
+
+    # --- 5. stopping logic ----------------------------------------------------
+    arrived = False
+    if rho < rho_tol:          # close enough in position
+        v = 0.0
+        if abs(theta_err) < theta_tol:
+            w = 0.0
+            arrived = True
+
+    return v, w, arrived
 
 
 def to_cartesian(arr):
@@ -95,7 +148,7 @@ def prepare_scan(sim):
 
 
 def update(sim):
-    global prev, dock_angle, prev_heading
+    global prev, dock_angle, prev_heading, servo_done
 
     # Heading update
     curr_heading = sim.pull_status().base.theta
@@ -169,8 +222,15 @@ def update(sim):
     dock_centroid[1] = -1*dock_centroid[1]
     target_x, target_y = (dock_centroid/1000) + 0.625 * normal
 
-
-    sim.set_base_velocity(0.0, 0.4)
+    # servo!
+    v, w, arrived = compute_cmd(target_x, target_y, target_t)
+    print(f"Cmd: {np.array([v, w])}, Curr: {np.array([sim.pull_status().base.x, sim.pull_status().base.y, sim.pull_status().base.theta])}")
+    if arrived and not servo_done:
+        servo_done = True
+        print("servo done")
+        sim.move_by('base_translate', 0.0)
+    if not servo_done:
+        sim.set_base_velocity(v, w)
 
 
 if __name__ == "__main__":
