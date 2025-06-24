@@ -28,12 +28,12 @@ sock.connect(f"tcp://127.0.0.1:8080")
 # Controller parameters
 k_rho: float   = 1.2      # >0  (distance gain)
 k_alpha: float = 2.5      # >k_rho (bearing gain)
-k_theta: float = -1.6     # <0  (heading gain)
+k_theta: float = 0.5     # <0  (heading gain)
 v_max: float = 0.6        # m/s
 w_max: float = 2.5        # rad/s
 rho_tol: float = 0.01     # m (10mm)
 theta_tol: float = 0.02   # rad (1.14deg)
-rho_brake = 0.15          # m (ramp down heading vel)
+rho_brake = 1.0           # m (ramp down heading vel)
 
 def wrap(angle):
     """Wrap to (-pi, pi]"""
@@ -49,8 +49,8 @@ def compute_cmd(x_g: float,
 
     • If force_backwards == True the robot always tries to drive in reverse.
     • Otherwise it chooses the direction that minimises how much it must turn:
-        * drive forward when |α| ≤ π/2
-        * drive backward when |α| > π/2
+        * drive forward when |alpha| ≤ π/2
+        * drive backward when |alpha| > π/2
     """
     # --- 1. basic geometry in the robot frame --------------------------------
     rho        = math.hypot(x_g, y_g)               # distance to goal  (≥ 0)
@@ -69,12 +69,12 @@ def compute_cmd(x_g: float,
     # --- 3. control law -------------------------------------------------------
     v = drive_dir * k_rho * rho                      # ← may be negative
     fade = min(1.0, rho / rho_brake)
-    w = fade * (k_alpha * alpha + k_theta * theta_err)  # unchanged sign law
-    print(f"{v=:.2f} {w=:.2f} {fade=:.2f} {alpha=:.2f} {theta_err=:.2f} {x_g=:.2f} {y_g=:.2f} {theta_g=:.2f}")
+    w = (fade * k_alpha * alpha) + k_theta * theta_err  # unchanged sign law
+    # print(f"{v=:.2f} {w=:.2f} {fade=:.2f} {alpha=:.2f} {theta_err=:.2f} {rho=:.2f} {x_g=:.2f} {y_g=:.2f} {theta_g=:.2f}")
 
     # --- 4. saturation --------------------------------------------------------
-    v = max(min(v,  v_max), -v_max)
-    w = max(min(w,  w_max), -w_max)
+    v = np.clip(v, -v_max, v_max)
+    w = np.clip(w, -w_max, w_max)
 
     # --- 5. stopping logic ----------------------------------------------------
     arrived = False
@@ -85,12 +85,6 @@ def compute_cmd(x_g: float,
             arrived = True
 
     return v, w, arrived
-
-
-def rotation_3x3_matrix(theta):
-    return np.array([[np.cos(theta), -np.sin(theta), 0],
-                     [np.sin(theta), np.cos(theta),  0],
-                     [0            , 0,              1]])
 
 
 def to_cartesian(arr):
@@ -227,32 +221,21 @@ def update(sim):
     })
 
     # Compute servoing target
-    print(wall_direction)
     normal = np.array([wall_direction[1], wall_direction[0]])
     normal /= np.linalg.norm(normal)
     target_t = math.atan2(normal[1], normal[0])
     dock_centroid[1] = -1*dock_centroid[1]
     target_x, target_y = (dock_centroid/1000) + 0.625 * normal
 
-    # Back out target into world frame
-    b = sim.pull_status().base
-    currx, curry, currt = (b.x, b.y, b.theta)
-    errx, erry, errt = (target_x, target_y, target_t)
-    Sb = rotation_3x3_matrix(currt) @ np.array([errx, erry, errt])
-    errx_wrt_world = currx + Sb[0]
-    erry_wrt_world = curry + Sb[1]
-    errt_wrt_world = currt + Sb[2]
-    sim.add_world_frame((errx_wrt_world, erry_wrt_world, 0.0), (0.0, 0.0, errt_wrt_world))
-
-    # # servo!
-    # if not servo_done:
-    #     v, w, arrived = compute_cmd(target_x, target_y, target_t)
-    #     sim.set_base_velocity(v, w)
-    #     # print(f"Cmd: {np.array([v, w])}, Curr: {np.array([sim.pull_status().base.x, sim.pull_status().base.y, sim.pull_status().base.theta])}")
-    #     if arrived:
-    #         servo_done = True
-    #         print("servo done")
-    #         sim.move_by('base_translate', 0.0)
+    # servo!
+    if not servo_done:
+        v, w, arrived = compute_cmd(target_x, target_y, target_t)
+        sim.set_base_velocity(v, w)
+        # print(f"Cmd: {np.array([v, w])}, Curr: {np.array([sim.pull_status().base.x, sim.pull_status().base.y, sim.pull_status().base.theta])}")
+        if arrived:
+            servo_done = True
+            print("servo done")
+            sim.move_by('base_translate', 0.0)
 
 
 if __name__ == "__main__":
