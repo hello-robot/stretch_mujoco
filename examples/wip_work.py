@@ -70,7 +70,6 @@ def compute_cmd(x_g: float,
     v = drive_dir * k_rho * rho                      # ← may be negative
     fade = min(1.0, rho / rho_brake)
     w = (fade * k_alpha * alpha) + k_theta * theta_err  # unchanged sign law
-    # print(f"{v=:.2f} {w=:.2f} {fade=:.2f} {alpha=:.2f} {theta_err=:.2f} {rho=:.2f} {x_g=:.2f} {y_g=:.2f} {theta_g=:.2f}")
 
     # --- 4. saturation --------------------------------------------------------
     v = np.clip(v, -v_max, v_max)
@@ -231,7 +230,7 @@ def update(sim):
     if not servo_done:
         v, w, arrived = compute_cmd(target_x, target_y, target_t)
         sim.set_base_velocity(v, w)
-        # print(f"Cmd: {np.array([v, w])}, Curr: {np.array([sim.pull_status().base.x, sim.pull_status().base.y, sim.pull_status().base.theta])}")
+        print(f"Cmd: {np.array([v, w])}, Curr: {np.array([sim.pull_status().base.x, sim.pull_status().base.y, sim.pull_status().base.theta])}")
         if arrived:
             servo_done = True
             print("servo done")
