@@ -1,9 +1,12 @@
+import cv2
 import time
 
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 
+from examples.keyboard_teleop import show_camera_feeds_sync
+from examples.autodocking import *
 
 if __name__ == "__main__":
     # 1. Welcome to the autodocking setup tool
@@ -31,18 +34,56 @@ if __name__ == "__main__":
     sim.wait_while_is_moving('base_translate')
     sim.move_by('base_translate', -0.065)
     sim.wait_while_is_moving('base_translate')
-    input("Is the robot on the dock? [y/n]")
 
     # move the robot forward 1m
+    sim.add_world_frame((1, 0, 0))
     sim.move_by('base_translate', 1.0)
     sim.wait_while_is_moving('base_translate', timeout=20.0)
 
-    wall_start = time.time()
-    sim_start = sim.pull_status().time
-    for _ in range(20):
-        time.sleep(0.5)
-        print(f"Sim is running {(sim.pull_status().time - sim_start)/(time.time() - wall_start):.3f}x as fast as realtime")
-        wall_start = time.time()
-        sim_start = sim.pull_status().time
+    # turn the robot around
+    sim.move_by('base_rotate', 3.1415)
+    sim.wait_while_is_moving('base_rotate', timeout=20.0)
+
+    # look down at the dock
+    sim.move_to('head_tilt', -0.5)
+    sim.wait_until_at_setpoint('head_tilt')
+    for _ in range(10):
+        show_camera_feeds_sync(sim, False)
+    input('is looking at dock?')
+    cv2.destroyAllWindows()
+
+    # servo back to goal
+    goalx, goaly, goalt = (0.05, 0.0, 0.0)
+    sim.add_world_frame((goalx, goaly, 0.0), (0.0, 0.0, goalt))
+    for _ in range(5000):
+        # get current pose
+        b = sim.pull_status().base
+        currx, curry, currt = (b.x, b.y, b.theta)
+        print(f"Current: ({currx:.3f}, {curry:.3f}, {currt:.3f})")
+
+        # compute relative goal
+        errx, erry, errt = inverse_3x3_matrix(rotation_3x3_matrix(currt)) @ np.array([goalx-currx, goaly-curry, wrap(goalt-currt)])
+        print(f"Delta: ({errx:.3f}, {erry:.3f}, {errt:.3f})")
+
+        # back out errpose in world frame
+        Sb = rotation_3x3_matrix(currt) @ np.array([errx, erry, errt])
+        errx_wrt_world = currx + Sb[0]
+        erry_wrt_world = curry + Sb[1]
+        errt_wrt_world = currt + Sb[2]
+        print(f"Delta wrt World: ({errx_wrt_world:.3f}, {erry_wrt_world:.3f}, {errt_wrt_world:.3f})")
+
+        # apply controller
+        v, w = polar_controller(errx, erry, errt)
+        print(f"Cmd: ({v:.4f}, {w:.4f})")
+        sim.set_base_velocity(v, w)
+        time.sleep(0.01)
+
+    # wall_start = time.time()
+    # sim_start = sim.pull_status().time
+    # for _ in range(20):
+    #     time.sleep(0.5)
+    #     print(f"Sim is running {(sim.pull_status().time - sim_start)/(time.time() - wall_start):.3f}x as fast as realtime")
+    #     wall_start = time.time()
+    #     sim_start = sim.pull_status().time
 
     sim.stop()

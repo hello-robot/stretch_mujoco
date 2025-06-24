@@ -18,12 +18,12 @@ def rotation_3x3_matrix(theta):
                      [0            , 0,              1]])
 
 # ---------- 1.  global design parameters (tune only these) ----------
-k_rho    = 1.5        # > 0
-k_alpha  = 4.0        # > k_rho  (makes heading converge faster than position)
+k_rho    = -1.0       # < 0 (negative prefers backwards)
+k_alpha  = -1.0        # > abs(k_rho)  (makes heading converge faster than position)
 k_delta  = 1.0        # > 0
 k_theta  = 1.0        # Worst case, π rad/s rotation
 v_max    = 0.6        # [m s⁻¹]    your motor limits
-omega_max = 2.5       # [rad s⁻¹]  your motor limits
+omega_max = 3.5       # [rad s⁻¹]  your motor limits
 
 RHO_STOP     = 0.005   # [m] = 0.5cm
 THETA_STOP   = math.radians(0.5)  # [rad] = 0.5°
@@ -40,14 +40,16 @@ def saturate(x: float, lo: float, hi: float) -> float:
 # ---------- 3.  the controller itself ----------
 def polar_controller(x_g, y_g, th_g):
     rho   = math.hypot(x_g, y_g)
+    print("Rho", rho)
 
     # ---------- stage 1 : drive to point ----------
     if rho > RHO_STOP:
-        alpha = wrap(math.atan2(y_g, x_g))
-        delta = wrap(alpha - th_g)
+        alpha = wrap(math.atan2(y_g, -x_g))
+        print("Alpha", alpha)
+        # delta = wrap(alpha - th_g)
 
         v     = k_rho   * rho
-        omega = k_alpha * alpha + k_delta * delta
+        omega = k_alpha * alpha
 
         # clip
         v     = saturate(v,    -v_max,    v_max)
@@ -71,8 +73,8 @@ if __name__ == "__main__":
     sim.start()
 
     print("Start!")
-    sim.add_world_frame((0, 0, 0))
-    goalx, goaly, goalt = (0.3, 0.3, 0.4)
+    # sim.add_world_frame((0, 0, 0))
+    goalx, goaly, goalt = (0.0, 0.0, 0.0)
     sim.add_world_frame((goalx, goaly, 0.0))
     for _ in range(5000):
         # get current pose
@@ -94,6 +96,7 @@ if __name__ == "__main__":
         # apply controller
         v, w = polar_controller(errx, erry, errt)
         print(f"Cmd: ({v:.4f}, {w:.4f})")
+        print("")
         sim.set_base_velocity(v, w)
         time.sleep(0.01)
 
