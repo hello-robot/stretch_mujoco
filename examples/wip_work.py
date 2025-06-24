@@ -15,6 +15,7 @@ SEEK = 12
 # Program
 prev = time.time()
 dock_angle = math.pi
+prev_heading = 0.0
 
 # Networking
 ctx = zmq.Context()
@@ -22,6 +23,12 @@ sock = ctx.socket(zmq.PUB)
 sock.setsockopt(zmq.SNDHWM, 1)
 sock.setsockopt(zmq.RCVHWM, 1)
 sock.connect(f"tcp://127.0.0.1:8080")
+
+
+def rotation_3x3_matrix(theta):
+    return np.array([[np.cos(theta), -np.sin(theta), 0],
+                     [np.sin(theta), np.cos(theta),  0],
+                     [0            , 0,              1]])
 
 
 def to_cartesian(arr):
@@ -88,7 +95,16 @@ def prepare_scan(sim):
 
 
 def update(sim):
-    global prev, dock_angle
+    global prev, dock_angle, prev_heading
+
+    # Heading update
+    curr_heading = sim.pull_status().base.theta
+    delta_heading = curr_heading - prev_heading
+    delta_heading = (delta_heading + math.pi) % (2 * math.pi) - math.pi
+    if np.abs(delta_heading) > 1e-3:
+        dock_angle += delta_heading
+    dock_angle = dock_angle % (2 * math.pi)
+    prev_heading = curr_heading
 
     # Get Scan
     scan = prepare_scan(sim)
@@ -96,7 +112,7 @@ def update(sim):
     # Log rate
     now = time.time()
     delta = now - prev
-    print(f'Rate: {1/delta:.2f} Hz, Scan size: {scan.shape}')
+    # print(f'Rate: {1/delta:.2f} Hz, Scan size: {scan.shape}')
     prev = now
 
     # Polar & cartesian update
@@ -145,6 +161,26 @@ def update(sim):
         'both_sides': both_sides,
         'line_points': line_points,
     })
+
+    # Compute servoing target
+    normal = np.array([-dock_direction[1], dock_direction[0]])
+    normal /= np.linalg.norm(normal)
+    normal = -normal
+    target_t = math.atan2(-normal[1], -normal[0])
+    target_xy = (dock_centroid/1000) + 0.3 * normal
+    print("target", target_xy, target_t)
+
+    # Back out target into world frame
+    b = sim.pull_status().base
+    currx, curry, currt = (b.x, b.y, b.theta)
+    errx, erry, errt = (target_xy[0], target_xy[1], target_t)
+    Sb = rotation_3x3_matrix(currt) @ np.array([errx, erry, errt])
+    errx_wrt_world = currx + Sb[0]
+    erry_wrt_world = curry + Sb[1]
+    errt_wrt_world = currt + Sb[2]
+    sim.add_world_frame((errx_wrt_world, erry_wrt_world, 0.0), (0.0, 0.0, errt_wrt_world))
+
+    sim.set_base_velocity(0.0, 0.4)
 
 
 if __name__ == "__main__":
