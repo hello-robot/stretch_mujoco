@@ -152,8 +152,11 @@ def main(scene_xml_path: str|None, robocasa_env: bool, imagery_nav: bool, imager
             if not lidar and not use_imagery:
                 sleep(0.05)
 
+            if print_ratio:
+                print(f"{sim.pull_status().sim_to_real_time_ratio_msg}")
+                
             if use_imagery:
-                show_camera_feeds_sync(sim, print_ratio)
+                show_camera_feeds_sync(sim, False)
 
             if lidar:
                 sensor_data = sim.pull_sensor_data()
