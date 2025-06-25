@@ -32,18 +32,35 @@ def rotation_3x3_matrix(theta):
                      [0            , 0,              1]])
 
 
-def bezier_SE2(p0, th0, p3, th3, k=1/3):
-    """Return an array of N points on a cubic Bézier from pose₀→pose₁.
-       k scales how far control points sit along the tangents."""
-    v0, v3 = np.array([np.cos(th0), np.sin(th0)]), np.array([np.cos(th3), np.sin(th3)])
-    L      = k * np.linalg.norm(p3 - p0)          # heuristic handle length
-    p1     = p0 + L * v0
-    p2     = p3 - L * v3
+def bezier_SE2(p0, th0, p3, th3, frac=0.8):
+    """
+    Cubic Bézier through two SE(2) poses that never goes past either pose.
+    - `frac` (0-1) tells how far *toward* the intersection we put the handle.
+       0.8 is a good all-rounder; 1.0 puts it exactly at the intersection.
+    """
+    v0  = np.array([np.cos(th0), np.sin(th0)])
+    v3  = np.array([np.cos(th3), np.sin(th3)])          # fwd direction at goal
+    d   = p3 - p0
+
+    # Solve p0 + a·v0  ==  p3 - b·v3   (a,b ≥ 0 give intersection of the two rays)
+    A = np.column_stack((v0, v3))                       # [v0  v3]
+    try:
+        a, b = np.linalg.lstsq(A, d, rcond=None)[0]
+    except np.linalg.LinAlgError:                       # nearly parallel headings
+        a = b = np.inf
+
+    # Limit handles:  ‖p1-p0‖ ≤ a,  ‖p3-p2‖ ≤ b
+    chord = np.linalg.norm(d)
+    L1 = frac * min(max(a, 0), chord/3)                 # fall back to chord/3
+    L2 = frac * min(max(b, 0), chord/3)
+
+    p1 = p0 + L1 * v0
+    p2 = p3 - L2 * v3
 
     def curve(t):
-        # Bernstein basis (degree 3)
-        B = np.vstack([(comb(3,i)*(t**i)*(1-t)**(3-i)) for i in range(4)]).T  # (N,4)
-        return (B @ np.vstack([p0, p1, p2, p3]))
+        B = np.vstack([(comb(3,i)*(t**i)*(1-t)**(3-i)) for i in range(4)]).T
+        return B @ np.vstack([p0, p1, p2, p3])
+
     return curve
 
 
@@ -180,7 +197,7 @@ def update(sim):
     target_x, target_y = (dock_centroid/1000) + 0.625 * normal
 
     # Compute bezier path
-    curve = bezier_SE2(np.array([0.0, 0.0]), math.pi, np.array([target_x, target_y]), target_t, k=3/4)
+    curve = bezier_SE2(np.array([0.0, 0.0]), math.pi, np.array([target_x, target_y]), target_t)
     path = curve(np.linspace(0, 1, 20))
 
     # Viz in sim
