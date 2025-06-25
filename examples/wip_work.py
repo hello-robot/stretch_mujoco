@@ -6,6 +6,7 @@ import time
 import math
 import numpy as np
 np.set_printoptions(precision=3, linewidth=100, suppress=True)
+from scipy.special import comb
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 
 # Constants
@@ -16,7 +17,6 @@ SEEK = 25
 prev = time.time()
 dock_angle = math.pi
 prev_heading = 0.0
-servo_done = False
 
 # Networking
 ctx = zmq.Context()
@@ -25,65 +25,26 @@ sock.setsockopt(zmq.SNDHWM, 1)
 sock.setsockopt(zmq.RCVHWM, 1)
 sock.connect(f"tcp://127.0.0.1:8080")
 
-# Controller parameters
-k_rho: float   = 1.2      # >0  (distance gain)
-k_alpha: float = 2.5      # >k_rho (bearing gain)
-k_theta: float = 0.5     # <0  (heading gain)
-v_max: float = 0.6        # m/s
-w_max: float = 2.5        # rad/s
-rho_tol: float = 0.01     # m (10mm)
-theta_tol: float = 0.02   # rad (1.14deg)
-rho_brake = 1.0           # m (ramp down heading vel)
 
-def wrap(angle):
-    """Wrap to (-pi, pi]"""
-    return (angle + math.pi) % (2 * math.pi) - math.pi
+def rotation_3x3_matrix(theta):
+    return np.array([[np.cos(theta), -np.sin(theta), 0],
+                     [np.sin(theta), np.cos(theta),  0],
+                     [0            , 0,              1]])
 
-def compute_cmd(x_g: float,
-                y_g: float,
-                theta_g: float,
-                force_backwards: bool = False):
-    """
-    Returns (v, w, arrived).
-    arrived=True when both distance ≤ rho_tol and heading error ≤ theta_tol.
 
-    • If force_backwards == True the robot always tries to drive in reverse.
-    • Otherwise it chooses the direction that minimises how much it must turn:
-        * drive forward when |alpha| ≤ π/2
-        * drive backward when |alpha| > π/2
-    """
-    # --- 1. basic geometry in the robot frame --------------------------------
-    rho        = math.hypot(x_g, y_g)               # distance to goal  (≥ 0)
-    alpha      = math.atan2(y_g, x_g)               # bearing to goal   (−π, π]
-    theta_err  = wrap(theta_g)                      # wanted final yaw
+def bezier_SE2(p0, th0, p3, th3, k=1/3):
+    """Return an array of N points on a cubic Bézier from pose₀→pose₁.
+       k scales how far control points sit along the tangents."""
+    v0, v3 = np.array([np.cos(th0), np.sin(th0)]), np.array([np.cos(th3), np.sin(th3)])
+    L      = k * np.linalg.norm(p3 - p0)          # heuristic handle length
+    p1     = p0 + L * v0
+    p2     = p3 - L * v3
 
-    # --- 2. choose a driving direction ---------------------------------------
-    drive_dir = -1 if force_backwards else ( -1 if abs(alpha) > math.pi/2 else 1 )
-
-    #  When driving backward we redefine α so that it is measured w.r.t
-    #  the *rear* of the robot.  This keeps α in (−π/2, π/2) and prevents the
-    #  controller from trying to spin the base around.
-    if drive_dir == -1:
-        alpha = wrap(alpha - math.copysign(math.pi, alpha))
-
-    # --- 3. control law -------------------------------------------------------
-    v = drive_dir * k_rho * rho                      # ← may be negative
-    fade = min(1.0, rho / rho_brake)
-    w = (fade * k_alpha * alpha) + k_theta * theta_err  # unchanged sign law
-
-    # --- 4. saturation --------------------------------------------------------
-    v = np.clip(v, -v_max, v_max)
-    w = np.clip(w, -w_max, w_max)
-
-    # --- 5. stopping logic ----------------------------------------------------
-    arrived = False
-    if rho < rho_tol:          # close enough in position
-        v = 0.0
-        if abs(theta_err) < theta_tol:
-            w = 0.0
-            arrived = True
-
-    return v, w, arrived
+    def curve(t):
+        # Bernstein basis (degree 3)
+        B = np.vstack([(comb(3,i)*(t**i)*(1-t)**(3-i)) for i in range(4)]).T  # (N,4)
+        return (B @ np.vstack([p0, p1, p2, p3]))
+    return curve
 
 
 def to_cartesian(arr):
@@ -152,7 +113,7 @@ def prepare_scan(sim):
 
 
 def update(sim):
-    global prev, dock_angle, prev_heading, servo_done
+    global prev, dock_angle, prev_heading
 
     # Heading update
     curr_heading = sim.pull_status().base.theta
@@ -211,30 +172,35 @@ def update(sim):
     t_vals = np.linspace(-DMAX, DMAX, 100)
     line_points = dock_centroid[None, :] + t_vals[:, None] * wall_direction[None, :]
 
-    sock.send_pyobj({
-        'polar_offsets': polar_offsets,
-        'cartesian_offsets': cartesian_offsets,
-        'cut_both_sides': dock_pts,
-        'both_sides': both_sides,
-        'line_points': line_points,
-    })
-
-    # Compute servoing target
+    # Compute target
     normal = np.array([wall_direction[1], wall_direction[0]])
     normal /= np.linalg.norm(normal)
     target_t = math.atan2(normal[1], normal[0])
     dock_centroid[1] = -1*dock_centroid[1]
     target_x, target_y = (dock_centroid/1000) + 0.625 * normal
 
-    # servo!
-    if not servo_done:
-        v, w, arrived = compute_cmd(target_x, target_y, target_t)
-        sim.set_base_velocity(v, w)
-        print(f"Cmd: {np.array([v, w])}, Curr: {np.array([sim.pull_status().base.x, sim.pull_status().base.y, sim.pull_status().base.theta])}")
-        if arrived:
-            servo_done = True
-            print("servo done")
-            sim.move_by('base_translate', 0.0)
+    # Compute bezier path
+    curve = bezier_SE2(np.array([0.0, 0.0]), math.pi, np.array([target_x, target_y]), target_t, k=3/4)
+    path = curve(np.linspace(0, 1, 20))
+
+    # Viz in sim
+    for p in path:
+        b = sim.pull_status().base
+        currx, curry, currt = (b.x, b.y, b.theta)
+        errx, erry, errt = (p[0], p[1], 0.0)
+        Sb = rotation_3x3_matrix(currt) @ np.array([errx, erry, errt])
+        errx_wrt_world = currx + Sb[0]
+        erry_wrt_world = curry + Sb[1]
+        sim.add_world_frame((errx_wrt_world, erry_wrt_world, 0))
+
+    sock.send_pyobj({
+        'polar_offsets': polar_offsets,
+        'cartesian_offsets': cartesian_offsets,
+        'cut_both_sides': dock_pts,
+        'both_sides': both_sides,
+        'line_points': line_points,
+        'path': path,
+    })
 
 
 if __name__ == "__main__":
