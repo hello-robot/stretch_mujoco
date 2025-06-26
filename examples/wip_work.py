@@ -7,11 +7,12 @@ import math
 import numpy as np
 np.set_printoptions(precision=3, linewidth=100, suppress=True)
 from scipy.special import comb
+from scipy.optimize import minimize
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 
 # Constants
 DMAX = 4000
-SEEK = 25
+SEEK = 12
 
 # Program
 prev = time.time()
@@ -26,10 +27,37 @@ sock.setsockopt(zmq.RCVHWM, 1)
 sock.connect(f"tcp://127.0.0.1:8080")
 
 
+def arc_endpoint(R, delta_theta):
+    x = R * np.sin(delta_theta)
+    y = R * (1 - np.cos(delta_theta))
+    return x, y, delta_theta
+
+def cost(params, x_target, y_target, theta_target):
+    R, delta_theta = params
+    if np.abs(R) < 1e-4:  # avoid near-zero radius
+        return 1e6
+    x, y, heading = arc_endpoint(R, delta_theta)
+    dx = x - x_target
+    dy = y - y_target
+    dtheta = ((heading - theta_target + np.pi) % (2*np.pi)) - np.pi
+    return dx**2 + dy**2 + (dtheta**2)
+
+
 def rotation_3x3_matrix(theta):
     return np.array([[np.cos(theta), -np.sin(theta), 0],
                      [np.sin(theta), np.cos(theta),  0],
                      [0            , 0,              1]])
+
+
+def to_world_frame(pose, sim):
+    """converts pose, (x, y, t), in base frame to world frame
+    """
+    b = sim.pull_status().base
+    currx, curry, currt = (b.x, b.y, b.theta)
+    Sb = rotation_3x3_matrix(currt) @ np.array(pose)
+    pose_wrt_world = (currx + Sb[0], curry + Sb[1], currt + Sb[2])
+    matplotviz = (Sb[0], -Sb[1], Sb[2])
+    return pose_wrt_world, matplotviz
 
 
 def bezier_SE2(p0, th0, p3, th3, frac=0.8):
@@ -183,11 +211,26 @@ def update(sim):
     wall_centroid, wall_direction, _ = fit_line(to_cartesian(wall_pts))
     dock_centroid, dock_direction, _ = fit_line(to_cartesian(dock_pts))
     if dock_centroid is None or wall_direction is None:
+        print('Failed to find fits')
         return
 
     # Plot line
     t_vals = np.linspace(-DMAX, DMAX, 100)
     line_points = dock_centroid[None, :] + t_vals[:, None] * wall_direction[None, :]
+
+    # # Find intersection
+    # my_direction = np.array([1, 0, 0]) # my_ray = [0, 0, 0] + t * my_direction
+    # dock_origin = np.array([dock_centroid[0], -dock_centroid[1], 0])
+    # dock_direction = np.array([wall_direction[1], wall_direction[0], 0]) # dock_ray = dock_origin + s * dock_direction
+    # A = np.column_stack((my_direction, -dock_direction))
+    # if np.linalg.matrix_rank(A) != 2:
+    #     print("Robot is parallel with the dock")
+    #     return
+    # t, s = np.linalg.lstsq(A, dock_origin, rcond=None)[0]
+    # intersection_point = t * my_direction
+    # intersection_point /= 1000
+    # (tx, ty, tt), _ = to_world_frame((intersection_point[0], intersection_point[1], 0.0), sim)
+    # sim.add_world_frame((tx, ty, 0.1), (0, 0, tt))
 
     # Compute target
     normal = np.array([wall_direction[1], wall_direction[0]])
@@ -196,17 +239,43 @@ def update(sim):
     dock_centroid[1] = -1*dock_centroid[1]
     target_x, target_y = (dock_centroid/1000) + 0.625 * normal
 
-    # Compute bezier path
-    curve = bezier_SE2(np.array([0.0, 0.0]), math.pi, np.array([target_x, target_y]), target_t)
-    path = curve(np.linspace(0, 1, 20))
+    # Compute arc path
+    res = minimize(
+        cost,
+        x0=np.array([1.0, 0.0]), # (radius, dTheta)
+        args=(target_x, target_y, target_t),
+        bounds=[(0.01, None), (-2*np.pi, 2*np.pi)]
+    )
+    if not res.success:
+        print("No arc path found")
+        return
+    R_opt, dTheta_opt = res.x
+    arc_len = R_opt * abs(dTheta_opt)
+    print(f"Found arc: Radius = {R_opt:.3f}, Angle = {dTheta_opt:.3f} rad, Arc length = {arc_len:.3f}")
 
-    # Viz in matplotlib
-    path_viz = []
-    for p in path:
-        b = sim.pull_status().base
-        Sb = rotation_3x3_matrix(b.theta) @ np.array((p[0], p[1], 0.0))
-        path_viz.append([Sb[0], Sb[1]])
-    path_viz = np.array(path_viz) * 1000
+    # Viz path
+    angles = np.linspace(0, dTheta_opt, 100)
+    x_arc = R_opt * np.sin(angles)
+    y_arc = R_opt * (1 - np.cos(angles))
+    path = np.stack([x_arc, -y_arc], axis=1)
+    path *= 1000
+
+    # # print(f"{dock_centroid=}")
+    # print(f"{target_x=}, {target_y=}, {np.degrees(target_t)=}")
+    # (tx, ty, tt), _ = to_world_frame((target_x, target_y, target_t), sim)
+    # sim.add_world_frame((tx, ty, 0.1), (0, 0, tt))
+
+    # # Compute bezier path
+    # curve = bezier_SE2(np.array([0.0, 0.0]), math.pi, np.array([target_x, target_y]), target_t)
+    # path = curve(np.linspace(0, 1, 200))
+
+    # # Track path
+    # print(path[:4,:])
+    # pp = PurePursuitController(path, v_cruise=0.30,
+    #                            lookahead_gain=1.0,
+    #                            L_min=0.05, L_max=0.80)
+    # v, w  = pp.compute((0, 0, 0))
+    # sim.set_base_velocity(v, w)
 
     sock.send_pyobj({
         'polar_offsets': polar_offsets,
@@ -214,7 +283,7 @@ def update(sim):
         'cut_both_sides': dock_pts,
         'both_sides': both_sides,
         'line_points': line_points,
-        'path': path_viz,
+        'path': path,
     })
 
 
