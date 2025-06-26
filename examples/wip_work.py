@@ -200,15 +200,13 @@ def update(sim):
     curve = bezier_SE2(np.array([0.0, 0.0]), math.pi, np.array([target_x, target_y]), target_t)
     path = curve(np.linspace(0, 1, 20))
 
-    # Viz in sim
+    # Viz in matplotlib
+    path_viz = []
     for p in path:
         b = sim.pull_status().base
-        currx, curry, currt = (b.x, b.y, b.theta)
-        errx, erry, errt = (p[0], p[1], 0.0)
-        Sb = rotation_3x3_matrix(currt) @ np.array([errx, erry, errt])
-        errx_wrt_world = currx + Sb[0]
-        erry_wrt_world = curry + Sb[1]
-        sim.add_world_frame((errx_wrt_world, erry_wrt_world, 0))
+        Sb = rotation_3x3_matrix(b.theta) @ np.array((p[0], p[1], 0.0))
+        path_viz.append([Sb[0], Sb[1]])
+    path_viz = np.array(path_viz) * 1000
 
     sock.send_pyobj({
         'polar_offsets': polar_offsets,
@@ -216,7 +214,7 @@ def update(sim):
         'cut_both_sides': dock_pts,
         'both_sides': both_sides,
         'line_points': line_points,
-        'path': path,
+        'path': path_viz,
     })
 
 
