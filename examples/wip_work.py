@@ -43,55 +43,6 @@ def cost(params, x_target, y_target, theta_target):
     return dx**2 + dy**2 + (dtheta**2)
 
 
-def rotation_3x3_matrix(theta):
-    return np.array([[np.cos(theta), -np.sin(theta), 0],
-                     [np.sin(theta), np.cos(theta),  0],
-                     [0            , 0,              1]])
-
-
-def to_world_frame(pose, sim):
-    """converts pose, (x, y, t), in base frame to world frame
-    """
-    b = sim.pull_status().base
-    currx, curry, currt = (b.x, b.y, b.theta)
-    Sb = rotation_3x3_matrix(currt) @ np.array(pose)
-    pose_wrt_world = (currx + Sb[0], curry + Sb[1], currt + Sb[2])
-    matplotviz = (Sb[0], -Sb[1], Sb[2])
-    return pose_wrt_world, matplotviz
-
-
-def bezier_SE2(p0, th0, p3, th3, frac=0.8):
-    """
-    Cubic Bézier through two SE(2) poses that never goes past either pose.
-    - `frac` (0-1) tells how far *toward* the intersection we put the handle.
-       0.8 is a good all-rounder; 1.0 puts it exactly at the intersection.
-    """
-    v0  = np.array([np.cos(th0), np.sin(th0)])
-    v3  = np.array([np.cos(th3), np.sin(th3)])          # fwd direction at goal
-    d   = p3 - p0
-
-    # Solve p0 + a·v0  ==  p3 - b·v3   (a,b ≥ 0 give intersection of the two rays)
-    A = np.column_stack((v0, v3))                       # [v0  v3]
-    try:
-        a, b = np.linalg.lstsq(A, d, rcond=None)[0]
-    except np.linalg.LinAlgError:                       # nearly parallel headings
-        a = b = np.inf
-
-    # Limit handles:  ‖p1-p0‖ ≤ a,  ‖p3-p2‖ ≤ b
-    chord = np.linalg.norm(d)
-    L1 = frac * min(max(a, 0), chord/3)                 # fall back to chord/3
-    L2 = frac * min(max(b, 0), chord/3)
-
-    p1 = p0 + L1 * v0
-    p2 = p3 - L2 * v3
-
-    def curve(t):
-        B = np.vstack([(comb(3,i)*(t**i)*(1-t)**(3-i)) for i in range(4)]).T
-        return B @ np.vstack([p0, p1, p2, p3])
-
-    return curve
-
-
 def to_cartesian(arr):
     x = arr[:,1] * np.cos(arr[:,0])
     y = arr[:,1] * np.sin(arr[:,0])
@@ -218,20 +169,6 @@ def update(sim):
     t_vals = np.linspace(-DMAX, DMAX, 100)
     line_points = dock_centroid[None, :] + t_vals[:, None] * wall_direction[None, :]
 
-    # # Find intersection
-    # my_direction = np.array([1, 0, 0]) # my_ray = [0, 0, 0] + t * my_direction
-    # dock_origin = np.array([dock_centroid[0], -dock_centroid[1], 0])
-    # dock_direction = np.array([wall_direction[1], wall_direction[0], 0]) # dock_ray = dock_origin + s * dock_direction
-    # A = np.column_stack((my_direction, -dock_direction))
-    # if np.linalg.matrix_rank(A) != 2:
-    #     print("Robot is parallel with the dock")
-    #     return
-    # t, s = np.linalg.lstsq(A, dock_origin, rcond=None)[0]
-    # intersection_point = t * my_direction
-    # intersection_point /= 1000
-    # (tx, ty, tt), _ = to_world_frame((intersection_point[0], intersection_point[1], 0.0), sim)
-    # sim.add_world_frame((tx, ty, 0.1), (0, 0, tt))
-
     # Compute target
     normal = np.array([wall_direction[1], wall_direction[0]])
     normal /= np.linalg.norm(normal)
@@ -259,23 +196,6 @@ def update(sim):
     y_arc = R_opt * (1 - np.cos(angles))
     path = np.stack([x_arc, -y_arc], axis=1)
     path *= 1000
-
-    # # print(f"{dock_centroid=}")
-    # print(f"{target_x=}, {target_y=}, {np.degrees(target_t)=}")
-    # (tx, ty, tt), _ = to_world_frame((target_x, target_y, target_t), sim)
-    # sim.add_world_frame((tx, ty, 0.1), (0, 0, tt))
-
-    # # Compute bezier path
-    # curve = bezier_SE2(np.array([0.0, 0.0]), math.pi, np.array([target_x, target_y]), target_t)
-    # path = curve(np.linspace(0, 1, 200))
-
-    # # Track path
-    # print(path[:4,:])
-    # pp = PurePursuitController(path, v_cruise=0.30,
-    #                            lookahead_gain=1.0,
-    #                            L_min=0.05, L_max=0.80)
-    # v, w  = pp.compute((0, 0, 0))
-    # sim.set_base_velocity(v, w)
 
     sock.send_pyobj({
         'polar_offsets': polar_offsets,
