@@ -1,6 +1,7 @@
 import contextlib
 from dataclasses import dataclass
 from multiprocessing.managers import DictProxy, SyncManager
+import os
 import signal
 import threading
 import time
@@ -192,13 +193,30 @@ class MujocoServer:
         stop_mujoco_process_event: threading.Event,
         data_proxies: MujocoServerProxies,
         cameras_to_use: list[StretchCameras],
+        start_translation: list,
+        start_rotation_quat: list
     ):
-        server = cls(scene_xml_path, model, stop_mujoco_process_event, data_proxies)
+        server = cls(scene_xml_path, model, stop_mujoco_process_event, data_proxies,start_translation , start_rotation_quat)
         server.run(
             show_viewer_ui=show_viewer_ui,
             camera_hz=camera_hz,
             cameras_to_use=cameras_to_use,
         )
+
+    def change_start_pose(self,xml_path: str, translation: list, rotation_quat: list):
+        """Edit the MjSpec and recompile it before loading the model. Mujoco does not allow us to edit body positions at runtime:"""
+        spec = mujoco.MjSpec.from_file(xml_path)
+        
+        current_file_path = os.path.abspath(__file__)
+        current_directory = os.path.dirname(current_file_path)
+        spec.meshdir = f"{current_directory}/models/assets/"
+        spec.texturedir = spec.meshdir
+
+        spec.find_body("base_link").pos = translation
+        spec.find_body("base_link").quat = rotation_quat
+        spec.compile()
+        return MjModel.from_xml_string(spec.to_xml())
+
 
     def __init__(
         self,
@@ -206,6 +224,8 @@ class MujocoServer:
         model: MjModel | None,
         stop_mujoco_process_event: threading.Event,
         data_proxies: MujocoServerProxies,
+        start_translation: list,
+        start_rotation_quat: list
     ):
         """
         Initialize the Simulator handle with a scene
@@ -215,11 +235,12 @@ class MujocoServer:
         """
         if scene_xml_path is None:
             scene_xml_path = utils.default_scene_xml_path
-            self.mjmodel = MjModel.from_xml_path(scene_xml_path)
-        elif model is None:
-            self.mjmodel = MjModel.from_xml_path(scene_xml_path)
-        if model is not None:
-            self.mjmodel = model
+
+        if model is None:
+            model = self.change_start_pose(translation = start_translation,  rotation_quat=start_rotation_quat, xml_path=scene_xml_path)
+
+        self.mjmodel = model
+
         self.mjdata = MjData(self.mjmodel)
 
         self._base_in_pos_motion = False

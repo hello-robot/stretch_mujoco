@@ -50,6 +50,8 @@ class StretchMujocoSimulator:
         model: MjModel | None = None,
         camera_hz: float = 30,
         cameras_to_use: list[StretchCameras] = [],
+        start_translation: list = [0,0,0],
+        start_rotation_quat: list = [1,0,0,0]
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
@@ -57,6 +59,8 @@ class StretchMujocoSimulator:
         self.urdf_model = utils.URDFmodel()
         self._server_process = None
         self._cameras_to_use = cameras_to_use
+        self._start_translation = start_translation
+        self._start_rotation_quat = start_rotation_quat
 
         self.is_stop_called = False
 
@@ -106,6 +110,8 @@ class StretchMujocoSimulator:
                 self._stop_mujoco_process_event,
                 self.data_proxies,
                 self._cameras_to_use,
+                self._start_translation,
+                self._start_rotation_quat,
             ),
             daemon=False,  # We're gonna handle terminating this in stop_mujoco_process()
         )
