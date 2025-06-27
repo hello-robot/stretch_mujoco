@@ -1,6 +1,7 @@
 import contextlib
 from dataclasses import dataclass
 from multiprocessing.managers import DictProxy, SyncManager
+import os
 import signal
 import threading
 import time
@@ -205,6 +206,12 @@ class MujocoServer:
     def change_start_pose(self,xml_path: str, translation: list, rotation_quat: list):
         """Edit the MjSpec and recompile it before loading the model. Mujoco does not allow us to edit body positions at runtime:"""
         spec = mujoco.MjSpec.from_file(xml_path)
+        
+        current_file_path = os.path.abspath(__file__)
+        current_directory = os.path.dirname(current_file_path)
+        spec.meshdir = f"{current_directory}/models/assets/"
+        spec.texturedir = spec.meshdir
+
         spec.find_body("base_link").pos = translation
         spec.find_body("base_link").quat = rotation_quat
         spec.compile()
@@ -233,6 +240,8 @@ class MujocoServer:
             model = self.change_start_pose(translation = start_translation,  rotation_quat=start_rotation_quat, xml_path=scene_xml_path)
 
         self.mjmodel = model
+
+        self.mjdata = MjData(self.mjmodel)
 
         self._base_in_pos_motion = False
 
