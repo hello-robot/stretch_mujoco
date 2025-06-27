@@ -180,7 +180,7 @@ def update(sim):
     # Compute arc path
     res = minimize(
         cost,
-        x0=np.array([1.0, 0.0]), # (radius, dTheta)
+        x0=np.array([0.0, 0.0]), # (radius, dTheta)
         args=(target_x, target_y, target_t),
         bounds=[(0.01, None), (-2*np.pi, 2*np.pi)]
     )
@@ -188,6 +188,18 @@ def update(sim):
         print("No arc path found")
         return
     R_opt, dTheta_opt = res.x
+    if np.isclose(R_opt, 0.01, atol=1e-3):
+        res = minimize(
+            cost,
+            x0=np.array([0.0, 0.0]), # (radius, dTheta)
+            args=(target_x, target_y, target_t),
+            bounds=[(None, -0.01), (-2*np.pi, 2*np.pi)]
+        )
+        if not res.success:
+            print("No arc path found 2")
+            return
+        R_opt, dTheta_opt = res.x
+        print('Second minimize')
     arc_len = R_opt * abs(dTheta_opt)
     print(f"Found arc: Radius = {R_opt:.3f}, Angle = {dTheta_opt:.3f} rad, Arc length = {arc_len:.3f}")
 
@@ -195,7 +207,7 @@ def update(sim):
     angles = np.linspace(0, dTheta_opt, 100)
     x_arc = R_opt * np.sin(angles)
     y_arc = R_opt * (1 - np.cos(angles))
-    path = np.stack([x_arc, -y_arc], axis=1)
+    path = np.stack([x_arc, y_arc], axis=1)
     path *= 1000
 
     sock.send_pyobj({
