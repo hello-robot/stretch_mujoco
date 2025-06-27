@@ -6,7 +6,6 @@ import time
 import math
 import numpy as np
 np.set_printoptions(precision=3, linewidth=100, suppress=True)
-from scipy.special import comb
 from scipy.optimize import minimize
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 
@@ -31,6 +30,7 @@ def arc_endpoint(R, delta_theta):
     x = R * np.sin(delta_theta)
     y = R * (1 - np.cos(delta_theta))
     return x, y, delta_theta
+
 
 def cost(params, x_target, y_target, theta_target):
     R, delta_theta = params
@@ -165,16 +165,17 @@ def update(sim):
         print('Failed to find fits')
         return
 
+    # Compute target
+    normal = np.array([wall_direction[1], -wall_direction[0]])
+    normal /= np.linalg.norm(normal)
+    target_t = math.atan2(normal[1], normal[0])
+    target_x, target_y = (dock_centroid/1000) + 0.625 * normal
+
     # Plot line
     t_vals = np.linspace(-DMAX, DMAX, 100)
     line_points = dock_centroid[None, :] + t_vals[:, None] * wall_direction[None, :]
-
-    # Compute target
-    normal = np.array([wall_direction[1], wall_direction[0]])
-    normal /= np.linalg.norm(normal)
-    target_t = math.atan2(normal[1], normal[0])
-    dock_centroid[1] = -1*dock_centroid[1]
-    target_x, target_y = (dock_centroid/1000) + 0.625 * normal
+    more_line_points = np.array([np.array([target_x, target_y]) - np.random.uniform(0.0, 0.625) * normal for i in range(100)]) * 1000
+    line_points = np.vstack([line_points, more_line_points])
 
     # Compute arc path
     res = minimize(
