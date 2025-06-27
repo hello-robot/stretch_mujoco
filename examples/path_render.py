@@ -1,6 +1,7 @@
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.mujoco_server import MujocoServerProxies
 
+import cv2
 import mujoco
 import signal
 import threading
@@ -26,6 +27,4 @@ renderer = mujoco.Renderer(server.mjmodel, height=h, width=w)
 mujoco.mj_forward(server.mjmodel, server.mjdata)
 renderer.update_scene(server.mjdata)
 img = renderer.render()
-print(img.shape)
-print(img)
-print(type(img))
+cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
