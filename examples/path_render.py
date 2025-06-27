@@ -5,6 +5,7 @@ import cv2
 import mujoco
 import signal
 import threading
+from pathlib import Path
 from multiprocessing import Manager
 
 # Setup server
@@ -15,7 +16,8 @@ event = threading.Event()
 signal.signal(signal.SIGTERM, lambda num, frame: event.set())
 signal.signal(signal.SIGINT, lambda num, frame: event.set())
 
-server = MujocoServer(scene_xml_path=None, model=None, stop_mujoco_process_event=event, data_proxies=data_proxies)
+scene_xml = str(Path.cwd() / "stretch_mujoco" / "models" / "dock_pen.xml")
+server = MujocoServer(scene_xml_path=scene_xml, model=None, stop_mujoco_process_event=event, data_proxies=data_proxies)
 
 # Setup rendering
 h, w = (480, 640)
