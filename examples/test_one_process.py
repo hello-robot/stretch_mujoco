@@ -22,5 +22,5 @@ MujocoServer.launch_server(
     data_proxies=data_proxies,
     cameras_to_use=[],
     start_translation=[0,0,0],
-    start_rotation_quat=[0, 0, 0, 1],
+    start_rotation_quat=[1, 0, 0, 0],
 )
