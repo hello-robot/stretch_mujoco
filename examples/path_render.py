@@ -23,6 +23,15 @@ server.mjmodel.vis.global_.offheight = h
 server.mjmodel.vis.global_.offwidth = w
 renderer = mujoco.Renderer(server.mjmodel, height=h, width=w)
 
+# Set to home keyframe
+for i in range(server.mjmodel.nkey):
+    name = mujoco.mj_id2name(server.mjmodel, mujoco.mjtObj.mjOBJ_KEY, i)
+    if name == "home":
+        mujoco.mj_resetDataKeyframe(server.mjmodel, server.mjdata, i)
+        break
+while server.mjdata.time < 1.0:
+    mujoco.mj_step(server.mjmodel, server.mjdata)
+
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
 renderer.update_scene(server.mjdata)
