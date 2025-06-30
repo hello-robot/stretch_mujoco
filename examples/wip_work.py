@@ -31,7 +31,7 @@ sock.connect(f"tcp://127.0.0.1:8080")
 def follow_arc(R, dtheta):
     vs = [-0.3, -0.2, -0.1, -0.05, -0.01]
     for v in vs:
-        w = -v / R * np.sign(dtheta)
+        w = v / abs(R) * np.sign(dtheta)
         w_left, w_right = diff_drive_inv_kinematics(v, w)
         if abs(w_left) < MAX_WHEEL_SPEED and abs(w_right) < MAX_WHEEL_SPEED:
             break
@@ -220,7 +220,7 @@ def update(sim):
 
     # Execute path
     v, w = follow_arc(R_opt, dTheta_opt)
-    print(f"{v=:.2f} {w=:.2f} {sim.pull_status().base.theta_vel=:.2f}")
+    print(f"{v=:.1f} {w=:.3f} {sim.pull_status().base.theta_vel=:.3f}")
     sim.set_base_velocity(v, w)
 
     sock.send_pyobj({
