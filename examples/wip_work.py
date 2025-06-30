@@ -17,6 +17,9 @@ SEEK = 12
 prev = time.time()
 dock_angle = math.pi
 prev_heading = 0.0
+did_compute = False
+v = None
+w = None
 
 # Networking
 ctx = zmq.Context()
@@ -42,6 +45,19 @@ def cost(params, x_target, y_target, theta_target):
     dtheta = ((heading - theta_target + np.pi) % (2*np.pi)) - np.pi
     return dx**2 + dy**2 + (dtheta**2)
 
+
+def plan_arc(target_x, target_y, target_t):
+    r_bounds = (0.01, None) if target_t < 0 else (None, -0.01)
+    res = minimize(
+        cost,
+        x0=np.array([0.0, 0.0]), # (radius, dTheta)
+        args=(target_x, target_y, target_t),
+        bounds=[r_bounds, (-2*np.pi, 2*np.pi)]
+    )
+    if not res.success:
+        return
+    R_opt, dTheta_opt = res.x
+    return (R_opt, dTheta_opt)
 
 def to_cartesian(arr):
     x = arr[:,1] * np.cos(arr[:,0])
@@ -109,7 +125,7 @@ def prepare_scan(sim):
 
 
 def update(sim):
-    global prev, dock_angle, prev_heading
+    global prev, dock_angle, prev_heading, did_compute, v, w
 
     # Heading update
     curr_heading = sim.pull_status().base.theta
@@ -178,30 +194,13 @@ def update(sim):
     line_points = np.vstack([line_points, more_line_points])
 
     # Compute arc path
-    res = minimize(
-        cost,
-        x0=np.array([0.0, 0.0]), # (radius, dTheta)
-        args=(target_x, target_y, target_t),
-        bounds=[(0.01, None), (-2*np.pi, 2*np.pi)]
-    )
-    if not res.success:
+    ret = plan_arc(target_x, target_y, target_t)
+    if not ret:
         print("No arc path found")
         return
-    R_opt, dTheta_opt = res.x
-    if np.isclose(R_opt, 0.01, atol=1e-3):
-        res = minimize(
-            cost,
-            x0=np.array([0.0, 0.0]), # (radius, dTheta)
-            args=(target_x, target_y, target_t),
-            bounds=[(None, -0.01), (-2*np.pi, 2*np.pi)]
-        )
-        if not res.success:
-            print("No arc path found 2")
-            return
-        R_opt, dTheta_opt = res.x
-        print('Second minimize')
+    R_opt, dTheta_opt = ret
     arc_len = R_opt * abs(dTheta_opt)
-    print(f"Found arc: Radius = {R_opt:.3f}, Angle = {dTheta_opt:.3f} rad, Arc length = {arc_len:.3f}")
+    # print(f"Found arc: Radius = {R_opt:.3f}, Angle = {dTheta_opt:.3f} rad, Arc length = {arc_len:.3f}")
 
     # Viz path
     angles = np.linspace(0, dTheta_opt, 100)
@@ -209,6 +208,16 @@ def update(sim):
     y_arc = R_opt * (1 - np.cos(angles))
     path = np.stack([x_arc, y_arc], axis=1)
     path *= 1000
+
+    # Execute path
+    if not did_compute:
+        T = 5.0 # seconds to complete arc
+        v = R_opt * abs(dTheta_opt) / T  # = 2.0 * 1.57 / 5.0 ≈ 0.628 m/s
+        w = dTheta_opt / T               # = 1.57 / 5.0 ≈ 0.314 rad/s
+        w = -w
+        print(f"{v=:.2f} {w=:.2f}")
+        did_compute = True
+    sim.set_base_velocity(v, w)
 
     sock.send_pyobj({
         'polar_offsets': polar_offsets,
