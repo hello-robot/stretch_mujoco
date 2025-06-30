@@ -1,5 +1,6 @@
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
+from stretch_mujoco.utils import diff_drive_inv_kinematics
 
 import zmq
 import time
@@ -12,14 +13,12 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 # Constants
 DMAX = 4000
 SEEK = 12
+MAX_WHEEL_SPEED = 6.0
 
 # Program
 prev = time.time()
 dock_angle = math.pi
 prev_heading = 0.0
-did_compute = False
-v = None
-w = None
 
 # Networking
 ctx = zmq.Context()
@@ -27,6 +26,16 @@ sock = ctx.socket(zmq.PUB)
 sock.setsockopt(zmq.SNDHWM, 1)
 sock.setsockopt(zmq.RCVHWM, 1)
 sock.connect(f"tcp://127.0.0.1:8080")
+
+
+def follow_arc(R, dtheta):
+    vs = [-0.3, -0.2, -0.1, -0.05, -0.01]
+    for v in vs:
+        w = -v / R * np.sign(dtheta)
+        w_left, w_right = diff_drive_inv_kinematics(v, w)
+        if abs(w_left) < MAX_WHEEL_SPEED and abs(w_right) < MAX_WHEEL_SPEED:
+            break
+    return v, w
 
 
 def arc_endpoint(R, delta_theta):
@@ -125,7 +134,7 @@ def prepare_scan(sim):
 
 
 def update(sim):
-    global prev, dock_angle, prev_heading, did_compute, v, w
+    global prev, dock_angle, prev_heading
 
     # Heading update
     curr_heading = sim.pull_status().base.theta
@@ -210,13 +219,8 @@ def update(sim):
     path *= 1000
 
     # Execute path
-    if not did_compute:
-        T = 5.0 # seconds to complete arc
-        v = R_opt * abs(dTheta_opt) / T  # = 2.0 * 1.57 / 5.0 ≈ 0.628 m/s
-        w = dTheta_opt / T               # = 1.57 / 5.0 ≈ 0.314 rad/s
-        w = -w
-        print(f"{v=:.2f} {w=:.2f}")
-        did_compute = True
+    v, w = follow_arc(R_opt, dTheta_opt)
+    print(f"{v=:.2f} {w=:.2f} {sim.pull_status().base.theta_vel=:.2f}")
     sim.set_base_velocity(v, w)
 
     sock.send_pyobj({
