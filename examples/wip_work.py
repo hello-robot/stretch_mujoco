@@ -14,15 +14,15 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 DMAX = 4000
 SEEK = 12
 MAX_WHEEL_SPEED = 6.0
-ARC_COST_THRES = 1e-7
-TURN_MAX_SPEED = 0.15
+ARC_COST_THRES = 1e-5
+TURN_MAX_SPEED = 1.5
 
 # Program
 prev = time.time()
 dock_angle = math.pi
 prev_heading = 0.0
 needs_turning = None
-turn_offset = 0.0
+turn_dir = 0.0
 
 # Networking
 ctx = zmq.Context()
@@ -143,7 +143,7 @@ def prepare_scan(sim):
 
 
 def update(sim):
-    global prev, dock_angle, prev_heading, needs_turning, turn_offset
+    global prev, dock_angle, prev_heading, needs_turning, turn_dir
 
     # Heading update
     curr_heading = sim.pull_status().base.theta
@@ -221,7 +221,7 @@ def update(sim):
     if not is_optimal and needs_turning is None:
         needs_turning = True
         angle_to_target = math.atan2(target_y, target_x)
-        turn_offset = np.sign(angle_to_target)
+        turn_dir = np.sign(angle_to_target)
     if needs_turning and is_optimal:
         needs_turning = False
         sim.set_base_velocity(0.0, 0.0)
@@ -231,11 +231,10 @@ def update(sim):
         path = np.zeros_like(line_points)
 
         # Turn to feasible arc
-        angle_to_target = math.atan2(target_y, target_x)
-        k = 0.3
-        w = k * ((math.pi + turn_offset) - convert_to_0to2pi(angle_to_target))
-        w = np.clip(w, -TURN_MAX_SPEED, TURN_MAX_SPEED)
-        print(f"Turn: {w:.4f} Turn target: {math.pi + turn_offset:.4f} Turn current: {convert_to_0to2pi(angle_to_target):.4f} Arc Cost: {arc_cost:.10f}")
+        k = 100.0
+        w = k * arc_cost
+        w = turn_dir * np.clip(w, -TURN_MAX_SPEED, TURN_MAX_SPEED)
+        print(f"Turn: {w:.4f} Arc Cost: {arc_cost:.10f}")
         sim.set_base_velocity(0.0, w)
     else:
         # arc_len = R_opt * abs(dTheta_opt)
