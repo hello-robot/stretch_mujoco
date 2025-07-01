@@ -75,7 +75,7 @@ def plan_arc(target_x, target_y, target_t):
     if not res.success:
         return
     R_opt, dTheta_opt = res.x
-    return (R_opt, dTheta_opt, res.fun < ARC_COST_THRES)
+    return (R_opt, dTheta_opt, res.fun)
 
 def to_cartesian(arr):
     x = arr[:,1] * np.cos(arr[:,0])
@@ -216,7 +216,8 @@ def update(sim):
     if ret is None:
         print("No arc path found")
         return
-    R_opt, dTheta_opt, is_optimal = ret
+    R_opt, dTheta_opt, arc_cost = ret
+    is_optimal = arc_cost < ARC_COST_THRES
     if not is_optimal and needs_turning is None:
         needs_turning = True
         angle_to_target = math.atan2(target_y, target_x)
@@ -234,10 +235,10 @@ def update(sim):
         k = 0.3
         w = k * ((math.pi + turn_offset) - convert_to_0to2pi(angle_to_target))
         w = np.clip(w, -TURN_MAX_SPEED, TURN_MAX_SPEED)
-        # print(f"Turn: {w:.4f} Turn target: {math.pi + turn_offset:.4f} Turn current: {convert_to_0to2pi(angle_to_target):.4f}")
+        print(f"Turn: {w:.4f} Turn target: {math.pi + turn_offset:.4f} Turn current: {convert_to_0to2pi(angle_to_target):.4f} Arc Cost: {arc_cost:.10f}")
         sim.set_base_velocity(0.0, w)
     else:
-        arc_len = R_opt * abs(dTheta_opt)
+        # arc_len = R_opt * abs(dTheta_opt)
         # print(f"Found arc: Radius = {R_opt:.3f}, Angle = {dTheta_opt:.3f} rad, Arc length = {arc_len:.3f}")
 
         # Viz path
