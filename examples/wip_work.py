@@ -14,12 +14,15 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 DMAX = 4000
 SEEK = 12
 MAX_WHEEL_SPEED = 6.0
-ARC_COST_THRES = 1e-5
+ARC_COST_THRES = 1e-7
+TURN_MAX_SPEED = 0.3
+TURN_MIN_SPEED = 0.005
 
 # Program
 prev = time.time()
 dock_angle = math.pi
 prev_heading = 0.0
+needs_turning = None
 
 # Networking
 ctx = zmq.Context()
@@ -64,13 +67,10 @@ def plan_arc(target_x, target_y, target_t):
         args=(target_x, target_y, target_t),
         bounds=[r_bounds, (-2*np.pi, 2*np.pi)]
     )
-    if not res.success or res.fun > ARC_COST_THRES:
-        print(f"cost: {res.fun:.10f} angle_to_target: {math.atan2(target_y, target_x):.8f}")
-        # return
-    else:
-        print(f"cost: {res.fun:.10f}")
+    if not res.success:
+        return
     R_opt, dTheta_opt = res.x
-    return (R_opt, dTheta_opt)
+    return (R_opt, dTheta_opt, res.fun < ARC_COST_THRES)
 
 def to_cartesian(arr):
     x = arr[:,1] * np.cos(arr[:,0])
@@ -138,7 +138,7 @@ def prepare_scan(sim):
 
 
 def update(sim):
-    global prev, dock_angle, prev_heading
+    global prev, dock_angle, prev_heading, needs_turning
 
     # Heading update
     curr_heading = sim.pull_status().base.theta
@@ -208,24 +208,40 @@ def update(sim):
 
     # Compute arc path
     ret = plan_arc(target_x, target_y, target_t)
-    # if not ret:
-    #     print("No arc path found")
-    #     return
-    R_opt, dTheta_opt = ret
-    arc_len = R_opt * abs(dTheta_opt)
-    # print(f"Found arc: Radius = {R_opt:.3f}, Angle = {dTheta_opt:.3f} rad, Arc length = {arc_len:.3f}")
+    if ret is None:
+        print("No arc path found")
+        return
+    R_opt, dTheta_opt, is_optimal = ret
+    if not is_optimal and needs_turning is None:
+        needs_turning = True
+    if needs_turning and is_optimal:
+        needs_turning = False
 
-    # Viz path
-    angles = np.linspace(0, dTheta_opt, 100)
-    x_arc = R_opt * np.sin(angles)
-    y_arc = R_opt * (1 - np.cos(angles))
-    path = np.stack([x_arc, y_arc], axis=1)
-    path *= 1000
+    if needs_turning:
+        path = np.zeros_like(line_points)
 
-    # Execute path
-    v, w = follow_arc(R_opt, dTheta_opt)
-    # print(f"{v=:.1f} {w=:.3f} {sim.pull_status().base.theta_vel=:.3f}")
-    # sim.set_base_velocity(v, w)
+        # Turn to feasible arc
+        angle_to_target = math.atan2(target_y, target_x)
+        k = 0.8
+        w = k * (math.pi - abs(angle_to_target))
+        w = np.sign(angle_to_target) * np.clip(w, TURN_MIN_SPEED, TURN_MAX_SPEED)
+        print(f"Turn: {w:.4f}")
+        sim.set_base_velocity(0.0, w)
+    else:
+        arc_len = R_opt * abs(dTheta_opt)
+        # print(f"Found arc: Radius = {R_opt:.3f}, Angle = {dTheta_opt:.3f} rad, Arc length = {arc_len:.3f}")
+
+        # Viz path
+        angles = np.linspace(0, dTheta_opt, 100)
+        x_arc = R_opt * np.sin(angles)
+        y_arc = R_opt * (1 - np.cos(angles))
+        path = np.stack([x_arc, y_arc], axis=1)
+        path *= 1000
+
+        # Execute path
+        v, w = follow_arc(R_opt, dTheta_opt)
+        print(f"{v=:.1f} {w=:.3f} {sim.pull_status().base.theta_vel=:.3f}")
+        sim.set_base_velocity(v, w)
 
     sock.send_pyobj({
         'polar_offsets': polar_offsets,
