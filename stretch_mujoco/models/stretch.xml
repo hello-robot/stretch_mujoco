@@ -226,7 +226,7 @@
   </asset>
 
   <worldbody>
-    <body name="base_link" childclass="stretch" pos="0.0 -0.3 0.0" euler="0 0 0.0">
+    <body name="base_link" childclass="stretch" pos="0.0 0.0 0.0" euler="0 0 0.0">
       <freejoint/>
       <geom mesh="base_link_0" material="Caster_Rollers_Red" density="100" class="visual"/>
       <geom mesh="base_link_2" material="Lightbar_Green" density="100" class="visual" shellinertia="true"/>

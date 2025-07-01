@@ -16,6 +16,7 @@ SEEK = 12
 MAX_WHEEL_SPEED = 6.0
 ARC_COST_THRES = 1e-5
 TURN_MAX_SPEED = 1.5
+SCOOT_COST_THRES = 1e-3
 
 # Program
 prev = time.time()
@@ -23,6 +24,7 @@ dock_angle = math.pi
 prev_heading = 0.0
 needs_turning = None
 turn_dir = 0.0
+do_the_scoot = False
 
 # Networking
 ctx = zmq.Context()
@@ -143,7 +145,7 @@ def prepare_scan(sim):
 
 
 def update(sim):
-    global prev, dock_angle, prev_heading, needs_turning, turn_dir
+    global prev, dock_angle, prev_heading, needs_turning, turn_dir, do_the_scoot
 
     # Heading update
     curr_heading = sim.pull_status().base.theta
@@ -204,6 +206,13 @@ def update(sim):
     normal /= np.linalg.norm(normal)
     target_t = math.atan2(normal[1], normal[0])
     target_x, target_y = (dock_centroid/1000) + 0.625 * normal
+    print(f"Target: ({target_x:.2f}, {target_y:.2f}, {target_t:.4f}) Cost: {cost((1.0, 0.0), target_x, target_y, target_t)}")
+    if cost((1.0, 0.0), target_x, target_y, target_t) < SCOOT_COST_THRES or do_the_scoot:
+        # Scoot backwards into the dock
+        print('scoot!')
+        do_the_scoot = True
+        sim.set_base_velocity(-0.1, 0.0)
+        return
 
     # Plot line
     t_vals = np.linspace(-DMAX, DMAX, 100)
@@ -231,10 +240,10 @@ def update(sim):
         path = np.zeros_like(line_points)
 
         # Turn to feasible arc
-        k = 100.0
+        k = 200.0
         w = k * arc_cost
         w = turn_dir * np.clip(w, -TURN_MAX_SPEED, TURN_MAX_SPEED)
-        print(f"Turn: {w:.4f} Arc Cost: {arc_cost:.10f}")
+        # print(f"Turn: {w:.4f} Arc Cost: {arc_cost:.10f}")
         sim.set_base_velocity(0.0, w)
     else:
         # arc_len = R_opt * abs(dTheta_opt)
@@ -249,7 +258,7 @@ def update(sim):
 
         # Execute path
         v, w = follow_arc(R_opt, dTheta_opt)
-        print(f"{v=:.1f} {w=:.3f} {sim.pull_status().base.theta_vel=:.3f}")
+        # print(f"{v=:.1f} {w=:.3f} {sim.pull_status().base.theta_vel=:.3f}")
         sim.set_base_velocity(v, w)
 
     sock.send_pyobj({
