@@ -14,6 +14,7 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 DMAX = 4000
 SEEK = 12
 MAX_WHEEL_SPEED = 6.0
+ARC_COST_THRES = 1e-5
 
 # Program
 prev = time.time()
@@ -63,8 +64,11 @@ def plan_arc(target_x, target_y, target_t):
         args=(target_x, target_y, target_t),
         bounds=[r_bounds, (-2*np.pi, 2*np.pi)]
     )
-    if not res.success:
-        return
+    if not res.success or res.fun > ARC_COST_THRES:
+        print(f"cost: {res.fun:.10f} angle_to_target: {math.atan2(target_y, target_x):.8f}")
+        # return
+    else:
+        print(f"cost: {res.fun:.10f}")
     R_opt, dTheta_opt = res.x
     return (R_opt, dTheta_opt)
 
@@ -204,9 +208,9 @@ def update(sim):
 
     # Compute arc path
     ret = plan_arc(target_x, target_y, target_t)
-    if not ret:
-        print("No arc path found")
-        return
+    # if not ret:
+    #     print("No arc path found")
+    #     return
     R_opt, dTheta_opt = ret
     arc_len = R_opt * abs(dTheta_opt)
     # print(f"Found arc: Radius = {R_opt:.3f}, Angle = {dTheta_opt:.3f} rad, Arc length = {arc_len:.3f}")
@@ -220,8 +224,8 @@ def update(sim):
 
     # Execute path
     v, w = follow_arc(R_opt, dTheta_opt)
-    print(f"{v=:.1f} {w=:.3f} {sim.pull_status().base.theta_vel=:.3f}")
-    sim.set_base_velocity(v, w)
+    # print(f"{v=:.1f} {w=:.3f} {sim.pull_status().base.theta_vel=:.3f}")
+    # sim.set_base_velocity(v, w)
 
     sock.send_pyobj({
         'polar_offsets': polar_offsets,
