@@ -5,6 +5,7 @@ import cv2
 import mujoco
 import signal
 import threading
+import numpy as np
 from pathlib import Path
 from multiprocessing import Manager
 
@@ -43,8 +44,20 @@ for joint, pos in stow_config.items():
     server.mjdata.qpos[server.mjmodel.jnt_qposadr[joint_id]] = pos
     server.mjdata.qvel[server.mjmodel.jnt_dofadr[joint_id]] = 0.0 # zero out velocity
 
+# Set the robot to a specified base pose
+base_jid = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_JOINT, "base_freejoint")
+qpos_addr = server.mjmodel.jnt_qposadr[base_jid]
+dof_addr = server.mjmodel.jnt_dofadr[base_jid]
+translation = [0.0, 0.0, 0.0]
+euler = np.array([0.0, 0.0, 0.0], dtype=np.float64) # rpy
+quat = np.zeros(4, dtype=np.float64)
+mujoco.mju_euler2Quat(quat, euler, 'xyz') # 'xyz' is intrinsic rotation, 'XYZ' is extrinsic rotation
+server.mjdata.qpos[qpos_addr:qpos_addr+7] = np.hstack([translation, quat])
+server.mjdata.qvel[dof_addr:dof_addr+6] = np.zeros(6)
+
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
 renderer.update_scene(server.mjdata, camera=cam)
 img = renderer.render()
+cv2.putText(img, '', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))

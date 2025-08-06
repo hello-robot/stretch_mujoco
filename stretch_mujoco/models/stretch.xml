@@ -227,7 +227,7 @@
 
   <worldbody>
     <body name="base_link" childclass="stretch">
-      <freejoint/>
+      <joint name="base_freejoint" type="free"/>
       <geom mesh="base_link_0" material="Caster_Rollers_Red" density="100" class="visual"/>
       <geom mesh="base_link_2" material="Lightbar_Green" density="100" class="visual" shellinertia="true"/>
       <geom mesh="base_link_3" material="Power_Button_Green" density="100" class="visual"/>
