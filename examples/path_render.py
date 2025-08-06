@@ -24,6 +24,7 @@ h, w = (640, 640)
 server.mjmodel.vis.global_.offheight = h
 server.mjmodel.vis.global_.offwidth = w
 renderer = mujoco.Renderer(server.mjmodel, height=h, width=w)
+renderer._scene_option.flags[mujoco.mjtVisFlag.mjVIS_RANGEFINDER] = False # Disables the lidar yellow lines
 
 # Setup orthographic top-down camera
 cam = mujoco.MjvCamera()
