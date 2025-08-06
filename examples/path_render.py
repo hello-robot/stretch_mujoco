@@ -20,22 +20,23 @@ signal.signal(signal.SIGINT, lambda num, frame: event.set())
 scene_xml = str(Path.cwd() / "stretch_mujoco" / "models" / "dock_pen.xml")
 server = MujocoServer(scene_xml_path=scene_xml, model=None, stop_mujoco_process_event=event, data_proxies=data_proxies)
 
-# Setup rendering
+# Setup orthographic rendering
 h, w = (640, 640)
 server.mjmodel.vis.global_.offheight = h
 server.mjmodel.vis.global_.offwidth = w
+server.mjmodel.vis.global_.orthographic = True
+server.mjmodel.vis.global_.fovy = 3.1 * server.mjmodel.stat.extent
 renderer = mujoco.Renderer(server.mjmodel, height=h, width=w)
 renderer._scene_option.flags[mujoco.mjtVisFlag.mjVIS_RANGEFINDER] = False # Disables the lidar yellow lines
 
-# Setup orthographic top-down camera
+# Setup top-down camera
 cam = mujoco.MjvCamera()
 mujoco.mjv_defaultCamera(cam) # inits cam with defaults
 cam.type = mujoco.mjtCamera.mjCAMERA_FREE
-cam.orthographic = True
 cam.azimuth = 0
 cam.elevation = -90 # look straight down
 cam.lookat[:] = server.mjmodel.stat.center
-cam.distance = 3.5*server.mjmodel.stat.extent  # zoom so whole scene fits
+# cam.distance = 10 * server.mjmodel.stat.extent # higher up is closer to light, makes scene brighter
 
 # Set the robot's joints to stowed
 stow_config = {'joint_lift': 0.4, "joint_wrist_yaw": 3.4, "joint_wrist_pitch": -0.5}
@@ -59,5 +60,5 @@ server.mjdata.qvel[dof_addr:dof_addr+6] = np.zeros(6)
 mujoco.mj_forward(server.mjmodel, server.mjdata)
 renderer.update_scene(server.mjdata, camera=cam)
 img = renderer.render()
-cv2.putText(img, 'y=-0.6m, yaw=-0.3rad', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+cv2.putText(img, 'ortho y=-0.6m, yaw=-0.3rad', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
