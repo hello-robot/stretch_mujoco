@@ -35,14 +35,12 @@ cam.elevation = -90 # look straight down
 cam.lookat[:] = server.mjmodel.stat.center
 cam.distance = 3.5*server.mjmodel.stat.extent  # zoom so whole scene fits
 
-# Set to home keyframe
-for i in range(server.mjmodel.nkey):
-    name = mujoco.mj_id2name(server.mjmodel, mujoco.mjtObj.mjOBJ_KEY, i)
-    if name == "home":
-        mujoco.mj_resetDataKeyframe(server.mjmodel, server.mjdata, i)
-        break
-while server.mjdata.time < 1.0:
-    mujoco.mj_step(server.mjmodel, server.mjdata)
+# Set the robot's joints to stowed
+stow_config = {'joint_lift': 0.4, "joint_wrist_yaw": 3.4, "joint_wrist_pitch": -0.5}
+for joint, pos in stow_config.items():
+    joint_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_JOINT, joint)
+    server.mjdata.qpos[server.mjmodel.jnt_qposadr[joint_id]] = pos
+    server.mjdata.qvel[server.mjmodel.jnt_dofadr[joint_id]] = 0.0 # zero out velocity
 
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
