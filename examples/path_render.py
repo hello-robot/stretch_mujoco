@@ -9,6 +9,7 @@ import threading
 import numpy as np
 from pathlib import Path
 from multiprocessing import Manager
+from scipy.optimize import minimize
 
 # Setup server
 _manager = Manager()
@@ -74,7 +75,46 @@ def rot_about_z(_quat):
     w, x, y, z = _quat
     return math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
 target_t = rot_about_z(r_dock_wrt_robot)
-print(target_x, target_y, target_t)
+print("Target: ", (target_x, target_y, target_t))
+
+# Plan arc
+def arc_endpoint(R, delta_theta):
+    x = R * np.sin(delta_theta)
+    y = R * (1 - np.cos(delta_theta))
+    return x, y, delta_theta
+def cost(params, x_target, y_target, theta_target):
+    R, delta_theta = params
+    if np.abs(R) < 1e-4:  # avoid near-zero radius
+        return 1e6
+    x, y, heading = arc_endpoint(R, delta_theta)
+    dx = x - x_target
+    dy = y - y_target
+    dtheta = ((heading - theta_target + np.pi) % (2*np.pi)) - np.pi
+    return dx**2 + dy**2 + (dtheta**2)
+def plan_arc(target_x, target_y, target_t):
+    r_bounds = (0.01, None) if target_t < 0 else (None, -0.01)
+    res = minimize(
+        cost,
+        x0=np.array([0.0, 0.0]), # (radius, dTheta)
+        args=(target_x, target_y, target_t),
+        bounds=[r_bounds, (-2*np.pi, 2*np.pi)]
+    )
+    if not res.success:
+        return
+    R_opt, dTheta_opt = res.x
+    return (R_opt, dTheta_opt, res.fun)
+
+ret = plan_arc(target_x, target_y, target_t)
+if ret is None:
+    print("No arc path found")
+R_opt, dTheta_opt, arc_cost = ret
+
+# TODO: Viz arc
+angles = np.linspace(0, dTheta_opt, 100)
+x_arc = R_opt * np.sin(angles)
+y_arc = R_opt * (1 - np.cos(angles))
+print("arc_cost: ", arc_cost)
+print(x_arc)
 
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
