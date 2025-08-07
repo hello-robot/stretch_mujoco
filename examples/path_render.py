@@ -72,7 +72,7 @@ r_robot_wrt_world = quat
 t_world_wrt_robot = np.zeros(3, dtype=np.float64)
 r_world_wrt_robot = np.zeros(4, dtype=np.float64)
 mujoco.mju_negPose(t_world_wrt_robot, r_world_wrt_robot, t_robot_wrt_world, r_robot_wrt_world)
-t_dock_wrt_world = [-1.0+0.625, 0.0, 0.0] # the scoot target is 0.625m in front of the dock
+t_dock_wrt_world = [-1.0+0.35, 0.0, 0.0] # the scoot target is a bit in front of the dock
 r_dock_wrt_world = [1.0, 0.0, 0.0, 0.0]
 t_dock_wrt_robot  = np.zeros(3, dtype=np.float64)
 r_dock_wrt_robot = np.zeros(4, dtype=np.float64)
