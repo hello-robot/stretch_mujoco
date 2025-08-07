@@ -56,9 +56,23 @@ mujoco.mju_euler2Quat(quat, euler, 'xyz') # 'xyz' is intrinsic rotation, 'XYZ' i
 server.mjdata.qpos[qpos_addr:qpos_addr+7] = np.hstack([translation, quat])
 server.mjdata.qvel[dof_addr:dof_addr+6] = np.zeros(6)
 
+# Compute target_x,y,t
+t_robot_wrt_world = translation
+r_robot_wrt_world = quat
+t_world_wrt_robot = np.zeros(3, dtype=np.float64)
+r_world_wrt_robot = np.zeros(4, dtype=np.float64)
+mujoco.mju_negPose(t_world_wrt_robot, r_world_wrt_robot, t_robot_wrt_world, r_robot_wrt_world)
+t_dock_wrt_world = [-1.0, 0.0, 0.0]
+r_dock_wrt_world = [1.0, 0.0, 0.0, 0.0]
+t_dock_wrt_robot  = np.zeros(3, dtype=np.float64)
+r_dock_wrt_robot = np.zeros(4, dtype=np.float64)
+mujoco.mju_mulPose(t_dock_wrt_robot, r_dock_wrt_robot, t_dock_wrt_world, r_dock_wrt_world, t_world_wrt_robot, r_world_wrt_robot)
+print(t_dock_wrt_robot)
+print(r_dock_wrt_robot)
+
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
 renderer.update_scene(server.mjdata, camera=cam)
 img = renderer.render()
-cv2.putText(img, 'ortho y=-0.6m, yaw=-0.3rad', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+cv2.putText(img, '', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
