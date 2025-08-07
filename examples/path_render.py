@@ -86,15 +86,20 @@ target_t = rot_about_z(r_dock_wrt_robot)
 print("Target: ", (target_x, target_y, target_t))
 
 # Plan arc
-def arc_endpoint(R, delta_theta):
+def arc_endpoint(R, delta_theta, my_theta):
     x = R * np.sin(delta_theta)
     y = R * (1 - np.cos(delta_theta))
-    return x, y, delta_theta
+    heading = delta_theta
+    # rotate endpoint by robot's rotation (my_theta)
+    x = np.cos(my_theta)*x - np.sin(my_theta)*y
+    y = np.sin(my_theta)*x + np.cos(my_theta)*y
+    heading -= my_theta
+    return x, y, heading
 def cost(params, x_target, y_target, theta_target):
-    R, delta_theta = params
+    R, delta_theta, my_theta = params
     if np.abs(R) < 1e-4:  # avoid near-zero radius
         return 1e6
-    x, y, heading = arc_endpoint(R, delta_theta)
+    x, y, heading = arc_endpoint(R, delta_theta, my_theta)
     dx = x - x_target
     dy = y - y_target
     dtheta = ((heading - theta_target + np.pi) % (2*np.pi)) - np.pi
@@ -103,20 +108,20 @@ def plan_arc(target_x, target_y, target_t):
     r_bounds = (0.01, None) if target_t < 0 else (None, -0.01)
     res = minimize(
         cost,
-        x0=np.array([0.0, 0.0]), # (radius, dTheta)
+        x0=np.array([0.0, 0.0, 0.0]), # (radius, dTheta, my_theta)
         args=(target_x, target_y, target_t),
-        bounds=[r_bounds, (-2*np.pi, 2*np.pi)]
+        bounds=[r_bounds, (-2*np.pi, 2*np.pi), (-2*np.pi, 2*np.pi)]
     )
     if not res.success:
         return
-    R_opt, dTheta_opt = res.x
-    return (R_opt, dTheta_opt, res.fun)
+    R_opt, dTheta_opt, myTheta_opt = res.x
+    return (R_opt, dTheta_opt, myTheta_opt, res.fun)
 
 ret = plan_arc(target_x, target_y, target_t)
 if ret is None:
     print("No arc path found")
-R_opt, dTheta_opt, arc_cost = ret
-print(f"Arc: ({arc_cost=}, {R_opt=}, {dTheta_opt=})")
+R_opt, dTheta_opt, myTheta_opt, arc_cost = ret
+print(f"Arc: ({arc_cost=}, {R_opt=}, {dTheta_opt=}, {myTheta_opt=})")
 
 # Viz arc's underlying circle
 base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
