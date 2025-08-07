@@ -30,6 +30,7 @@ server.mjmodel.vis.global_.orthographic = True
 server.mjmodel.vis.global_.fovy = 3.1 * server.mjmodel.stat.extent
 renderer = mujoco.Renderer(server.mjmodel, height=h, width=w)
 renderer._scene_option.flags[mujoco.mjtVisFlag.mjVIS_RANGEFINDER] = False # Disables the lidar yellow lines
+scale = h / (2 * server.mjmodel.vis.global_.fovy) # pixels per meter
 
 # Setup top-down camera
 cam = mujoco.MjvCamera()
@@ -57,6 +58,7 @@ quat = np.zeros(4, dtype=np.float64)
 mujoco.mju_euler2Quat(quat, euler, 'xyz') # 'xyz' is intrinsic rotation, 'XYZ' is extrinsic rotation
 server.mjdata.qpos[qpos_addr:qpos_addr+7] = np.hstack([translation, quat])
 server.mjdata.qvel[dof_addr:dof_addr+6] = np.zeros(6)
+mujoco.mj_forward(server.mjmodel, server.mjdata)
 
 # Compute target_x,y,t
 t_robot_wrt_world = translation
@@ -113,12 +115,34 @@ R_opt, dTheta_opt, arc_cost = ret
 angles = np.linspace(0, dTheta_opt, 100)
 x_arc = R_opt * np.sin(angles)
 y_arc = R_opt * (1 - np.cos(angles))
-print("arc_cost: ", arc_cost)
-print(x_arc)
+base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
+base_pos = server.mjdata.xpos[base_id]
+base_rot = server.mjdata.xmat[base_id].reshape(3,3)
+pts_world = []
+for x_r, y_r in zip(x_arc, y_arc):
+    p_r = np.array([x_r, y_r, 0.0])          # arc lies in the ground plane
+    p_w = base_rot @ p_r + base_pos          # rotate & translate
+    pts_world.append(p_w)
+pixel_pts = []
+cx, cy = w/2, h/2
+for p_w in pts_world:
+    dx = p_w[0] - cam.lookat[0]
+    dy = p_w[1] - cam.lookat[1]
+    # u increases to the right, v increases *down*
+    u = int(dx * scale + cx)
+    v = int(-dy * scale + cy)
+    pixel_pts.append((u, v))
 
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
 renderer.update_scene(server.mjdata, camera=cam)
 img = renderer.render()
-cv2.putText(img, '', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+cv2.polylines(
+    img,
+    [np.array(pixel_pts, dtype=np.int32)],
+    isClosed=False,
+    color=(255, 0, 0),    # RGB red
+    thickness=2,
+)
+cv2.putText(img, 'arc', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
