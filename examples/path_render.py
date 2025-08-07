@@ -52,8 +52,8 @@ for joint, pos in stow_config.items():
 base_jid = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_JOINT, "base_freejoint")
 qpos_addr = server.mjmodel.jnt_qposadr[base_jid]
 dof_addr = server.mjmodel.jnt_dofadr[base_jid]
-translation = [0.0, -0.6, 0.0]
-euler = np.array([0.0, 0.0, -0.3], dtype=np.float64) # rpy
+translation = [0.0, -0.375, 0.0]
+euler = np.array([0.0, 0.0, -1.5708], dtype=np.float64) # rpy
 quat = np.zeros(4, dtype=np.float64)
 mujoco.mju_euler2Quat(quat, euler, 'xyz') # 'xyz' is intrinsic rotation, 'XYZ' is extrinsic rotation
 server.mjdata.qpos[qpos_addr:qpos_addr+7] = np.hstack([translation, quat])
@@ -110,6 +110,7 @@ ret = plan_arc(target_x, target_y, target_t)
 if ret is None:
     print("No arc path found")
 R_opt, dTheta_opt, arc_cost = ret
+print(f"Arc: ({arc_cost=}, {R_opt=}, {dTheta_opt=})")
 
 # TODO: Viz arc
 angles = np.linspace(0, dTheta_opt, 100)
@@ -144,5 +145,5 @@ cv2.polylines(
     color=(255, 0, 0),    # RGB red
     thickness=2,
 )
-cv2.putText(img, 'arc', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+cv2.putText(img, f'{arc_cost=}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
