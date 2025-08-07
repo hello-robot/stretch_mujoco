@@ -127,6 +127,12 @@ print(f"Arc: ({arc_cost=}, {R_opt=}, {dTheta_opt=}, {myTheta_opt=})")
 base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
 base_pos = server.mjdata.xpos[base_id]
 base_rot = server.mjdata.xmat[base_id].reshape(3,3)
+ifirotate = np.eye(3)
+ifirotate[0,0] = np.cos(myTheta_opt)
+ifirotate[0,1] = -np.sin(myTheta_opt)
+ifirotate[1,0] = np.sin(myTheta_opt)
+ifirotate[1,1] = np.cos(myTheta_opt)
+base_rot = ifirotate @ base_rot
 cx, cy = w/2, h/2
 def point_in_robot_frame_to_pixel(x, y):
     p_r = np.array([x, y, 0.0])          # point lies in the ground plane
@@ -151,7 +157,8 @@ for x_r, y_r in zip(x_arc, y_arc):
     pixel_pts.append(point_in_robot_frame_to_pixel(x_r, y_r))
 
 # Viz target
-px, py = point_in_robot_frame_to_pixel(target_x, target_y)
+prefixed_target = np.linalg.inv(ifirotate) @ np.array([target_x, target_y, 0.0])
+px, py = point_in_robot_frame_to_pixel(prefixed_target[0], prefixed_target[1])
 target_t_in_world = target_t + euler[2]
 rect_w, rect_h = 40, 20
 angle_deg = np.degrees(target_t_in_world)
