@@ -2,6 +2,7 @@ from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.mujoco_server import MujocoServerProxies
 
 import cv2
+import math
 import mujoco
 import signal
 import threading
@@ -67,8 +68,13 @@ r_dock_wrt_world = [1.0, 0.0, 0.0, 0.0]
 t_dock_wrt_robot  = np.zeros(3, dtype=np.float64)
 r_dock_wrt_robot = np.zeros(4, dtype=np.float64)
 mujoco.mju_mulPose(t_dock_wrt_robot, r_dock_wrt_robot, t_world_wrt_robot, r_world_wrt_robot, t_dock_wrt_world, r_dock_wrt_world)
-print(t_dock_wrt_robot)
-print(r_dock_wrt_robot)
+target_x = t_dock_wrt_robot[0]
+target_y = t_dock_wrt_robot[1]
+def rot_about_z(_quat):
+    w, x, y, z = _quat
+    return math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
+target_t = rot_about_z(r_dock_wrt_robot)
+print(target_x, target_y, target_t)
 
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
