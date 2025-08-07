@@ -69,51 +69,6 @@ r_dock_wrt_robot = np.zeros(4, dtype=np.float64)
 mujoco.mju_mulPose(t_dock_wrt_robot, r_dock_wrt_robot, t_world_wrt_robot, r_world_wrt_robot, t_dock_wrt_world, r_dock_wrt_world)
 print(t_dock_wrt_robot)
 print(r_dock_wrt_robot)
-print()
-mujoco.mj_forward(server.mjmodel, server.mjdata)
-
-# Verify target
-def quat_conjugate(q):
-    """Return the conjugate (inverse for unit quaternions)."""
-    # q = [w, x, y, z]
-    return np.array([q[0], -q[1], -q[2], -q[3]], dtype=np.float64)
-def rel_pose_quat(model, data, linkA, linkB):
-    # look up IDs
-    idA = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, linkA)
-    idB = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, linkB)
-
-    # get world poses: note .xipos/.xiquat not .body_xpos/.body_xquat
-    posA, quatA = data.xpos[idA], data.xquat[idA]
-    posB, quatB = data.xpos[idB], data.xquat[idB]
-    print(linkA, posA)
-    print(linkB, posB)
-
-    # inverse (conjugate) of A’s quaternion
-    qA_inv = quat_conjugate(quatA)
-
-    # vector from A to B, in world
-    d = posB - posA
-
-    # rotate d into A’s frame
-    d_rel = np.zeros(3, dtype=np.float64)
-    mujoco.mju_rotVecQuat(d_rel, d, qA_inv)
-
-    # quaternion multiply: qA_inv ⊗ qB
-    q_rel = np.zeros(4, dtype=np.float64)
-    mujoco.mju_mulQuat(q_rel, qA_inv, quatB)
-
-    return d_rel, q_rel
-H_dock_wrt_robot = rel_pose_quat(server.mjmodel, server.mjdata, "base_link", "link_docking_station")
-print(H_dock_wrt_robot)
-"""
-example output:
-[-1.13264861  0.27768169  0.        ]
-[0.98877108 0.         0.         0.14943813]
-
-base_link [ 0.  -0.6  0. ]
-link_docking_station [-1.    0.    0.01]
-(array([-1.13264861,  0.27768169,  0.01      ]), array([0.98877108, 0.        , 0.        , 0.14943813]))
-"""
 
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
