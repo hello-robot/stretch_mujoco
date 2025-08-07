@@ -10,6 +10,12 @@ import numpy as np
 from pathlib import Path
 from multiprocessing import Manager
 from scipy.optimize import minimize
+np.set_printoptions(
+    precision=3,      # two decimals
+    suppress=True,    # never use scientific notation
+    floatmode='fixed' # always show exactly `precision` decimals
+)
+
 
 # Setup server
 _manager = Manager()
@@ -30,7 +36,7 @@ server.mjmodel.vis.global_.orthographic = True
 server.mjmodel.vis.global_.fovy = 3.1 * server.mjmodel.stat.extent
 renderer = mujoco.Renderer(server.mjmodel, height=h, width=w)
 renderer._scene_option.flags[mujoco.mjtVisFlag.mjVIS_RANGEFINDER] = False # Disables the lidar yellow lines
-scale = h / (2 * server.mjmodel.vis.global_.fovy) # pixels per meter
+scale = h / (server.mjmodel.vis.global_.fovy) # pixels per meter
 
 # Setup top-down camera
 cam = mujoco.MjvCamera()
@@ -119,19 +125,17 @@ y_arc = R_opt * (1 - np.cos(angles))
 base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
 base_pos = server.mjdata.xpos[base_id]
 base_rot = server.mjdata.xmat[base_id].reshape(3,3)
-pts_world = []
+pixel_pts = []
+cx, cy = w/2, h/2
 for x_r, y_r in zip(x_arc, y_arc):
     p_r = np.array([x_r, y_r, 0.0])          # arc lies in the ground plane
     p_w = base_rot @ p_r + base_pos          # rotate & translate
-    pts_world.append(p_w)
-pixel_pts = []
-cx, cy = w/2, h/2
-for p_w in pts_world:
     dx = p_w[0] - cam.lookat[0]
     dy = p_w[1] - cam.lookat[1]
-    # u increases to the right, v increases *down*
-    u = int(dx * scale + cx)
-    v = int(-dy * scale + cy)
+    # y increases left, while u increases to the right
+    # similarly, x increases up, while v increases down
+    u = int(-dy * scale + cx)
+    v = int(-dx * scale + cy)
     pixel_pts.append((u, v))
 
 # Render scene
