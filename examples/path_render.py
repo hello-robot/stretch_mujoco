@@ -118,7 +118,7 @@ if ret is None:
 R_opt, dTheta_opt, arc_cost = ret
 print(f"Arc: ({arc_cost=}, {R_opt=}, {dTheta_opt=})")
 
-# TODO: Viz arc
+# Viz arc
 angles = np.linspace(0, dTheta_opt, 100)
 x_arc = R_opt * np.sin(angles)
 y_arc = R_opt * (1 - np.cos(angles))
@@ -127,16 +127,28 @@ base_pos = server.mjdata.xpos[base_id]
 base_rot = server.mjdata.xmat[base_id].reshape(3,3)
 pixel_pts = []
 cx, cy = w/2, h/2
-for x_r, y_r in zip(x_arc, y_arc):
-    p_r = np.array([x_r, y_r, 0.0])          # arc lies in the ground plane
-    p_w = base_rot @ p_r + base_pos          # rotate & translate
+def point_in_robot_frame_to_pixel(x, y):
+    p_r = np.array([x, y, 0.0])          # point lies in the ground plane
+    p_w = base_rot @ p_r + base_pos      # rotate & translate
     dx = p_w[0] - cam.lookat[0]
     dy = p_w[1] - cam.lookat[1]
     # y increases left, while u increases to the right
     # similarly, x increases up, while v increases down
     u = int(-dy * scale + cx)
     v = int(-dx * scale + cy)
-    pixel_pts.append((u, v))
+    return (u, v)
+for x_r, y_r in zip(x_arc, y_arc):
+    pixel_pts.append(point_in_robot_frame_to_pixel(x_r, y_r))
+
+# Viz target
+px, py = point_in_robot_frame_to_pixel(target_x, target_y)
+target_t_in_world = target_t + euler[2]
+rect_w, rect_h = 40, 20
+angle_deg = np.degrees(target_t_in_world)
+rot_rect = ((int(px), int(py)), (rect_w, rect_h), -angle_deg)
+box = cv2.boxPoints(rot_rect)
+box = np.vstack([box, (int(px), int(py)), box[0]])
+box = np.int32(box)
 
 # Render scene
 mujoco.mj_forward(server.mjmodel, server.mjdata)
@@ -148,6 +160,14 @@ cv2.polylines(
     isClosed=False,
     color=(255, 0, 0),    # RGB red
     thickness=2,
+)
+cv2.polylines(
+    img,
+    [box],
+    isClosed=True,
+    color=(0, 0, 255),    # RGB blue
+    thickness=2,
+    lineType=cv2.LINE_AA
 )
 cv2.putText(img, f'{arc_cost=}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
