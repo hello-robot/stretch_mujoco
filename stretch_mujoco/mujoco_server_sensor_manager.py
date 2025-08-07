@@ -109,7 +109,7 @@ class MujocoServerSensorManagerThreaded(MujocoServerSensorManagerSync):
         super().__init__(sensor_hz, sensors_to_use, mujoco_server)
 
         self.sensors_thread = threading.Thread(target=self._sensor_loop, daemon=True)
-        self.sensors_thread.start()
+        # self.sensors_thread.start()
 
     def _sensor_loop(self):
         """
