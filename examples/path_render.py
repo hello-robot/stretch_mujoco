@@ -86,6 +86,9 @@ target_t = rot_about_z(r_dock_wrt_robot)
 print("Target: ", (target_x, target_y, target_t))
 
 # Plan arc
+def angle_resid(a):
+    # proportional to shortest-arc angle distance
+    return 2.0 * np.sin(0.5 * a)
 def arc_endpoint(R, delta_theta, my_theta):
     x = R * np.sin(delta_theta)
     y = R * (1 - np.cos(delta_theta))
@@ -95,20 +98,27 @@ def arc_endpoint(R, delta_theta, my_theta):
     y = np.sin(my_theta)*x + np.cos(my_theta)*y
     heading -= my_theta
     return x, y, heading
-def cost(params, x_target, y_target, theta_target):
+def cost(params, x_target, y_target, theta_target,
+         sigma_pos=1e-4,                # 1e-4 m
+         sigma_theta=np.deg2rad(0.5),   # 0.5° as a “unit” heading error
+         theta_weight=1e4,             # make heading count more
+         R_min=1e-4):
     R, delta_theta, my_theta = params
-    if np.abs(R) < 1e-4:  # avoid near-zero radius
-        return 1e6
+    if np.abs(R) < R_min:  # avoid near-zero radius
+        penalty = 1e6 * (R_min - abs(R))**2
+    else:
+        penalty = 0.0
     x, y, heading = arc_endpoint(R, delta_theta, my_theta)
-    dx = x - x_target
-    dy = y - y_target
-    dtheta = ((heading - theta_target + np.pi) % (2*np.pi)) - np.pi
-    return dx**2 + dy**2 + (dtheta**2)
+    dx = (x - x_target) / sigma_pos
+    dy = (y - y_target) / sigma_pos
+    dtheta = angle_resid(heading - theta_target) / sigma_theta
+    # weighted least squares
+    return dx*dx + dy*dy + theta_weight*dtheta*dtheta + penalty
 def plan_arc(target_x, target_y, target_t):
     r_bounds = (0.01, None) if target_t < 0 else (None, -0.01)
     res = minimize(
         cost,
-        x0=np.array([0.0, 0.0, 0.0]), # (radius, dTheta, my_theta)
+        x0=np.array([0.02 if target_t < 0 else -0.02, 0.0, 0.0]), # (radius, dTheta, my_theta)
         args=(target_x, target_y, target_t),
         bounds=[r_bounds, (-2*np.pi, 2*np.pi), (-2*np.pi, 2*np.pi)]
     )
@@ -121,7 +131,12 @@ ret = plan_arc(target_x, target_y, target_t)
 if ret is None:
     print("No arc path found")
 R_opt, dTheta_opt, myTheta_opt, arc_cost = ret
+x, y, heading = arc_endpoint(R_opt, dTheta_opt, myTheta_opt)
+dx = x - target_x
+dy = y - target_y
+dtheta = ((heading - target_t + np.pi) % (2*np.pi)) - np.pi
 print(f"Arc: ({arc_cost=}, {R_opt=}, {dTheta_opt=}, {myTheta_opt=})")
+print(f"arc cost components: {dx=}, {dy=}, {dtheta=}")
 
 # Viz arc's underlying circle
 base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
