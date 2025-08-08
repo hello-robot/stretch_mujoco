@@ -5,6 +5,7 @@ import cv2
 import math
 import mujoco
 import signal
+import itertools
 import threading
 import numpy as np
 from pathlib import Path
@@ -53,132 +54,137 @@ for joint, pos in stow_config.items():
     server.mjdata.qpos[server.mjmodel.jnt_qposadr[joint_id]] = pos
     server.mjdata.qvel[server.mjmodel.jnt_dofadr[joint_id]] = 0.0 # zero out velocity
 
-# Set the robot to a specified base pose
-base_jid = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_JOINT, "base_freejoint")
-qpos_addr = server.mjmodel.jnt_qposadr[base_jid]
-dof_addr = server.mjmodel.jnt_dofadr[base_jid]
-robotxpos = 0.0
-robotypos = -0.375
-robottort = 0.0
-translation = [robotxpos, robotypos, 0.0]
-euler = np.array([0.0, 0.0, robottort], dtype=np.float64) # rpy
-quat = np.zeros(4, dtype=np.float64)
-mujoco.mju_euler2Quat(quat, euler, 'xyz') # 'xyz' is intrinsic rotation, 'XYZ' is extrinsic rotation
-server.mjdata.qpos[qpos_addr:qpos_addr+7] = np.hstack([translation, quat])
-server.mjdata.qvel[dof_addr:dof_addr+6] = np.zeros(6)
-mujoco.mj_forward(server.mjmodel, server.mjdata)
+for robotxpos, robotypos, robottort in itertools.product(np.arange(-1.0, 1.05, 0.05), np.arange(-1.0, 1.05, 0.05), np.arange(-math.pi, math.pi-0.01, 0.05)):
+    message = f"Base: ({robotxpos:.2f}m, {robotypos:.2f}m, {robottort:.2f}rad)\n"
+    print(message)
 
-# Compute target_x,y,t
-t_robot_wrt_world = translation
-r_robot_wrt_world = quat
-t_world_wrt_robot = np.zeros(3, dtype=np.float64)
-r_world_wrt_robot = np.zeros(4, dtype=np.float64)
-mujoco.mju_negPose(t_world_wrt_robot, r_world_wrt_robot, t_robot_wrt_world, r_robot_wrt_world)
-t_dock_wrt_world = [-1.0+0.35, 0.0, 0.0] # the scoot target is a bit in front of the dock
-r_dock_wrt_world = [1.0, 0.0, 0.0, 0.0]
-t_dock_wrt_robot  = np.zeros(3, dtype=np.float64)
-r_dock_wrt_robot = np.zeros(4, dtype=np.float64)
-mujoco.mju_mulPose(t_dock_wrt_robot, r_dock_wrt_robot, t_world_wrt_robot, r_world_wrt_robot, t_dock_wrt_world, r_dock_wrt_world)
-target_x = t_dock_wrt_robot[0]
-target_y = t_dock_wrt_robot[1]
-def rot_about_z(_quat):
-    w, x, y, z = _quat
-    return math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
-target_t = rot_about_z(r_dock_wrt_robot)
-print("Target: ", (target_x, target_y, target_t))
+    # Set the robot to a specified base pose
+    base_jid = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_JOINT, "base_freejoint")
+    qpos_addr = server.mjmodel.jnt_qposadr[base_jid]
+    dof_addr = server.mjmodel.jnt_dofadr[base_jid]
+    translation = [robotxpos, robotypos, 0.0]
+    euler = np.array([0.0, 0.0, robottort], dtype=np.float64) # rpy
+    quat = np.zeros(4, dtype=np.float64)
+    mujoco.mju_euler2Quat(quat, euler, 'xyz') # 'xyz' is intrinsic rotation, 'XYZ' is extrinsic rotation
+    server.mjdata.qpos[qpos_addr:qpos_addr+7] = np.hstack([translation, quat])
+    server.mjdata.qvel[dof_addr:dof_addr+6] = np.zeros(6)
+    mujoco.mj_forward(server.mjmodel, server.mjdata)
 
-# Plan arc
-def wrap_to_pi(a):
-    return (a + np.pi) % (2*np.pi) - np.pi
-def plan_arc(x_t, y_t, theta_t):
-    """Returns: (is inline w/dock, radius of arc, arc angle, turn in-place to my_theta before arc)
-    """
-    c = math.hypot(x_t, y_t)
-    chi = math.atan2(y_t, x_t)
-    phi = wrap_to_pi(theta_t - chi)
-    if abs(math.sin(phi)) < 1e-9:
-        # straight-line approach: rotate to theta_t and go straight
-        return True, math.copysign(np.inf, phi), 0.0, wrap_to_pi(theta_t)
-    R_signed = c / (2.0 * math.sin(phi))
-    delta_theta = 2.0 * phi
-    delta_theta = -wrap_to_pi(2*np.pi - delta_theta)
-    my_theta = wrap_to_pi(2.0 * chi - theta_t)
-    return False, R_signed, delta_theta, my_theta
+    # Compute target_x,y,t
+    t_robot_wrt_world = translation
+    r_robot_wrt_world = quat
+    t_world_wrt_robot = np.zeros(3, dtype=np.float64)
+    r_world_wrt_robot = np.zeros(4, dtype=np.float64)
+    mujoco.mju_negPose(t_world_wrt_robot, r_world_wrt_robot, t_robot_wrt_world, r_robot_wrt_world)
+    t_dock_wrt_world = [-1.0+0.35, 0.0, 0.0] # the scoot target is a bit in front of the dock
+    r_dock_wrt_world = [1.0, 0.0, 0.0, 0.0]
+    t_dock_wrt_robot  = np.zeros(3, dtype=np.float64)
+    r_dock_wrt_robot = np.zeros(4, dtype=np.float64)
+    mujoco.mju_mulPose(t_dock_wrt_robot, r_dock_wrt_robot, t_world_wrt_robot, r_world_wrt_robot, t_dock_wrt_world, r_dock_wrt_world)
+    target_x = t_dock_wrt_robot[0]
+    target_y = t_dock_wrt_robot[1]
+    def rot_about_z(_quat):
+        w, x, y, z = _quat
+        return math.atan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
+    target_t = rot_about_z(r_dock_wrt_robot)
+    message += f"Target: ({target_x:.2f}m, {target_y:.2f}m, {target_t:.2f}rad)\n"
 
-is_inline_wdock, R_opt, dTheta_opt, myTheta_opt = plan_arc(target_x, target_y, target_t)
-print(f"Arc: ({is_inline_wdock=} {R_opt=}, {dTheta_opt=}, {myTheta_opt=})")
+    # Plan arc
+    def wrap_to_pi(a):
+        return (a + np.pi) % (2*np.pi) - np.pi
+    def plan_arc(x_t, y_t, theta_t):
+        """Returns: (is inline w/dock, radius of arc, arc angle, turn in-place to my_theta before arc)
+        """
+        c = math.hypot(x_t, y_t)
+        chi = math.atan2(y_t, x_t)
+        phi = wrap_to_pi(theta_t - chi)
+        if abs(math.sin(phi)) < 1e-9:
+            # straight-line approach: rotate to theta_t and go straight
+            return True, math.copysign(np.inf, phi), 0.0, wrap_to_pi(theta_t)
+        R_signed = c / (2.0 * math.sin(phi))
+        delta_theta = 2.0 * phi
+        delta_theta = -wrap_to_pi(2*np.pi - delta_theta)
+        my_theta = wrap_to_pi(2.0 * chi - theta_t)
+        return False, R_signed, delta_theta, my_theta
 
-# Viz arc's underlying circle
-base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
-base_pos = server.mjdata.xpos[base_id]
-base_rot = server.mjdata.xmat[base_id].reshape(3,3)
-ifirotate = np.eye(3)
-ifirotate[0,0] = np.cos(myTheta_opt)
-ifirotate[0,1] = -np.sin(myTheta_opt)
-ifirotate[1,0] = np.sin(myTheta_opt)
-ifirotate[1,1] = np.cos(myTheta_opt)
-base_rot = ifirotate @ base_rot
-cx, cy = w/2, h/2
-def point_in_robot_frame_to_pixel(x, y):
-    p_r = np.array([x, y, 0.0])          # point lies in the ground plane
-    p_w = base_rot @ p_r + base_pos      # rotate & translate
-    dx = p_w[0] - cam.lookat[0]
-    dy = p_w[1] - cam.lookat[1]
-    # y increases left, while u increases to the right
-    # similarly, x increases up, while v increases down
-    u = int(-dy * scale + cx)
-    v = int(-dx * scale + cy)
-    return (u, v)
-circle_x, circle_y = (0, R_opt)
-circle_uv = point_in_robot_frame_to_pixel(circle_x, circle_y)
-circle_radius = int(scale * abs(R_opt))
+    is_inline_wdock, R_opt, dTheta_opt, myTheta_opt = plan_arc(target_x, target_y, target_t)
+    message += f"Arc: ({is_inline_wdock} {R_opt:.2f}m, {dTheta_opt:.2f}m, {myTheta_opt:.2f}m)\n"
 
-# Viz arc
-angles = np.linspace(0, dTheta_opt, 100)
-x_arc = R_opt * np.sin(angles)
-y_arc = R_opt * (1 - np.cos(angles))
-pixel_pts = []
-for x_r, y_r in zip(x_arc, y_arc):
-    pixel_pts.append(point_in_robot_frame_to_pixel(x_r, y_r))
+    base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
+    base_pos = server.mjdata.xpos[base_id]
+    base_rot = server.mjdata.xmat[base_id].reshape(3,3)
+    ifirotate = np.eye(3)
+    ifirotate[0,0] = np.cos(myTheta_opt)
+    ifirotate[0,1] = -np.sin(myTheta_opt)
+    ifirotate[1,0] = np.sin(myTheta_opt)
+    ifirotate[1,1] = np.cos(myTheta_opt)
+    base_rot = ifirotate @ base_rot
+    cx, cy = w/2, h/2
+    def point_in_robot_frame_to_pixel(x, y):
+        p_r = np.array([x, y, 0.0])          # point lies in the ground plane
+        p_w = base_rot @ p_r + base_pos      # rotate & translate
+        dx = p_w[0] - cam.lookat[0]
+        dy = p_w[1] - cam.lookat[1]
+        # y increases left, while u increases to the right
+        # similarly, x increases up, while v increases down
+        u = int(-dy * scale + cx)
+        v = int(-dx * scale + cy)
+        return (u, v)
+    if not is_inline_wdock:
+        # Viz arc's underlying circle
+        circle_x, circle_y = (0, R_opt)
+        circle_uv = point_in_robot_frame_to_pixel(circle_x, circle_y)
+        circle_radius = int(scale * abs(R_opt))
 
-# Viz target
-prefixed_target = np.linalg.inv(ifirotate) @ np.array([target_x, target_y, 0.0])
-px, py = point_in_robot_frame_to_pixel(prefixed_target[0], prefixed_target[1])
-target_t_in_world = target_t + euler[2]
-rect_w, rect_h = 40, 20
-angle_deg = np.degrees(target_t_in_world)
-rot_rect = ((int(px), int(py)), (rect_w, rect_h), -angle_deg)
-box = cv2.boxPoints(rot_rect)
-box = np.vstack([box, (int(px), int(py)), box[0]])
-box = np.int32(box)
+        # Viz arc
+        angles = np.linspace(0, dTheta_opt, 100)
+        x_arc = R_opt * np.sin(angles)
+        y_arc = R_opt * (1 - np.cos(angles))
+        pixel_pts = []
+        for x_r, y_r in zip(x_arc, y_arc):
+            pixel_pts.append(point_in_robot_frame_to_pixel(x_r, y_r))
 
-# Render scene
-mujoco.mj_forward(server.mjmodel, server.mjdata)
-renderer.update_scene(server.mjdata, camera=cam)
-img = renderer.render()
-cv2.circle(
-    img,
-    circle_uv,
-    circle_radius,
-    (255, 192, 203),      # pink
-    thickness=1,
-    lineType=cv2.LINE_AA  # optional: anti-aliased
-)
-cv2.polylines(
-    img,
-    [np.array(pixel_pts, dtype=np.int32)],
-    isClosed=False,
-    color=(255, 0, 0),    # RGB red
-    thickness=2,
-    lineType=cv2.LINE_AA
-)
-cv2.polylines(
-    img,
-    [box],
-    isClosed=True,
-    color=(0, 0, 255),    # RGB blue
-    thickness=2,
-    lineType=cv2.LINE_AA
-)
-cv2.putText(img, f'y={robotypos:.3f}m, yaw={robottort:.2f}rad', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
-cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    # Viz target
+    prefixed_target = np.linalg.inv(ifirotate) @ np.array([target_x, target_y, 0.0])
+    px, py = point_in_robot_frame_to_pixel(prefixed_target[0], prefixed_target[1])
+    target_t_in_world = target_t + euler[2]
+    rect_w, rect_h = 40, 20
+    angle_deg = np.degrees(target_t_in_world)
+    rot_rect = ((int(px), int(py)), (rect_w, rect_h), -angle_deg)
+    box = cv2.boxPoints(rot_rect)
+    box = np.vstack([box, (int(px), int(py)), box[0]])
+    box = np.int32(box)
+
+    # Render scene
+    mujoco.mj_forward(server.mjmodel, server.mjdata)
+    renderer.update_scene(server.mjdata, camera=cam)
+    img = renderer.render()
+    if not is_inline_wdock:
+        cv2.circle(
+            img,
+            circle_uv,
+            circle_radius,
+            (255, 192, 203),      # pink
+            thickness=1,
+            lineType=cv2.LINE_AA  # optional: anti-aliased
+        )
+        cv2.polylines(
+            img,
+            [np.array(pixel_pts, dtype=np.int32)],
+            isClosed=False,
+            color=(255, 0, 0),    # RGB red
+            thickness=2,
+            lineType=cv2.LINE_AA
+        )
+    cv2.polylines(
+        img,
+        [box],
+        isClosed=True,
+        color=(0, 0, 255),    # RGB blue
+        thickness=2,
+        lineType=cv2.LINE_AA
+    )
+    (text_width, text_height), baseline = cv2.getTextSize(message.split('\n')[0], cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
+    for i, line in enumerate(message.split('\n')):
+        cv2.putText(img, line, (10, 30 + i * (text_height + baseline)), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+    cv2.imwrite(f'sweep/pose_{robotxpos:.2f}m{robotypos:.2f}m{robottort:.2f}rad.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
