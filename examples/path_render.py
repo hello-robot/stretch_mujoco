@@ -57,8 +57,11 @@ for joint, pos in stow_config.items():
 base_jid = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_JOINT, "base_freejoint")
 qpos_addr = server.mjmodel.jnt_qposadr[base_jid]
 dof_addr = server.mjmodel.jnt_dofadr[base_jid]
-translation = [0.0, -0.375, 0.0]
-euler = np.array([0.0, 0.0, -1.5708], dtype=np.float64) # rpy
+robotxpos = 0.0
+robotypos = -0.375
+robottort = 0.0
+translation = [robotxpos, robotypos, 0.0]
+euler = np.array([0.0, 0.0, robottort], dtype=np.float64) # rpy
 quat = np.zeros(4, dtype=np.float64)
 mujoco.mju_euler2Quat(quat, euler, 'xyz') # 'xyz' is intrinsic rotation, 'XYZ' is extrinsic rotation
 server.mjdata.qpos[qpos_addr:qpos_addr+7] = np.hstack([translation, quat])
@@ -103,7 +106,7 @@ def plan_arc(x_t, y_t, theta_t):
     return False, R_signed, delta_theta, my_theta
 
 is_inline_wdock, R_opt, dTheta_opt, myTheta_opt = plan_arc(target_x, target_y, target_t)
-print(f"Arc: ({R_opt=}, {dTheta_opt=}, {myTheta_opt=})")
+print(f"Arc: ({is_inline_wdock=} {R_opt=}, {dTheta_opt=}, {myTheta_opt=})")
 
 # Viz arc's underlying circle
 base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
@@ -177,5 +180,5 @@ cv2.polylines(
     thickness=2,
     lineType=cv2.LINE_AA
 )
-cv2.putText(img, f'y=-0.375m, yaw=-1.57rad', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+cv2.putText(img, f'y={robotypos:.3f}m, yaw={robottort:.2f}rad', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
