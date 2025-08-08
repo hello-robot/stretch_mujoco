@@ -9,7 +9,6 @@ import threading
 import numpy as np
 from pathlib import Path
 from multiprocessing import Manager
-from scipy.optimize import minimize
 np.set_printoptions(
     precision=3,      # two decimals
     suppress=True,    # never use scientific notation
@@ -86,57 +85,25 @@ target_t = rot_about_z(r_dock_wrt_robot)
 print("Target: ", (target_x, target_y, target_t))
 
 # Plan arc
-def angle_resid(a):
-    # proportional to shortest-arc angle distance
-    return 2.0 * np.sin(0.5 * a)
-def arc_endpoint(R, delta_theta, my_theta):
-    x = R * np.sin(delta_theta)
-    y = R * (1 - np.cos(delta_theta))
-    heading = delta_theta
-    # rotate endpoint by robot's rotation (my_theta)
-    x = np.cos(my_theta)*x - np.sin(my_theta)*y
-    y = np.sin(my_theta)*x + np.cos(my_theta)*y
-    heading -= my_theta
-    return x, y, heading
-def cost(params, x_target, y_target, theta_target,
-         sigma_pos=1e-4,                # 1e-4 m
-         sigma_theta=np.deg2rad(0.5),   # 0.5° as a “unit” heading error
-         theta_weight=1e4,             # make heading count more
-         R_min=1e-4):
-    R, delta_theta, my_theta = params
-    if np.abs(R) < R_min:  # avoid near-zero radius
-        penalty = 1e6 * (R_min - abs(R))**2
-    else:
-        penalty = 0.0
-    x, y, heading = arc_endpoint(R, delta_theta, my_theta)
-    dx = (x - x_target) / sigma_pos
-    dy = (y - y_target) / sigma_pos
-    dtheta = angle_resid(heading - theta_target) / sigma_theta
-    # weighted least squares
-    return dx*dx + dy*dy + theta_weight*dtheta*dtheta + penalty
-def plan_arc(target_x, target_y, target_t):
-    r_bounds = (0.01, None) if target_t < 0 else (None, -0.01)
-    res = minimize(
-        cost,
-        x0=np.array([0.02 if target_t < 0 else -0.02, 0.0, 0.0]), # (radius, dTheta, my_theta)
-        args=(target_x, target_y, target_t),
-        bounds=[r_bounds, (-2*np.pi, 2*np.pi), (-2*np.pi, 2*np.pi)]
-    )
-    if not res.success:
-        return
-    R_opt, dTheta_opt, myTheta_opt = res.x
-    return (R_opt, dTheta_opt, myTheta_opt, res.fun)
+def wrap_to_pi(a):
+    return (a + np.pi) % (2*np.pi) - np.pi
+def plan_arc(x_t, y_t, theta_t):
+    """Returns: (is inline w/dock, radius of arc, arc angle, turn in-place to my_theta before arc)
+    """
+    c = math.hypot(x_t, y_t)
+    chi = math.atan2(y_t, x_t)
+    phi = wrap_to_pi(theta_t - chi)
+    if abs(math.sin(phi)) < 1e-9:
+        # straight-line approach: rotate to theta_t and go straight
+        return True, math.copysign(np.inf, phi), 0.0, wrap_to_pi(theta_t)
+    R_signed = c / (2.0 * math.sin(phi))
+    delta_theta = 2.0 * phi
+    delta_theta = -wrap_to_pi(2*np.pi - delta_theta)
+    my_theta = wrap_to_pi(2.0 * chi - theta_t)
+    return False, R_signed, delta_theta, my_theta
 
-ret = plan_arc(target_x, target_y, target_t)
-if ret is None:
-    print("No arc path found")
-R_opt, dTheta_opt, myTheta_opt, arc_cost = ret
-x, y, heading = arc_endpoint(R_opt, dTheta_opt, myTheta_opt)
-dx = x - target_x
-dy = y - target_y
-dtheta = ((heading - target_t + np.pi) % (2*np.pi)) - np.pi
-print(f"Arc: ({arc_cost=}, {R_opt=}, {dTheta_opt=}, {myTheta_opt=})")
-print(f"arc cost components: {dx=}, {dy=}, {dtheta=}")
+is_inline_wdock, R_opt, dTheta_opt, myTheta_opt = plan_arc(target_x, target_y, target_t)
+print(f"Arc: ({R_opt=}, {dTheta_opt=}, {myTheta_opt=})")
 
 # Viz arc's underlying circle
 base_id = mujoco.mj_name2id(server.mjmodel, mujoco.mjtObj.mjOBJ_BODY, "base_link")
@@ -210,5 +177,5 @@ cv2.polylines(
     thickness=2,
     lineType=cv2.LINE_AA
 )
-cv2.putText(img, f'{arc_cost=}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+cv2.putText(img, f'y=-0.375m, yaw=-1.57rad', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
 cv2.imwrite('test.png', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
