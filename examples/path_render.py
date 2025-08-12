@@ -1,6 +1,7 @@
 from stretch_mujoco.mujoco_server import MujocoServer
 from stretch_mujoco.mujoco_server import MujocoServerProxies
 
+import os
 import cv2
 import math
 import mujoco
@@ -54,7 +55,9 @@ for joint, pos in stow_config.items():
     server.mjdata.qpos[server.mjmodel.jnt_qposadr[joint_id]] = pos
     server.mjdata.qvel[server.mjmodel.jnt_dofadr[joint_id]] = 0.0 # zero out velocity
 
-for robotxpos, robotypos, robottort in itertools.product(np.arange(-1.0, 1.05, 0.05), np.arange(-1.0, 1.05, 0.05), np.arange(-math.pi, math.pi-0.01, 0.05)):
+os.mkdir('./sweep')
+for robotxpos, robotypos in itertools.product(np.arange(-1.0, 1.05, 0.05), np.arange(-1.0, 1.05, 0.05)):
+    robottort = np.random.uniform(-math.pi, math.pi)
     message = f"Base: ({robotxpos:.2f}m, {robotypos:.2f}m, {robottort:.2f}rad)\n"
     print(message)
 
