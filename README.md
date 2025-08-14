@@ -204,6 +204,7 @@ Check out the following documentation resources:
 - [Getting Started jupyter notebook](./docs/getting_started.ipynb)
 - [Releasing to PyPi](./docs/releasing_to_pypi.md)
 - [Contributing to this project](./docs/contributing.md)
+- [Changelog](./CHANGELOG.md)
 
 ### Feature Requests and Bug reporting
 

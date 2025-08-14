@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Thank you for considering contributing to this repository. Stretch Mujoco is a high-fidelity simulation of Stretch built on the MuJoCo simulation engine. This repo contains the assets that describe Stretch, and code that mimics the real robot's API to motion commands and reading sensors. This guide explains the layout of the repo and how to best make and test changes.
+Thank you for considering contributing to this repository. Stretch Mujoco is a high-fidelity simulation of Stretch built on the MuJoCo simulation engine. This repo contains the assets that describe Stretch, and code that mimics the real robot's API to motion commands and reading sensors. This guide explains the layout of the repo and how to make changes to the code or models.
 
 ## Repo Layout
 
