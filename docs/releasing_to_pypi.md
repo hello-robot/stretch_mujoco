@@ -25,6 +25,8 @@ pip install hello-robot-stretch-mujoco
 
  1. Run `uv publish`. You will need an token for PyPi to accept the release.
 
+ 1. For larger releases, consider creating a [new Github Release](https://github.com/hello-robot/stretch_mujoco/releases/new) and posting to [the forum](https://forum.hello-robot.com/).
+
 ## Using the library
 
 ### Getting a specific version
