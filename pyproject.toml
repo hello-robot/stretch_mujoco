@@ -1,5 +1,5 @@
 [project]
-name = "stretch_mujoco"
+name = "hello-robot-stretch-mujoco"
 version = "0.5.0"
 description = "A Stretch simulation in MuJoCo"
 readme = "README.md"
@@ -16,8 +16,7 @@ dependencies = [
 ]
 authors = [
     {name = "Binit Shah", email = "bshah@hello-robot.com"},
-    {name = "Atharva Pusalkar", email = "atharva@hello-robot.com"},
-    {name = "Mohamed Fazil", email = "mfazil@hello-robot.com"},
+    {name = "Shehab Attia", email = "sattia@hello-robot.com"},
 ]
 license = { file = "LICENSE"}
 classifiers = [
@@ -28,8 +27,17 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 
-[tool.setuptools.packages.find]
-exclude = ["third_party*", "tests*"]
+[project.gui-scripts]
+launch_sim = "stretch_mujoco.launch_sim:main"
+
+[build-system]
+requires = ["uv_build>=0.8.9,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "stretch_mujoco"
+module-root = ""
+source-exclude = ["third_party/**", "tests/**"]
 
 [project.urls]
 Source = "https://github.com/hello-robot/stretch_mujoco"

@@ -29,17 +29,10 @@ cd stretch_mujoco
 
 > If you've already cloned the repo without `--recurse-submodules`, run `git submodule update --init` to pull the submodule.
 
-Then, install this repo:
-
-```
-uv venv
-uv pip install -e .
-```
-
 Lastly, run the simulation:
 
 ```
-uv run launch_sim.py
+uv run launch_sim
 ```
 
 To exit, press `Ctrl+C` in the terminal.
@@ -208,10 +201,14 @@ You can use this simulation in ROS2 using the [`stretch_simulation` package](htt
 Check out the following documentation resources:
 
 - [Using the Mujoco Simulator with Stretch](./docs/using_mujoco_simulator_with_stretch.md)
+- [Getting Started jupyter notebook](./docs/getting_started.ipynb)
+- [Releasing to PyPi](./docs/releasing_to_pypi.md)
+- [Contributing to this project](./docs/contributing.md)
+- [Changelog](./CHANGELOG.md)
 
 ### Feature Requests and Bug reporting
 
-All the enhancements/missing features/Bugfixes are tracked by [Issues](https://github.com/hello-robot/stretch_mujoco/issues) filed. Please feel free to file an issue if you would like to report bugs or request a feature addition.
+All enhancements/missing features/bugfixes are tracked by [Issues](https://github.com/hello-robot/stretch_mujoco/issues) filed. Please feel free to file an issue if you would like to report bugs or request a feature addition. Pull requests are welcome! Please see the [contributing guide](./docs/contributing.md).
 
 ## Acknowledgment
 
