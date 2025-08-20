@@ -52,7 +52,7 @@ The XML models ship with the PyPi package. You can import them using:
 ```python
 import importlib.resources
 
-scene_xml = importlib.resources.files("stretch_mujoco") / "models" / "dock_pen.xml"
+scene_xml = importlib.resources.files("stretch_mujoco") / "models" / "scene.xml"
 server = MujocoServer(scene_xml_path=str(scene_xml), ...)
 ```
 
