@@ -35,6 +35,8 @@ Lastly, run the simulation:
 uv run launch_sim
 ```
 
+> Note: If you see a build error mentioning `evdev` on linux, please run `sudo apt insall python3-dev`.
+
 To exit, press `Ctrl+C` in the terminal.
 
 <p>
