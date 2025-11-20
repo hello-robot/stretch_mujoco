@@ -92,23 +92,37 @@ def keyboard_control_release(key: str | None, sim: StretchMujocoSimulator):
 
 # Allow multiple key-presses, references https://stackoverflow.com/a/74910695
 key_buffer = []
-
+active = True #when false, disable kbd commands
+ctrl_pressed = False
 
 def on_press(key):
-    global key_buffer
+    global key_buffer, active, ctrl_pressed
+    if key==keyboard.Key.ctrl:
+        ctrl_pressed = True
+    if ctrl_pressed and str(key) == "'('":
+        active = False
+        print ("Disabling keyboard")
+    if ctrl_pressed and str(key) == "')'":
+        active = True
+        print ("Enabling keyboard")
+    if not active:
+        return
     if key not in key_buffer and len(key_buffer) < 3:
         key_buffer.append(key)
 
-
 def on_release(key, sim: StretchMujocoSimulator):
-    global key_buffer
+    global key_buffer, active, ctrl_pressed
+    if key==keyboard.Key.ctrl:
+        ctrl_pressed = False
+    if not active:
+        return
     if key in key_buffer:
         key_buffer.remove(key)
     if isinstance(key, keyboard.KeyCode):
         keyboard_control_release(key.char, sim)
 
-
 @click.command()
+
 @click.option("--scene-xml-path", type=str, default=None, help="Path to the scene xml file")
 @click.option("--robocasa-env", is_flag=True, help="Use robocasa environment")
 @click.option("--imagery-nav", is_flag=True, help="Show only the Navigation camera")
@@ -123,7 +137,7 @@ def main(scene_xml_path: str|None, robocasa_env: bool, imagery_nav: bool, imager
     use_imagery = imagery or imagery_nav
 
     model = None
-
+ 
     if robocasa_env:
         from stretch_mujoco.robocasa_gen import model_generation_wizard
 
