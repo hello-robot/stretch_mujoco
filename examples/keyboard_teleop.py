@@ -116,10 +116,10 @@ def on_release(key, sim: StretchMujocoSimulator):
     global key_buffer, active, ctrl_pressed
     if key==keyboard.Key.ctrl:
         ctrl_pressed = False
-    if not active:
-        return
     if key in key_buffer:
         key_buffer.remove(key)
+    if not active:
+        return
     if isinstance(key, keyboard.KeyCode):
         keyboard_control_release(key.char, sim)
 
