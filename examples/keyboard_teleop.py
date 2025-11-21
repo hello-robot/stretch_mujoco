@@ -22,6 +22,8 @@ def print_keyboard_options():
     print("C / V: Move WRIST PITCH")
     print("E / R: Move WRIST ROLL")
     print("N / M: Open & Close GRIPPER")
+    print("ctrl + shift + ): Enable keyboard input")
+    print("ctrl + shift + (: Disable keyboard input")
     print("Z : Print status")
     print("Q : Stop")
     click.secho("=====================================", fg="yellow")
