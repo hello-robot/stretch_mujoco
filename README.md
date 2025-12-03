@@ -16,7 +16,7 @@ Currently only Stretch 3 version is fully supported with position control interf
 Install Mujoco (v3.0>), older versions might work but not tested.
 
 ```
-git clont https://github.com/hello-robot/stretch_mujoco
+git clone https://github.com/hello-robot/stretch_mujoco
 cd stretch_mujoco
 pip install -e .
 ```
