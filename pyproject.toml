@@ -60,7 +60,7 @@ jupyter = [
 ]
 robocasa = [
      # Python 3.10 is required for Robocasa compatibility
-    "opencv-python==4.8.0.76",
+    "opencv-python==4.8.1.78",
     "numpy==1.23.5",
     "numba==0.59"
 ]
