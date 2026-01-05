@@ -50,8 +50,8 @@ class StretchMujocoSimulator:
         model: MjModel | None = None,
         camera_hz: float = 30,
         cameras_to_use: list[StretchCameras] = [],
-        start_translation: list = [0,0,0],
-        start_rotation_quat: list = [1,0,0,0]
+        start_translation: list|None = None,
+        start_rotation_quat: list|None = None
     ) -> None:
         self.scene_xml_path = scene_xml_path
         self.model = model
