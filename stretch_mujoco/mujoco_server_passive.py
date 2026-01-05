@@ -56,7 +56,7 @@ class MujocoServerPassive(MujocoServer):
         https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer
         """
         self.viewer =  mujoco.viewer.launch_passive(
-            self.mjmodel, self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
+            model=self.mjmodel, data=self.mjdata, show_left_ui=show_viewer_ui, show_right_ui=show_viewer_ui
         )
 
         self.viewer._opt.flags[mujoco._enums.mjtVisFlag.mjVIS_RANGEFINDER] = False # Disables the lidar yellow lines.
